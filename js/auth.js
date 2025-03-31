@@ -9,17 +9,22 @@ document.addEventListener('DOMContentLoaded', initAuth);
 
 // Init auth
 async function initAuth() {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
-    if (session) {
-        currentUser = session.user;
-        await fetchUserProfile();
-        showLoggedInState();
-    } else {
+    try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (session) {
+            currentUser = session.user;
+            await fetchUserProfile();
+            showLoggedInState();
+        } else {
+            showLoggedOutState();
+        }
+        
+        setupAuthListeners();
+    } catch (error) {
+        console.error("Error initializing authentication:", error);
         showLoggedOutState();
     }
-    
-    setupAuthListeners();
 }
 
 // Setup auth event listeners
@@ -131,13 +136,16 @@ async function handleAuth(e) {
             // Signup
             const fullName = document.getElementById('signup-name').value;
             
+            // Use signUp without email confirmation for now
+            // In production you'd want to enable this in the Supabase dashboard
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     data: {
                         full_name: fullName
-                    }
+                    },
+                    emailRedirectTo: window.location.origin
                 }
             });
             
@@ -253,31 +261,54 @@ function showLoggedOutState() {
 // Create super admin
 async function createSuperAdmin() {
     try {
+        // Check if admin user exists
+        const { data: existingAdmin, error: checkError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_role', 'Administrator')
+            .limit(1);
+            
+        if (checkError) throw checkError;
+        
+        // If admin exists, don't create a new one
+        if (existingAdmin && existingAdmin.length > 0) {
+            console.log('Administrator already exists, skipping super admin creation');
+            return;
+        }
+        
         // First create the user
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        const { data, error } = await supabase.auth.signUp({
             email: 'prayerdiary@pech.co.uk',
             password: '@Prayer@Diary@',
-            email_confirm: true
+            options: {
+                data: {
+                    full_name: 'Super Admin'
+                }
+            }
         });
         
-        if (authError) throw authError;
-        
-        // Then update the profile
-        const { data, error } = await supabase
-            .from('profiles')
-            .upsert({
-                id: authData.user.id,
-                full_name: 'Super Admin',
-                user_role: 'Administrator',
-                approval_state: 'Approved',
-                prayer_calendar_editor: true,
-                prayer_update_editor: true,
-                urgent_prayer_editor: true
-            });
-            
         if (error) throw error;
         
-        console.log('Super admin created successfully');
+        console.log('Created super admin user');
+        
+        // The trigger will automatically create a profile,
+        // but we need to update it as admin
+        if (data && data.user) {
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({
+                    user_role: 'Administrator',
+                    approval_state: 'Approved',
+                    prayer_calendar_editor: true,
+                    prayer_update_editor: true,
+                    urgent_prayer_editor: true
+                })
+                .eq('id', data.user.id);
+                
+            if (updateError) throw updateError;
+            
+            console.log('Updated super admin profile');
+        }
     } catch (error) {
         console.error('Error creating super admin:', error);
     }
