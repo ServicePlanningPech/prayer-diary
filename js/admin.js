@@ -17,31 +17,43 @@ async function loadUsers() {
     approvedContainer.innerHTML = createLoadingSpinner();
     
     try {
-        // Load all profiles with associated user data
+        // First, load all profiles without trying to join with auth.users
         const { data: profiles, error } = await supabase
             .from('profiles')
-            .select(`
-                id,
-                full_name,
-                approval_state,
-                user_role,
-                prayer_calendar_editor,
-                prayer_update_editor,
-                urgent_prayer_editor,
-                profile_image_url,
-                auth:id (email)
-            `)
+            .select('*')
             .order('full_name', { ascending: true });
             
         if (error) throw error;
         
-        // Process user data to include email
+        // Process user data with Unknown email for now
         const users = profiles.map(profile => {
             return {
                 ...profile,
-                email: profile.auth ? profile.auth.email : 'Unknown email'
+                email: 'Unknown email' // We'll update this later if possible
             };
         });
+        
+        // Try to get emails for each user if possible
+        try {
+            // Get auth users - this approach doesn't work in all setups,
+            // but is kept as a fallback in case the Supabase instance allows it
+            const { data: authUsers, error: authError } = await supabase
+                .from('auth.users')
+                .select('id, email');
+                
+            if (!authError && authUsers) {
+                // If we successfully got auth users, update emails
+                for (const user of users) {
+                    const authUser = authUsers.find(au => au.id === user.id);
+                    if (authUser) {
+                        user.email = authUser.email;
+                    }
+                }
+            }
+        } catch (emailError) {
+            console.warn('Could not fetch user emails:', emailError);
+            // Continue without emails - the app will show "Unknown email"
+        }
         
         // Separate pending and approved users
         const pendingUsers = users.filter(user => user.approval_state === 'Pending');
