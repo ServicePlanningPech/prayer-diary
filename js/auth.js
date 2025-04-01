@@ -330,10 +330,17 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
     }
     
     try {
-        // Fetch all administrators
+        // Fetch all administrators with their email addresses
+        // Note: emails are stored in auth.users table, not profiles table
         const { data: admins, error } = await supabase
             .from('profiles')
-            .select('id, full_name, email')
+            .select(`
+                id, 
+                full_name,
+                auth:id (
+                    email
+                )
+            `)
             .eq('user_role', 'Administrator')
             .eq('approval_state', 'Approved');
             
@@ -376,9 +383,17 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
         // Send email to each admin
         for (const admin of admins) {
             try {
+                // Extract email from the auth relation
+                const adminEmail = admin.auth ? admin.auth.email : null;
+                
+                if (!adminEmail) {
+                    console.log(`No email found for admin ${admin.full_name} (${admin.id})`);
+                    continue;
+                }
+                
                 const { data, error } = await supabase.functions.invoke('send-email', {
                     body: {
-                        to: admin.email,
+                        to: adminEmail,
                         subject: subject,
                         html: htmlContent,
                         text: `New User Registration: ${userName} (${userEmail}) has registered and is awaiting approval. Please log in to the admin panel to review this request.`,
@@ -389,10 +404,13 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
                 });
                 
                 if (error) {
-                    console.error(`Failed to send email to admin ${admin.email}:`, error);
+                    console.error(`Failed to send email to admin ${adminEmail}:`, error);
                 } else {
-                    console.log(`Notification email sent to admin: ${admin.email}`);
+                    console.log(`Notification email sent to admin: ${adminEmail}`);
                 }
+                
+                // Add a small delay between sending emails to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 500));
             } catch (err) {
                 console.error(`Error sending email to admin ${admin.email}:`, err);
             }

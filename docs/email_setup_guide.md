@@ -94,6 +94,13 @@ If emails are not being sent properly:
 
 4. **CORS Issues**: If you're experiencing CORS problems, make sure your app's domain is added to the allowed origins in your Supabase project settings
 
+5. **Database Schema**: Remember that email addresses are stored in the `auth.users` table, not in the `profiles` table
+   - When querying for user emails, you need to use the auth relation: `auth:id (email)`
+   - Common error: "column profiles.email does not exist" occurs when trying to directly access email from profiles table
+
+6. **Rate Limiting**: Gmail has rate limits for sending emails
+   - Add small delays between sending multiple emails (the code includes a 500ms delay)
+
 ## Security Considerations
 
 - The App Password has the same access as your Google account password, so keep it secure
