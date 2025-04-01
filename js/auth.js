@@ -136,8 +136,7 @@ async function handleAuth(e) {
             // Signup
             const fullName = document.getElementById('signup-name').value;
             
-            // Use signUp without email confirmation for now
-            // In production you'd want to enable this in the Supabase dashboard
+            // Use signUp with email confirmation properly configured for production
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
@@ -145,7 +144,9 @@ async function handleAuth(e) {
                     data: {
                         full_name: fullName
                     },
-                    emailRedirectTo: window.location.origin
+                    // Use the GitHub Pages URL where your app is hosted for testing
+                    // This ensures Supabase sends confirmation emails with the correct URL
+                    emailRedirectTo: 'https://serviceplanningpech.github.io/prayer-diary'
                 }
             });
             
@@ -283,7 +284,9 @@ async function createSuperAdmin() {
             options: {
                 data: {
                     full_name: 'Super Admin'
-                }
+                },
+                // Use the GitHub Pages URL for testing
+                emailRedirectTo: 'https://serviceplanningpech.github.io/prayer-diary'
             }
         });
         
