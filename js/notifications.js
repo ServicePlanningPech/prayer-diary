@@ -285,16 +285,33 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-// Actual implementation of email sending via a server (to be implemented)
-// This would typically be implemented as a serverless function or endpoint
-// For now, we'll just log it
-async function sendEmail(to, subject, body) {
-    // This is a placeholder for the actual email sending implementation
-    console.log(`Sending email to ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Body: ${body}`);
+// Implementation of email sending via Supabase Edge Function
+async function sendEmail(to, subject, html, text, userId, type, contentId = null) {
+    if (!EMAIL_ENABLED) {
+        console.log(`Email disabled. Would have sent email to ${to}`);
+        return { success: false, error: 'Email is not enabled' };
+    }
     
-    return true;
+    try {
+        const { data, error } = await supabase.functions.invoke('send-email', {
+            body: {
+                to: to,
+                subject: subject,
+                html: html,
+                text: text || html.replace(/<[^>]*>/g, ''), // Fallback plain text
+                userId: userId,
+                type: type,
+                contentId: contentId
+            }
+        });
+        
+        if (error) throw error;
+        console.log('Email sent successfully to:', to);
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error sending email:', error);
+        return { success: false, error: error.message };
+    }
 }
 
 // Actual implementation of SMS sending via Twilio (to be implemented)

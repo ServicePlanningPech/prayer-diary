@@ -157,6 +157,9 @@ async function handleAuth(e) {
             const modal = bootstrap.Modal.getInstance(document.getElementById('auth-modal'));
             modal.hide();
             
+            // Notify admins about the new user registration
+            await notifyAdminsAboutNewUser(fullName, email);
+            
             // Show welcome message
             showNotification(
                 'Account Created',
@@ -316,6 +319,86 @@ async function createSuperAdmin() {
         }
     } catch (error) {
         console.error('Error creating super admin:', error);
+    }
+}
+
+// Notify admins about new user registration
+async function notifyAdminsAboutNewUser(userName, userEmail) {
+    if (!EMAIL_ENABLED) {
+        console.log('Email notifications are disabled. Would have sent admin notification for new user:', userName);
+        return;
+    }
+    
+    try {
+        // Fetch all administrators
+        const { data: admins, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('user_role', 'Administrator')
+            .eq('approval_state', 'Approved');
+            
+        if (error) throw error;
+        
+        if (!admins || admins.length === 0) {
+            console.log('No admin users found to notify');
+            return;
+        }
+        
+        // Create email content
+        const subject = `Prayer Diary: New User Registration - ${userName}`;
+        const htmlContent = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #483D8B;">New User Registration</h2>
+                <p>A new user has registered for Prayer Diary and is awaiting your approval:</p>
+                
+                <div style="background-color: #f5f5f5; border-left: 4px solid #483D8B; padding: 15px; margin: 15px 0;">
+                    <p><strong>Name:</strong> ${userName}</p>
+                    <p><strong>Email:</strong> ${userEmail}</p>
+                    <p><strong>Status:</strong> Pending Approval</p>
+                </div>
+                
+                <p>Please log in to the admin panel to review and approve this user.</p>
+                
+                <div style="margin: 25px 0;">
+                    <a href="https://serviceplanningpech.github.io/prayer-diary" 
+                       style="background-color: #483D8B; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+                        Go to Admin Panel
+                    </a>
+                </div>
+                
+                <hr style="border: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 12px; color: #666;">
+                    This is an automated notification from Prayer Diary. Please do not reply to this email.
+                </p>
+            </div>
+        `;
+        
+        // Send email to each admin
+        for (const admin of admins) {
+            try {
+                const { data, error } = await supabase.functions.invoke('send-email', {
+                    body: {
+                        to: admin.email,
+                        subject: subject,
+                        html: htmlContent,
+                        text: `New User Registration: ${userName} (${userEmail}) has registered and is awaiting approval. Please log in to the admin panel to review this request.`,
+                        userId: admin.id,
+                        type: 'new_user_notification',
+                        contentId: userEmail
+                    }
+                });
+                
+                if (error) {
+                    console.error(`Failed to send email to admin ${admin.email}:`, error);
+                } else {
+                    console.log(`Notification email sent to admin: ${admin.email}`);
+                }
+            } catch (err) {
+                console.error(`Error sending email to admin ${admin.email}:`, err);
+            }
+        }
+    } catch (error) {
+        console.error('Error notifying admins about new user:', error);
     }
 }
 

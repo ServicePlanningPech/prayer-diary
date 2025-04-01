@@ -10,7 +10,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TWILIO_ENABLED = false; // Set to true once configured
 
 // Email configuration
-const EMAIL_ENABLED = false; // Set to true once configured
+const EMAIL_ENABLED = true; // Set to true once configured
 
 // Push notification configuration
 const PUSH_NOTIFICATION_ENABLED = false; // Set to true once configured
