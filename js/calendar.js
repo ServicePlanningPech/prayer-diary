@@ -36,8 +36,8 @@ async function loadPrayerCalendar() {
         
         if (sortedEntries.length === 0) {
             container.innerHTML = `
-                <div class="column is-12">
-                    <div class="notification is-info">
+                <div class="col-12">
+                    <div class="alert alert-info">
                         No prayer calendar entries found. Please check back later or contact an administrator.
                     </div>
                 </div>
@@ -67,8 +67,8 @@ async function loadPrayerCalendar() {
     } catch (error) {
         console.error('Error loading prayer calendar:', error);
         container.innerHTML = `
-            <div class="column is-12">
-                <div class="notification is-danger">
+            <div class="col-12">
+                <div class="alert alert-danger">
                     Error loading prayer calendar: ${error.message}
                 </div>
             </div>
@@ -98,10 +98,10 @@ async function loadCalendarAdmin() {
             
         if (entriesError) throw entriesError;
         
-        // Load users for dropdown
+        // Load approved users for dropdown
         const { data: users, error: usersError } = await supabase
             .from('profiles')
-            .select('id, full_name')
+            .select('id, full_name, profile_image_url, prayer_points')
             .eq('approval_state', 'Approved')
             .order('full_name', { ascending: true });
             
@@ -115,12 +115,33 @@ async function loadCalendarAdmin() {
             const option = document.createElement('option');
             option.value = user.id;
             option.textContent = user.full_name;
+            // Store user data as attributes for easy retrieval
+            option.setAttribute('data-image', user.profile_image_url || 'img/placeholder-profile.png');
+            option.setAttribute('data-points', user.prayer_points || 'No prayer points available');
             userSelect.appendChild(option);
+        });
+        
+        // Setup user selection preview
+        userSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const previewImage = document.getElementById('user-preview-image');
+            const previewName = document.getElementById('user-preview-name');
+            const previewPoints = document.getElementById('user-preview-points');
+            
+            if (this.value) {
+                previewImage.src = selectedOption.getAttribute('data-image');
+                previewName.textContent = selectedOption.textContent;
+                previewPoints.textContent = selectedOption.getAttribute('data-points');
+            } else {
+                previewImage.src = 'img/placeholder-profile.png';
+                previewName.textContent = 'Selected user';
+                previewPoints.textContent = 'Prayer points will appear here';
+            }
         });
         
         // Show entries in table
         if (entries.length === 0) {
-            container.innerHTML = `<tr><td colspan="4">No calendar entries found. Add your first entry using the form.</td></tr>`;
+            container.innerHTML = `<tr><td colspan="4" class="text-center">No calendar entries found. Add your first entry using the form.</td></tr>`;
             return;
         }
         
@@ -128,16 +149,16 @@ async function loadCalendarAdmin() {
         entries.forEach(entry => {
             html += `
             <tr>
-                <td>${entry.day_of_month}</td>
-                <td>${entry.name}</td>
-                <td>${entry.is_user ? 'User' : 'Other'}</td>
+                <td class="align-middle">${entry.day_of_month}</td>
+                <td class="align-middle">${entry.name}</td>
+                <td class="align-middle">${entry.is_user ? '<span class="badge bg-primary">User</span>' : '<span class="badge bg-secondary">Other</span>'}</td>
                 <td>
-                    <div class="buttons are-small">
-                        <button class="button is-primary edit-calendar-entry" data-id="${entry.id}">
-                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary edit-calendar-entry" data-id="${entry.id}">
+                            <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="button is-danger delete-calendar-entry" data-id="${entry.id}">
-                            <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                        <button class="btn btn-danger delete-calendar-entry" data-id="${entry.id}">
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
                 </td>
@@ -152,7 +173,7 @@ async function loadCalendarAdmin() {
         
     } catch (error) {
         console.error('Error loading calendar admin view:', error);
-        container.innerHTML = `<tr><td colspan="4">Error loading calendar entries: ${error.message}</td></tr>`;
+        container.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error loading calendar entries: ${error.message}</td></tr>`;
     }
 }
 
@@ -166,11 +187,11 @@ function setupCalendarAdminListeners(entries) {
     entryTypeRadios.forEach(radio => {
         radio.addEventListener('change', () => {
             if (radio.value === 'user') {
-                userContainer.classList.remove('is-hidden');
-                otherContainer.classList.add('is-hidden');
+                userContainer.classList.remove('d-none');
+                otherContainer.classList.add('d-none');
             } else {
-                userContainer.classList.add('is-hidden');
-                otherContainer.classList.remove('is-hidden');
+                userContainer.classList.add('d-none');
+                otherContainer.classList.remove('d-none');
             }
         });
     });
@@ -206,7 +227,9 @@ function setupCalendarAdminListeners(entries) {
     
     // Cancel edit
     document.getElementById('cancel-edit-calendar').addEventListener('click', () => {
-        document.getElementById('edit-calendar-modal').classList.remove('is-active');
+        // Using Bootstrap Modal API
+        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-calendar-modal'));
+        if (modal) modal.hide();
     });
 }
 
@@ -216,7 +239,7 @@ async function addCalendarEntry(e) {
     
     const submitBtn = e.submitter;
     const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Saving...';
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
     submitBtn.disabled = true;
     
     try {
@@ -292,8 +315,22 @@ async function addCalendarEntry(e) {
         
         // Reset form
         document.getElementById('calendar-entry-form').reset();
-        document.getElementById('calendar-image-preview').classList.add('is-hidden');
-        document.getElementById('calendar-image-name').textContent = 'No file selected';
+        
+        if (document.getElementById('calendar-image-preview')) {
+            document.getElementById('calendar-image-preview').classList.add('d-none');
+            document.getElementById('calendar-image-name').textContent = 'No file selected';
+        }
+        
+        // Reset user preview
+        const previewImage = document.getElementById('user-preview-image');
+        const previewName = document.getElementById('user-preview-name');
+        const previewPoints = document.getElementById('user-preview-points');
+        
+        if (previewImage && previewName && previewPoints) {
+            previewImage.src = 'img/placeholder-profile.png';
+            previewName.textContent = 'Selected user';
+            previewPoints.textContent = 'Prayer points will appear here';
+        }
         
         // Refresh calendar entries
         loadCalendarAdmin();
@@ -304,14 +341,15 @@ async function addCalendarEntry(e) {
         console.error('Error adding calendar entry:', error);
         showNotification('Error', `Failed to add calendar entry: ${error.message}`);
     } finally {
-        submitBtn.textContent = originalText;
+        submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
     }
 }
 
 // Open edit calendar modal
 async function openEditCalendarModal(entry) {
-    const modal = document.getElementById('edit-calendar-modal');
+    const modalEl = document.getElementById('edit-calendar-modal');
+    const modal = new bootstrap.Modal(modalEl);
     
     // We only support editing non-user entries for simplicity
     if (entry.is_user) {
@@ -339,15 +377,15 @@ async function openEditCalendarModal(entry) {
         const imagePreview = document.getElementById('edit-calendar-image-preview');
         if (data.image_url) {
             imagePreview.src = data.image_url;
-            imagePreview.classList.remove('is-hidden');
+            imagePreview.classList.remove('d-none');
         } else {
-            imagePreview.classList.add('is-hidden');
+            imagePreview.classList.add('d-none');
         }
         
         document.getElementById('edit-calendar-image-name').textContent = 'Current image';
         
         // Show modal
-        modal.classList.add('is-active');
+        modal.show();
         
     } catch (error) {
         console.error('Error opening edit modal:', error);
@@ -359,7 +397,7 @@ async function openEditCalendarModal(entry) {
 async function saveCalendarEntry() {
     const saveBtn = document.getElementById('save-calendar-entry');
     const originalText = saveBtn.textContent;
-    saveBtn.textContent = 'Saving...';
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
     saveBtn.disabled = true;
     
     try {
@@ -417,8 +455,10 @@ async function saveCalendarEntry() {
             
         if (error) throw error;
         
-        // Close modal
-        document.getElementById('edit-calendar-modal').classList.remove('is-active');
+        // Close modal using Bootstrap's Modal API
+        const modalEl = document.getElementById('edit-calendar-modal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
         
         // Refresh calendar entries
         loadCalendarAdmin();
@@ -429,7 +469,7 @@ async function saveCalendarEntry() {
         console.error('Error updating calendar entry:', error);
         showNotification('Error', `Failed to update calendar entry: ${error.message}`);
     } finally {
-        saveBtn.textContent = originalText;
+        saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
     }
 }
