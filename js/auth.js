@@ -65,7 +65,7 @@ function setupAuthListeners() {
 
 // Open auth modal for login or signup
 function openAuthModal(mode) {
-    const modal = document.getElementById('auth-modal');
+    const modal = new bootstrap.Modal(document.getElementById('auth-modal'));
     const title = document.getElementById('auth-modal-title');
     const submitBtn = document.getElementById('auth-submit');
     const switchText = document.getElementById('auth-switch-text');
@@ -73,24 +73,24 @@ function openAuthModal(mode) {
     
     // Reset form
     document.getElementById('auth-form').reset();
-    document.getElementById('auth-error').classList.add('is-hidden');
+    document.getElementById('auth-error').classList.add('d-none');
     
     if (mode === 'login') {
         title.textContent = 'Log In';
         submitBtn.textContent = 'Log In';
-        switchText.innerHTML = 'Don\'t have an account? <a id="auth-switch">Sign up</a>';
-        signupField.classList.add('is-hidden');
+        switchText.innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
+        signupField.classList.add('d-none');
     } else {
         title.textContent = 'Sign Up';
         submitBtn.textContent = 'Sign Up';
-        switchText.innerHTML = 'Already have an account? <a id="auth-switch">Log in</a>';
-        signupField.classList.remove('is-hidden');
+        switchText.innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
+        signupField.classList.remove('d-none');
     }
     
     // Re-attach event listener for switch link
     document.getElementById('auth-switch').addEventListener('click', toggleAuthMode);
     
-    modal.classList.add('is-active');
+    modal.show();
 }
 
 // Toggle between login and signup
@@ -130,7 +130,8 @@ async function handleAuth(e) {
             if (error) throw error;
             
             // Close modal on success
-            document.getElementById('auth-modal').classList.remove('is-active');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('auth-modal'));
+            modal.hide();
             
         } else {
             // Signup
@@ -153,7 +154,8 @@ async function handleAuth(e) {
             if (error) throw error;
             
             // Close modal on success
-            document.getElementById('auth-modal').classList.remove('is-active');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('auth-modal'));
+            modal.hide();
             
             // Show welcome message
             showNotification(
@@ -165,7 +167,7 @@ async function handleAuth(e) {
         console.error('Auth error:', error);
         const errorElem = document.getElementById('auth-error');
         errorElem.querySelector('p').textContent = error.message;
-        errorElem.classList.remove('is-hidden');
+        errorElem.classList.remove('d-none');
     } finally {
         // Restore button state
         submitBtn.textContent = originalText;
@@ -219,27 +221,27 @@ function showLoggedInState() {
     
     // Check approval status and show appropriate view
     if (userProfile && userProfile.approval_state === 'Approved') {
-        document.getElementById('landing-view').classList.add('is-hidden');
-        document.getElementById('app-views').classList.remove('is-hidden');
+        document.getElementById('landing-view').classList.add('d-none');
+        document.getElementById('app-views').classList.remove('d-none');
         
         // Load initial view (prayer calendar)
         showView('calendar-view');
         loadPrayerCalendar();
     } else {
         // Show pending approval message
-        document.getElementById('landing-view').classList.remove('is-hidden');
-        document.getElementById('app-views').classList.add('is-hidden');
+        document.getElementById('landing-view').classList.remove('d-none');
+        document.getElementById('app-views').classList.add('d-none');
         
         const statusMessage = document.getElementById('auth-status-message');
-        statusMessage.innerHTML = `<div class="notification is-warning">
+        statusMessage.innerHTML = `<div class="alert alert-warning">
             <p>Your account is pending approval by an administrator. You'll receive an email when your account is approved.</p>
-            <p>In the meantime, you can <a id="nav-to-profile">complete your profile</a> with your details and prayer points.</p>
+            <p>In the meantime, you can <a href="#" id="nav-to-profile">complete your profile</a> with your details and prayer points.</p>
         </div>`;
         
         // Add profile navigation link
         document.getElementById('nav-to-profile').addEventListener('click', () => {
-            document.getElementById('landing-view').classList.add('is-hidden');
-            document.getElementById('app-views').classList.remove('is-hidden');
+            document.getElementById('landing-view').classList.add('d-none');
+            document.getElementById('app-views').classList.remove('d-none');
             showView('profile-view');
         });
     }
@@ -251,8 +253,8 @@ function showLoggedOutState() {
     document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
     
-    document.getElementById('landing-view').classList.remove('is-hidden');
-    document.getElementById('app-views').classList.add('is-hidden');
+    document.getElementById('landing-view').classList.remove('d-none');
+    document.getElementById('app-views').classList.add('d-none');
     
     // Update landing page message
     const statusMessage = document.getElementById('auth-status-message');

@@ -1,14 +1,13 @@
-// UI Management Module
+// UI Management Module - Bootstrap Version
 
 // Initialize UI when document is loaded
 document.addEventListener('DOMContentLoaded', initUI);
 
 function initUI() {
     setupNavigation();
-    setupTabManagement();
     setupModalClosers();
     setupFileInputs();
-    initializeBulmaComponents();
+    initializeBootstrapComponents();
 }
 
 // Setup navigation between views
@@ -63,75 +62,38 @@ function showView(viewId) {
     // Hide all views
     const views = document.querySelectorAll('.view-content');
     views.forEach(view => {
-        view.classList.add('is-hidden');
+        view.classList.add('d-none');
     });
     
     // Show the selected view
-    document.getElementById(viewId).classList.remove('is-hidden');
+    document.getElementById(viewId).classList.remove('d-none');
     
     // Close mobile menu if open
-    const burger = document.querySelector('.navbar-burger');
-    const menu = document.querySelector('.navbar-menu');
-    if (burger.classList.contains('is-active')) {
-        burger.classList.remove('is-active');
-        menu.classList.remove('is-active');
+    const navbarCollapse = document.getElementById('navbarBasic');
+    const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
+    if (bsCollapse && navbarCollapse.classList.contains('show')) {
+        bsCollapse.hide();
     }
     
     // Scroll to top
     window.scrollTo(0, 0);
 }
 
-// Setup tab management
-function setupTabManagement() {
-    document.querySelectorAll('.tabs a').forEach(tab => {
-        tab.addEventListener('click', function() {
-            // Get parent tab list
-            const tabList = this.closest('ul');
-            
-            // Remove active class from all tabs in this list
-            tabList.querySelectorAll('li').forEach(li => {
-                li.classList.remove('is-active');
-            });
-            
-            // Add active class to current tab
-            this.closest('li').classList.add('is-active');
-            
-            // Get the tab content to show
-            const tabContentId = this.getAttribute('data-tab');
-            
-            // Find all sibling tab contents
-            const parentContent = this.closest('.tabs').nextElementSibling.parentElement;
-            const tabContents = parentContent.querySelectorAll('.tab-content');
-            
-            // Hide all tab contents
-            tabContents.forEach(content => {
-                content.classList.add('is-hidden');
-            });
-            
-            // Show selected tab content
-            document.getElementById(tabContentId).classList.remove('is-hidden');
-        });
-    });
-}
-
 // Setup modal close buttons
 function setupModalClosers() {
-    // Close all modals when clicking on background or delete button
-    document.querySelectorAll('.modal-background, .modal .delete, .modal .cancel').forEach(elem => {
-        const modal = elem.closest('.modal');
-        elem.addEventListener('click', () => {
-            modal.classList.remove('is-active');
-        });
-    });
+    // Bootstrap handles most modal closing automatically
+    // We just need to set up specific button actions
     
     // Close notification modal specifically
     document.getElementById('close-notification').addEventListener('click', () => {
-        document.getElementById('notification-modal').classList.remove('is-active');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('notification-modal'));
+        modal.hide();
     });
     
     // Close card view modal
     document.getElementById('close-card-modal').addEventListener('click', () => {
-        document.getElementById('view-card-modal').classList.remove('is-active');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('view-card-modal'));
+        modal.hide();
     });
 }
 
@@ -146,7 +108,7 @@ function setupFileInputs() {
                 
                 // If preview element exists, show image preview
                 if (previewElement) {
-                    previewElement.classList.remove('is-hidden');
+                    previewElement.classList.remove('d-none');
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         previewElement.src = e.target.result;
@@ -156,7 +118,7 @@ function setupFileInputs() {
             } else {
                 fileNameElement.textContent = 'No file selected';
                 if (previewElement) {
-                    previewElement.classList.add('is-hidden');
+                    previewElement.classList.add('d-none');
                 }
             }
         });
@@ -166,30 +128,33 @@ function setupFileInputs() {
     const profileInput = document.getElementById('profile-image');
     const profileName = document.getElementById('profile-image-name');
     const profilePreview = document.getElementById('profile-image-preview');
-    handleFileInput(profileInput, profileName, profilePreview);
+    if (profileInput) {
+        handleFileInput(profileInput, profileName, profilePreview);
+    }
     
     // Calendar entry image input
     const calendarInput = document.getElementById('calendar-image');
     const calendarName = document.getElementById('calendar-image-name');
     const calendarPreview = document.getElementById('calendar-image-preview');
-    handleFileInput(calendarInput, calendarName, calendarPreview);
+    if (calendarInput) {
+        handleFileInput(calendarInput, calendarName, calendarPreview);
+    }
     
     // Edit calendar entry image input
     const editCalendarInput = document.getElementById('edit-calendar-image');
     const editCalendarName = document.getElementById('edit-calendar-image-name');
     const editCalendarPreview = document.getElementById('edit-calendar-image-preview');
-    handleFileInput(editCalendarInput, editCalendarName, editCalendarPreview);
+    if (editCalendarInput) {
+        handleFileInput(editCalendarInput, editCalendarName, editCalendarPreview);
+    }
 }
 
-// Initialize Bulma component functionality
-function initializeBulmaComponents() {
-    // Burger menu for mobile
-    const burger = document.querySelector('.navbar-burger');
-    const menu = document.querySelector('.navbar-menu');
-    
-    burger.addEventListener('click', () => {
-        burger.classList.toggle('is-active');
-        menu.classList.toggle('is-active');
+// Initialize Bootstrap component functionality
+function initializeBootstrapComponents() {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
     // Initialize day of month dropdown options
@@ -206,14 +171,14 @@ function initializeBulmaComponents() {
 
 // Show notification modal
 function showNotification(title, message) {
-    const modal = document.getElementById('notification-modal');
+    const modal = new bootstrap.Modal(document.getElementById('notification-modal'));
     const titleElem = document.getElementById('notification-title');
     const contentElem = document.getElementById('notification-content');
     
     titleElem.textContent = title;
     contentElem.innerHTML = message;
     
-    modal.classList.add('is-active');
+    modal.show();
 }
 
 // Format date for display
@@ -230,10 +195,10 @@ function formatDate(dateString) {
 
 // Create loading spinner
 function createLoadingSpinner() {
-    return `<div class="has-text-centered p-5">
-        <span class="icon is-large">
-            <i class="fas fa-spinner fa-pulse fa-3x"></i>
-        </span>
+    return `<div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
         <p class="mt-3">Loading...</p>
     </div>`;
 }
@@ -245,21 +210,19 @@ function createPrayerCard(entry) {
     const isToday = dayOfMonth === today;
     
     return `
-    <div class="column is-6-tablet is-4-desktop">
-        <div class="card prayer-card ${isToday ? 'has-background-primary-light' : ''}">
-            <div class="card-image">
-                <figure class="image is-1by1">
-                    <img src="${entry.image_url || 'img/placeholder-profile.png'}" alt="${entry.name}">
-                </figure>
-                <div class="day-of-month">${dayOfMonth}</div>
+    <div class="col">
+        <div class="card prayer-card h-100 ${isToday ? 'bg-light border-primary' : ''}">
+            <div class="position-relative">
+                <img src="${entry.image_url || 'img/placeholder-profile.png'}" class="card-img-top prayer-card-img-top" alt="${entry.name}">
+                <div class="day-badge">${dayOfMonth}</div>
             </div>
-            <div class="card-content prayer-card-content">
-                <p class="prayer-card-title">${entry.name}</p>
-                <div class="prayer-card-body content">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title prayer-card-title">${entry.name}</h5>
+                <p class="card-text flex-grow-1">
                     ${entry.prayer_points ? entry.prayer_points.substring(0, 100) + (entry.prayer_points.length > 100 ? '...' : '') : 'No prayer points provided.'}
-                </div>
-                <div class="prayer-card-footer">
-                    <button class="button is-primary is-fullwidth view-prayer-card" data-id="${entry.id}">
+                </p>
+                <div class="mt-auto pt-3">
+                    <button class="btn btn-primary w-100 view-prayer-card" data-id="${entry.id}">
                         View Prayer Card
                     </button>
                 </div>
@@ -275,23 +238,21 @@ function createUpdateCard(update, isAdmin = false) {
     
     return `
     <div class="card update-card mb-4">
-        <header class="card-header">
-            <p class="card-header-title">${update.title}</p>
-        </header>
-        <div class="card-content">
-            <p class="update-date">${date}</p>
-            <div class="content">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">${update.title}</h5>
+        </div>
+        <div class="card-body">
+            <p class="update-date text-muted">${date}</p>
+            <div class="card-text">
                 ${update.content}
             </div>
             ${isAdmin ? `
-            <div class="buttons is-right">
-                <button class="button is-small is-primary edit-update" data-id="${update.id}">
-                    <span class="icon"><i class="fas fa-edit"></i></span>
-                    <span>Edit</span>
+            <div class="text-end mt-3">
+                <button class="btn btn-sm btn-primary edit-update me-2" data-id="${update.id}">
+                    <i class="bi bi-pencil-square"></i> Edit
                 </button>
-                <button class="button is-small is-warning archive-update" data-id="${update.id}">
-                    <span class="icon"><i class="fas fa-archive"></i></span>
-                    <span>Archive</span>
+                <button class="btn btn-sm btn-warning archive-update" data-id="${update.id}">
+                    <i class="bi bi-archive"></i> Archive
                 </button>
             </div>
             ` : ''}
@@ -306,23 +267,21 @@ function createUrgentCard(prayer, isAdmin = false) {
     
     return `
     <div class="card urgent-card mb-4">
-        <header class="card-header">
-            <p class="card-header-title">${prayer.title}</p>
-        </header>
-        <div class="card-content">
-            <p class="urgent-date">${date}</p>
-            <div class="content">
+        <div class="card-header bg-danger text-white">
+            <h5 class="card-title mb-0">${prayer.title}</h5>
+        </div>
+        <div class="card-body">
+            <p class="urgent-date text-muted">${date}</p>
+            <div class="card-text">
                 ${prayer.content}
             </div>
             ${isAdmin ? `
-            <div class="buttons is-right">
-                <button class="button is-small is-primary edit-urgent" data-id="${prayer.id}">
-                    <span class="icon"><i class="fas fa-edit"></i></span>
-                    <span>Edit</span>
+            <div class="text-end mt-3">
+                <button class="btn btn-sm btn-primary edit-urgent me-2" data-id="${prayer.id}">
+                    <i class="bi bi-pencil-square"></i> Edit
                 </button>
-                <button class="button is-small is-warning deactivate-urgent" data-id="${prayer.id}">
-                    <span class="icon"><i class="fas fa-times-circle"></i></span>
-                    <span>Deactivate</span>
+                <button class="btn btn-sm btn-warning deactivate-urgent" data-id="${prayer.id}">
+                    <i class="bi bi-x-circle"></i> Deactivate
                 </button>
             </div>
             ` : ''}
@@ -334,35 +293,32 @@ function createUrgentCard(prayer, isAdmin = false) {
 // Helper function to create a user card
 function createUserCard(user, isPending = true) {
     return `
-    <div class="box user-card">
-        <div class="columns is-mobile is-vcentered">
-            <div class="column is-narrow">
-                <figure class="image is-64x64">
+    <div class="card user-card mb-3">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-auto">
                     <img class="user-avatar" src="${user.profile_image_url || 'img/placeholder-profile.png'}" alt="${user.full_name}">
-                </figure>
-            </div>
-            <div class="column">
-                <p class="title is-5">${user.full_name}</p>
-                <p class="subtitle is-6">${user.email}</p>
-            </div>
-            <div class="column is-narrow">
-                ${isPending ? `
-                <div class="buttons">
-                    <button class="button is-small is-success approve-user" data-id="${user.id}">
-                        <span class="icon"><i class="fas fa-check"></i></span>
-                        <span>Approve</span>
-                    </button>
-                    <button class="button is-small is-danger reject-user" data-id="${user.id}">
-                        <span class="icon"><i class="fas fa-times"></i></span>
-                        <span>Reject</span>
-                    </button>
                 </div>
-                ` : `
-                <button class="button is-small is-primary edit-user" data-id="${user.id}">
-                    <span class="icon"><i class="fas fa-edit"></i></span>
-                    <span>Edit Permissions</span>
-                </button>
-                `}
+                <div class="col">
+                    <h5 class="card-title mb-1">${user.full_name}</h5>
+                    <p class="card-subtitle text-muted">${user.email}</p>
+                </div>
+                <div class="col-md-auto mt-2 mt-md-0">
+                    ${isPending ? `
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-success approve-user" data-id="${user.id}">
+                            <i class="bi bi-check"></i> Approve
+                        </button>
+                        <button class="btn btn-sm btn-danger reject-user" data-id="${user.id}">
+                            <i class="bi bi-x"></i> Reject
+                        </button>
+                    </div>
+                    ` : `
+                    <button class="btn btn-sm btn-primary edit-user" data-id="${user.id}">
+                        <i class="bi bi-pencil-square"></i> Edit Permissions
+                    </button>
+                    `}
+                </div>
             </div>
         </div>
     </div>
@@ -371,7 +327,7 @@ function createUserCard(user, isPending = true) {
 
 // Show a prayer card in the modal
 function showPrayerCardModal(entry) {
-    const modal = document.getElementById('view-card-modal');
+    const modal = new bootstrap.Modal(document.getElementById('view-card-modal'));
     const title = document.getElementById('card-modal-title');
     const image = document.getElementById('card-image');
     const content = document.getElementById('card-content');
@@ -380,18 +336,18 @@ function showPrayerCardModal(entry) {
     image.src = entry.image_url || 'img/placeholder-profile.png';
     
     let contentHtml = `
-        <h3 class="title is-5">${entry.name}</h3>
-        <div class="tags">
-            <span class="tag is-primary">Day ${entry.day_of_month}</span>
+        <h4 class="fw-bold mb-2">${entry.name}</h4>
+        <div class="mb-3">
+            <span class="badge bg-primary">Day ${entry.day_of_month}</span>
         </div>
     `;
     
     if (entry.prayer_points) {
-        contentHtml += `<div class="content">${entry.prayer_points}</div>`;
+        contentHtml += `<div>${entry.prayer_points}</div>`;
     } else {
         contentHtml += `<p>No prayer points provided.</p>`;
     }
     
     content.innerHTML = contentHtml;
-    modal.classList.add('is-active');
+    modal.show();
 }

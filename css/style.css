@@ -1,4 +1,4 @@
-/* Custom CSS for Prayer Diary App */
+/* Custom CSS for Prayer Diary App - Bootstrap Morph Edition */
 
 :root {
     --primary-color: #483D8B; /* DarkSlateBlue */
@@ -7,164 +7,118 @@
     --accent-color: #ffd700; /* Gold */
     --text-light: #ffffff;
     --text-dark: #333333;
-    --background-light: #f5f5f5;
-    --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    --background-light: #f8f9fa;
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--bs-body-font-family);
     background-color: var(--background-light);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
-/* Navbar custom styling */
-.navbar.is-dark-slate-blue {
-    background-color: var(--primary-color);
-    color: var(--text-light);
+/* Custom bg-primary-dark */
+.bg-primary-dark {
+    background-color: var(--primary-dark) !important;
 }
 
-.navbar.is-dark-slate-blue .navbar-brand > a.navbar-item,
-.navbar.is-dark-slate-blue .navbar-brand .navbar-link,
-.navbar.is-dark-slate-blue .navbar-start > a.navbar-item,
-.navbar.is-dark-slate-blue .navbar-end > a.navbar-item,
-.navbar.is-dark-slate-blue .navbar-item.has-dropdown:hover .navbar-link,
-.navbar.is-dark-slate-blue .navbar-item.has-dropdown.is-active .navbar-link {
-    color: var(--text-light);
-}
-
-.navbar.is-dark-slate-blue .navbar-start > a.navbar-item:hover,
-.navbar.is-dark-slate-blue .navbar-start > a.navbar-item.is-active,
-.navbar.is-dark-slate-blue .navbar-end > a.navbar-item:hover,
-.navbar.is-dark-slate-blue .navbar-end > a.navbar-item.is-active {
-    background-color: var(--primary-dark);
-    color: var(--text-light);
-}
-
-.navbar.is-dark-slate-blue .navbar-dropdown a.navbar-item:hover,
-.navbar.is-dark-slate-blue .navbar-dropdown a.navbar-item.is-active {
-    background-color: var(--primary-light);
-    color: var(--text-light);
-}
-
-/* Button custom styling */
-.button.is-primary {
+/* Navigation styling */
+.navbar-prayer {
     background-color: var(--primary-color);
 }
 
-.button.is-primary:hover {
-    background-color: var(--primary-light);
+.navbar-prayer .navbar-brand,
+.navbar-prayer .nav-link {
+    color: var(--text-light);
 }
 
-/* Card custom styling */
-.card {
-    border-radius: 6px;
-    box-shadow: var(--card-shadow);
-    margin-bottom: 1.5rem;
+.navbar-prayer .nav-link:hover {
+    color: rgba(255, 255, 255, 0.85);
 }
 
-.card-header {
+.navbar-prayer .nav-link.active {
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.dropdown-item:active {
     background-color: var(--primary-color);
-    color: var(--text-light);
-    border-radius: 6px 6px 0 0;
-}
-
-.card-header-title {
-    color: var(--text-light);
 }
 
 /* Prayer cards */
 .prayer-card {
     height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-.prayer-card-image {
-    position: relative;
-    padding-top: 100%; /* 1:1 Aspect Ratio */
+    transition: transform 0.2s ease-in-out;
+    border: none;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+    border-radius: var(--bs-border-radius);
     overflow: hidden;
 }
 
-.prayer-card-image img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.prayer-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
 
-.prayer-card-content {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
+.prayer-card-img-top {
+    height: 200px;
+    object-fit: cover;
 }
 
 .prayer-card-title {
     font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+/* Day badge for prayer calendar */
+.day-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-weight: bold;
-    margin-bottom: 0.5rem;
-}
-
-.prayer-card-body {
-    flex-grow: 1;
-}
-
-.prayer-card-footer {
-    margin-top: auto;
-    padding-top: 1rem;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 /* Prayer updates */
 .update-card {
+    border-left: 4px solid var(--primary-color);
     margin-bottom: 1.5rem;
 }
 
-.update-card .card-header {
-    background-color: var(--primary-color);
-}
-
-.update-card .card-header-title {
-    color: var(--text-light);
-}
-
 .update-date {
-    color: #888;
+    color: #6c757d;
     font-size: 0.9rem;
-    margin-bottom: 0.5rem;
 }
 
 /* Urgent prayers */
 .urgent-card {
+    border-left: 4px solid #dc3545;
     margin-bottom: 1.5rem;
-    border-left: 5px solid #ff3860;
-}
-
-.urgent-card .card-header {
-    background-color: #ff3860;
 }
 
 .urgent-date {
-    color: #888;
+    color: #6c757d;
     font-size: 0.9rem;
-    margin-bottom: 0.5rem;
 }
 
-/* Admin tables */
-.admin-table {
-    width: 100%;
-}
-
-.admin-table th {
-    background-color: var(--primary-color);
-    color: var(--text-light);
-}
-
-/* User cards */
+/* User cards in admin section */
 .user-card {
-    margin-bottom: 1rem;
+    transition: transform 0.2s;
+}
+
+.user-card:hover {
+    transform: translateY(-3px);
 }
 
 .user-avatar {
@@ -179,78 +133,52 @@ body {
     display: none !important;
 }
 
-/* For rich text editor */
+/* Rich text editor */
 .ql-editor {
     min-height: 200px;
+    border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius);
 }
 
-/* Tab styling */
-.tabs a {
+.ql-toolbar {
+    border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+}
+
+/* Profile image preview */
+.profile-img-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: var(--bs-border-radius);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+}
+
+/* Custom file input */
+.custom-file-input:focus ~ .custom-file-label {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 0.2rem rgba(72, 61, 139, 0.25);
+}
+
+/* Tabs styling */
+.nav-tabs .nav-link.active {
     color: var(--primary-color);
+    font-weight: 500;
 }
 
-.tabs li.is-active a {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
+.nav-tabs .nav-link:not(.active) {
+    color: #6c757d;
 }
 
-/* Day badges for prayer calendar */
-.day-badge {
-    display: inline-block;
-    background-color: var(--primary-color);
-    color: var(--text-light);
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 0.5rem;
-}
-
-/* Prayer entry day of month display */
-.day-of-month {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background-color: var(--primary-color);
-    color: white;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-}
-
-/* Mobile responsiveness improvements */
-@media screen and (max-width: 768px) {
-    .columns.is-multiline .column {
-        padding: 0.5rem;
+/* For screens smaller than 768px */
+@media (max-width: 767.98px) {
+    .card-title {
+        font-size: 1.1rem;
     }
     
-    .card-content {
-        padding: 1rem;
+    .prayer-card-img-top {
+        height: 150px;
     }
     
-    .title.is-4 {
-        font-size: 1.25rem;
-    }
-    
-    .subtitle.is-6 {
-        font-size: 0.85rem;
-    }
-    
-    .navbar-menu {
-        background-color: var(--primary-color);
-    }
-    
-    .navbar-item, .navbar-link {
-        color: var(--text-light);
-    }
-    
-    .navbar-dropdown {
-        background-color: var(--primary-dark);
+    .container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
     }
 }

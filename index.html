@@ -10,10 +10,11 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="img/icons/icon.svg">
     
-    <!-- Bulma CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap Morph Theme -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Bootstrap Morph Theme CSS -->
+    <link rel="stylesheet" href="css/bootstrap-morph.min.css">
     <!-- Rich Text Editor CSS (Quill) -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <!-- Custom CSS -->
@@ -21,78 +22,75 @@
 </head>
 <body>
     <!-- Navbar -->
-    <nav class="navbar is-dark-slate-blue" role="navigation" aria-label="main navigation">
-        <div class="navbar-brand">
-            <a class="navbar-item" href="index.html">
-                <img src="img/logo.png" alt="Prayer Diary Logo" width="28" height="28">
-                <span class="has-text-weight-bold ml-2">Prayer Diary</span>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-prayer sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <img src="img/logo.png" alt="Prayer Diary Logo" width="28" height="28" class="d-inline-block align-text-top me-2">
+                Prayer Diary
             </a>
-
-            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasic">
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-            </a>
-        </div>
-
-        <div id="navbarBasic" class="navbar-menu">
-            <div class="navbar-start">
-                <a class="navbar-item" id="nav-calendar">
-                    <span class="icon"><i class="fas fa-calendar-day"></i></span>
-                    <span>Daily Prayer</span>
-                </a>
-                <a class="navbar-item" id="nav-updates">
-                    <span class="icon"><i class="fas fa-newspaper"></i></span>
-                    <span>Prayer Updates</span>
-                </a>
-                <a class="navbar-item" id="nav-urgent">
-                    <span class="icon"><i class="fas fa-exclamation-circle"></i></span>
-                    <span>Urgent Prayers</span>
-                </a>
-                <div class="navbar-item has-dropdown is-hoverable admin-only hidden">
-                    <a class="navbar-link">
-                        <span class="icon"><i class="fas fa-cog"></i></span>
-                        <span>Admin</span>
-                    </a>
-                    <div class="navbar-dropdown">
-                        <a class="navbar-item" id="nav-manage-users">
-                            <span class="icon"><i class="fas fa-users"></i></span>
-                            <span>Manage Users</span>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarBasic" 
+                    aria-controls="navbarBasic" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarBasic">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" id="nav-calendar" href="#">
+                            <i class="bi bi-calendar-day"></i> Daily Prayer
                         </a>
-                        <a class="navbar-item" id="nav-manage-calendar">
-                            <span class="icon"><i class="fas fa-calendar-alt"></i></span>
-                            <span>Manage Prayer Calendar</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="nav-updates" href="#">
+                            <i class="bi bi-newspaper"></i> Prayer Updates
                         </a>
-                        <a class="navbar-item" id="nav-manage-updates">
-                            <span class="icon"><i class="fas fa-edit"></i></span>
-                            <span>Manage Prayer Updates</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="nav-urgent" href="#">
+                            <i class="bi bi-exclamation-circle"></i> Urgent Prayers
                         </a>
-                        <a class="navbar-item" id="nav-manage-urgent">
-                            <span class="icon"><i class="fas fa-bell"></i></span>
-                            <span>Manage Urgent Prayers</span>
+                    </li>
+                    <li class="nav-item dropdown admin-only hidden">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-gear"></i> Admin
                         </a>
+                        <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                            <li>
+                                <a class="dropdown-item" id="nav-manage-users" href="#">
+                                    <i class="bi bi-people"></i> Manage Users
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" id="nav-manage-calendar" href="#">
+                                    <i class="bi bi-calendar"></i> Manage Prayer Calendar
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" id="nav-manage-updates" href="#">
+                                    <i class="bi bi-pencil-square"></i> Manage Prayer Updates
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" id="nav-manage-urgent" href="#">
+                                    <i class="bi bi-bell"></i> Manage Urgent Prayers
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <div class="d-flex" id="auth-container">
+                    <div class="logged-out">
+                        <button class="btn btn-primary me-2" id="btn-signup">Sign up</button>
+                        <button class="btn btn-outline-light" id="btn-login">Log in</button>
                     </div>
-                </div>
-            </div>
-
-            <div class="navbar-end">
-                <div class="navbar-item" id="auth-container">
-                    <div class="buttons logged-out">
-                        <a class="button is-primary" id="btn-signup">
-                            <strong>Sign up</strong>
+                    <div class="d-flex align-items-center logged-in hidden">
+                        <a class="nav-link me-3" id="nav-profile" href="#">
+                            <i class="bi bi-person-circle"></i> My Profile
                         </a>
-                        <a class="button is-light" id="btn-login">
-                            Log in
-                        </a>
-                    </div>
-                    <div class="is-flex is-align-items-center logged-in hidden">
-                        <a class="navbar-item" id="nav-profile">
-                            <span class="icon"><i class="fas fa-user-circle"></i></span>
-                            <span>My Profile</span>
-                        </a>
-                        <a class="button is-light ml-2" id="btn-logout">
-                            Log out
-                        </a>
+                        <button class="btn btn-outline-light" id="btn-logout">Log out</button>
                     </div>
                 </div>
             </div>
@@ -100,24 +98,18 @@
     </nav>
 
     <!-- Main content -->
-    <div class="container mt-4">
+    <div class="container mt-4 mb-5">
         <!-- Landing page view (for non-authenticated or non-approved users) -->
         <div id="landing-view">
-            <div class="columns is-centered">
-                <div class="column is-10-tablet is-8-desktop">
-                    <div class="card">
-                        <div class="card-image">
-                            <figure class="image is-3by1">
-                                <img src="img/prayer-banner.jpg" alt="Prayer Banner">
-                            </figure>
-                        </div>
-                        <div class="card-content">
-                            <div class="content has-text-centered">
-                                <h1 class="title is-4">Welcome to Prayer Diary</h1>
-                                <p class="subtitle is-6">A daily companion for your prayer life</p>
-                                <div id="auth-status-message">
-                                    <p>Please log in or sign up to access the Prayer Diary app.</p>
-                                </div>
+            <div class="row justify-content-center">
+                <div class="col-md-10 col-lg-8">
+                    <div class="card shadow">
+                        <img src="img/prayer-banner.jpg" class="card-img-top" alt="Prayer Banner">
+                        <div class="card-body text-center py-4">
+                            <h1 class="card-title fw-bold mb-2">Welcome to Prayer Diary</h1>
+                            <p class="card-subtitle text-muted mb-4">A daily companion for your prayer life</p>
+                            <div id="auth-status-message">
+                                <p>Please log in or sign up to access the Prayer Diary app.</p>
                             </div>
                         </div>
                     </div>
@@ -126,164 +118,150 @@
         </div>
 
         <!-- Main app views - each will be shown/hidden as needed -->
-        <div id="app-views" class="is-hidden">
+        <div id="app-views" class="d-none">
             <!-- Prayer Calendar View -->
             <div id="calendar-view" class="view-content">
-                <h1 class="title is-4">Daily Prayer Calendar</h1>
-                <div class="columns is-multiline" id="prayer-cards-container">
+                <h1 class="display-6 mb-4">Daily Prayer Calendar</h1>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="prayer-cards-container">
                     <!-- Prayer cards will be dynamically inserted here -->
                 </div>
             </div>
 
             <!-- Prayer Updates View -->
-            <div id="updates-view" class="view-content is-hidden">
-                <h1 class="title is-4">Prayer Updates</h1>
-                <div class="tabs">
-                    <ul>
-                        <li class="is-active"><a data-tab="current-updates">Current</a></li>
-                        <li><a data-tab="archived-updates">Archived</a></li>
-                    </ul>
-                </div>
-                <div id="current-updates" class="tab-content">
-                    <div id="updates-container">
-                        <!-- Prayer updates will be dynamically inserted here -->
+            <div id="updates-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">Prayer Updates</h1>
+                <ul class="nav nav-tabs mb-4" id="updatesTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="current-updates-tab" data-bs-toggle="tab" 
+                                data-bs-target="#current-updates" type="button" role="tab" 
+                                aria-controls="current-updates" aria-selected="true">Current</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="archived-updates-tab" data-bs-toggle="tab" 
+                                data-bs-target="#archived-updates" type="button" role="tab" 
+                                aria-controls="archived-updates" aria-selected="false">Archived</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="updatesTabContent">
+                    <div class="tab-pane fade show active" id="current-updates" role="tabpanel" 
+                         aria-labelledby="current-updates-tab">
+                        <div id="updates-container">
+                            <!-- Prayer updates will be dynamically inserted here -->
+                        </div>
                     </div>
-                </div>
-                <div id="archived-updates" class="tab-content is-hidden">
-                    <div id="archived-updates-container">
-                        <!-- Archived prayer updates will be dynamically inserted here -->
+                    <div class="tab-pane fade" id="archived-updates" role="tabpanel" 
+                         aria-labelledby="archived-updates-tab">
+                        <div id="archived-updates-container">
+                            <!-- Archived prayer updates will be dynamically inserted here -->
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Urgent Prayers View -->
-            <div id="urgent-view" class="view-content is-hidden">
-                <h1 class="title is-4">Urgent Prayer Requests</h1>
+            <div id="urgent-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">Urgent Prayer Requests</h1>
                 <div id="urgent-prayers-container">
                     <!-- Urgent prayer requests will be dynamically inserted here -->
                 </div>
             </div>
 
             <!-- User Profile View -->
-            <div id="profile-view" class="view-content is-hidden">
-                <h1 class="title is-4">My Profile</h1>
-                <div class="columns">
-                    <div class="column is-4">
-                        <div class="card">
-                            <div class="card-content">
+            <div id="profile-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">My Profile</h1>
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow">
+                            <div class="card-body">
                                 <form id="profile-form">
-                                    <div class="field">
-                                        <label class="label">Full Name</label>
-                                        <div class="control">
-                                            <input class="input" type="text" id="profile-name" placeholder="Your full name">
-                                        </div>
+                                    <div class="mb-3">
+                                        <label for="profile-name" class="form-label">Full Name</label>
+                                        <input type="text" class="form-control" id="profile-name" placeholder="Your full name">
                                     </div>
                                     
-                                    <div class="field">
-                                        <label class="label">Profile Picture</label>
-                                        <div class="file has-name is-fullwidth">
-                                            <label class="file-label">
-                                                <input class="file-input" type="file" id="profile-image" accept="image/*">
-                                                <span class="file-cta">
-                                                    <span class="file-icon">
-                                                        <i class="fas fa-upload"></i>
-                                                    </span>
-                                                    <span class="file-label">
-                                                        Choose a file…
-                                                    </span>
-                                                </span>
-                                                <span class="file-name" id="profile-image-name">
-                                                    No file selected
-                                                </span>
+                                    <div class="mb-3">
+                                        <label for="profile-image" class="form-label">Profile Picture</label>
+                                        <div class="input-group">
+                                            <input type="file" class="form-control" id="profile-image" accept="image/*">
+                                            <label class="input-group-text" for="profile-image">
+                                                <i class="bi bi-upload"></i>
                                             </label>
                                         </div>
+                                        <div class="form-text" id="profile-image-name">No file selected</div>
                                         <div class="mt-2">
-                                            <img id="profile-image-preview" class="is-hidden" style="max-width: 100%; max-height: 200px;">
+                                            <img id="profile-image-preview" class="d-none profile-img-preview" alt="Profile preview">
                                         </div>
                                     </div>
                                     
-                                    <div class="field">
-                                        <label class="label">Prayer Points</label>
-                                        <div class="control">
-                                            <textarea class="textarea" id="profile-prayer-points" placeholder="Enter prayer points to share with the church family"></textarea>
+                                    <div class="mb-3">
+                                        <label for="profile-prayer-points" class="form-label">Prayer Points</label>
+                                        <textarea class="form-control" id="profile-prayer-points" rows="4" 
+                                                  placeholder="Enter prayer points to share with the church family"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="profile-phone" class="form-label">Phone Number (for SMS notifications)</label>
+                                        <input type="tel" class="form-control" id="profile-phone" placeholder="E.g., +441234567890">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="profile-whatsapp" class="form-label">WhatsApp Number (if different)</label>
+                                        <input type="tel" class="form-control" id="profile-whatsapp" placeholder="E.g., +441234567890">
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <label class="form-label">Notification Preferences</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="notify-email" checked>
+                                            <label class="form-check-label" for="notify-email">Email</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="notify-sms">
+                                            <label class="form-check-label" for="notify-sms">SMS</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="notify-whatsapp">
+                                            <label class="form-check-label" for="notify-whatsapp">WhatsApp</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="notify-push">
+                                            <label class="form-check-label" for="notify-push">Push Notification</label>
                                         </div>
                                     </div>
                                     
-                                    <div class="field">
-                                        <label class="label">Phone Number (for SMS notifications)</label>
-                                        <div class="control">
-                                            <input class="input" type="tel" id="profile-phone" placeholder="E.g., +441234567890">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="field">
-                                        <label class="label">WhatsApp Number (if different)</label>
-                                        <div class="control">
-                                            <input class="input" type="tel" id="profile-whatsapp" placeholder="E.g., +441234567890">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="field">
-                                        <label class="label">Notification Preferences</label>
-                                        <div class="control">
-                                            <label class="checkbox">
-                                                <input type="checkbox" id="notify-email" checked>
-                                                Email
-                                            </label>
-                                        </div>
-                                        <div class="control">
-                                            <label class="checkbox">
-                                                <input type="checkbox" id="notify-sms">
-                                                SMS
-                                            </label>
-                                        </div>
-                                        <div class="control">
-                                            <label class="checkbox">
-                                                <input type="checkbox" id="notify-whatsapp">
-                                                WhatsApp
-                                            </label>
-                                        </div>
-                                        <div class="control">
-                                            <label class="checkbox">
-                                                <input type="checkbox" id="notify-push">
-                                                Push Notification
-                                            </label>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="field">
-                                        <div class="control">
-                                            <button class="button is-primary is-fullwidth" type="submit">
-                                                Save Profile
-                                            </button>
-                                        </div>
+                                    <div class="d-grid">
+                                        <button class="btn btn-primary" type="submit">
+                                            Save Profile
+                                        </button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
-                    <div class="column is-8">
-                        <div class="card">
-                            <div class="card-content">
-                                <h2 class="title is-5">Your Prayer Card</h2>
-                                <p class="subtitle is-6">This is how your prayer card will appear to others</p>
-                                <div class="box">
-                                    <div class="columns">
-                                        <div class="column is-4">
-                                            <figure class="image is-1by1">
-                                                <img id="preview-profile-image" src="img/placeholder-profile.png" alt="Profile Picture">
-                                            </figure>
-                                        </div>
-                                        <div class="column is-8">
-                                            <h3 class="title is-5" id="preview-name">Your Name</h3>
-                                            <div class="content" id="preview-prayer-points">
-                                                <p>Your prayer points will appear here.</p>
+                    
+                    <div class="col-md-8">
+                        <div class="card shadow">
+                            <div class="card-body">
+                                <h3 class="card-title fw-bold mb-3">Your Prayer Card</h3>
+                                <p class="card-subtitle text-muted mb-4">This is how your prayer card will appear to others</p>
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3 mb-md-0">
+                                                <img id="preview-profile-image" src="img/placeholder-profile.png" 
+                                                     class="img-fluid rounded" alt="Profile Picture">
+                                            </div>
+                                            <div class="col-md-8">
+                                                <h4 class="card-title fw-bold" id="preview-name">Your Name</h4>
+                                                <div id="preview-prayer-points">
+                                                    <p>Your prayer points will appear here.</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div id="profile-status" class="notification is-info is-hidden">
-                                    <p>Your account is currently pending approval. You will receive an email when your account is approved.</p>
+                                <div id="profile-status" class="alert alert-info d-none">
+                                    <p class="mb-0">Your account is currently pending approval. You will receive an email when your account is approved.</p>
                                 </div>
                             </div>
                         </div>
@@ -572,46 +550,39 @@
 
     <!-- Modals -->
     <!-- Auth Modal -->
-    <div class="modal" id="auth-modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title" id="auth-modal-title">Log In</p>
-                <button class="delete" aria-label="close" id="auth-modal-close"></button>
-            </header>
-            <section class="modal-card-body">
-                <div id="auth-error" class="notification is-danger is-hidden">
-                    <p>Error message will appear here</p>
+    <div class="modal fade" id="auth-modal" tabindex="-1" aria-labelledby="auth-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="auth-modal-title">Log In</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="auth-modal-close"></button>
                 </div>
-                <form id="auth-form">
-                    <div class="field signup-field is-hidden">
-                        <label class="label">Full Name</label>
-                        <div class="control">
-                            <input class="input" type="text" id="signup-name" placeholder="Your full name">
-                        </div>
+                <div class="modal-body">
+                    <div id="auth-error" class="alert alert-danger d-none">
+                        <p class="mb-0">Error message will appear here</p>
                     </div>
-                    <div class="field">
-                        <label class="label">Email</label>
-                        <div class="control">
-                            <input class="input" type="email" id="auth-email" placeholder="Your email">
+                    <form id="auth-form">
+                        <div class="mb-3 signup-field d-none">
+                            <label for="signup-name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="signup-name" placeholder="Your full name">
                         </div>
-                    </div>
-                    <div class="field">
-                        <label class="label">Password</label>
-                        <div class="control">
-                            <input class="input" type="password" id="auth-password" placeholder="Your password">
+                        <div class="mb-3">
+                            <label for="auth-email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="auth-email" placeholder="Your email">
                         </div>
-                    </div>
-                    <div class="field is-grouped">
-                        <div class="control is-expanded">
-                            <button class="button is-primary is-fullwidth" type="submit" id="auth-submit">Log In</button>
+                        <div class="mb-4">
+                            <label for="auth-password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="auth-password" placeholder="Your password">
                         </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="submit" id="auth-submit">Log In</button>
+                        </div>
+                    </form>
+                    <div class="text-center mt-4">
+                        <p id="auth-switch-text">Don't have an account? <a href="#" id="auth-switch">Sign up</a></p>
                     </div>
-                </form>
-                <div class="has-text-centered mt-4">
-                    <p id="auth-switch-text">Don't have an account? <a id="auth-switch">Sign up</a></p>
                 </div>
-            </section>
+            </div>
         </div>
     </div>
 
@@ -821,55 +792,58 @@
     </div>
 
     <!-- View Prayer Card Modal -->
-    <div class="modal" id="view-card-modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title" id="card-modal-title">Prayer Card</p>
-                <button class="delete" aria-label="close"></button>
-            </header>
-            <section class="modal-card-body">
-                <div class="columns">
-                    <div class="column is-4">
-                        <figure class="image is-1by1">
-                            <img id="card-image" src="img/placeholder-profile.png" alt="Prayer Card Image">
-                        </figure>
-                    </div>
-                    <div class="column is-8">
-                        <div class="content" id="card-content">
-                            <!-- Card content will be inserted here -->
+    <div class="modal fade" id="view-card-modal" tabindex="-1" aria-labelledby="card-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="card-modal-title">Prayer Card</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <img id="card-image" src="img/placeholder-profile.png" class="img-fluid rounded" alt="Prayer Card Image">
+                        </div>
+                        <div class="col-md-8">
+                            <div id="card-content">
+                                <!-- Card content will be inserted here -->
+                            </div>
                         </div>
                     </div>
                 </div>
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button" id="close-card-modal">Close</button>
-            </footer>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="close-card-modal" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Notification Modal -->
-    <div class="modal" id="notification-modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title" id="notification-title">Notification</p>
-                <button class="delete" aria-label="close"></button>
-            </header>
-            <section class="modal-card-body">
-                <div id="notification-content">
-                    <!-- Notification content will be inserted here -->
+    <div class="modal fade" id="notification-modal" tabindex="-1" aria-labelledby="notification-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="notification-title">Notification</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button" id="close-notification">Close</button>
-            </footer>
+                <div class="modal-body">
+                    <div id="notification-content">
+                        <!-- Notification content will be inserted here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="close-notification" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Scripts -->
     <!-- First import Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- Rich Text Editor JS (Quill) -->
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
