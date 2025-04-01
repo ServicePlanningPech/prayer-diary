@@ -26,7 +26,7 @@ Since Google doesn't allow regular passwords for SMTP access, you'll need to cre
 5. Click "Generate" and note down the 16-character password that appears
    - **Important**: Save this password securely as it will only be shown once!
 
-## Step 2: Deploy the Edge Function
+## Step 2: Deploy the Edge Functions
 
 1. Open a command prompt/terminal
 2. Navigate to your Prayer Diary project directory:
@@ -39,22 +39,32 @@ Since Google doesn't allow regular passwords for SMTP access, you'll need to cre
    supabase init
    ```
 
-4. Deploy the Edge Function:
+4. Deploy the Edge Functions (we need both):
    ```bash
    supabase functions deploy send-email --project-ref your-project-ref
+   supabase functions deploy notify-admins --project-ref your-project-ref
    ```
    (Replace `your-project-ref` with your actual Supabase project reference)
 
 ## Step 3: Set Environment Variables
 
-Set up the necessary environment variables for the Edge Function:
+Set up the necessary environment variables for the Edge Functions:
 
 ```bash
+# Gmail credentials for sending emails
 supabase secrets set GMAIL_USER=your-gmail@gmail.com --project-ref your-project-ref
 supabase secrets set GMAIL_APP_PASSWORD=your-app-password --project-ref your-project-ref
+
+# Supabase connection details
 supabase secrets set SUPABASE_URL=https://your-project-ref.supabase.co --project-ref your-project-ref
 supabase secrets set SUPABASE_ANON_KEY=your-anon-key --project-ref your-project-ref
+
+# Service role key for admin functions (needed to fetch emails from auth.users)
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your-service-role-key --project-ref your-project-ref
 ```
+
+The Service Role Key can be found in your Supabase dashboard under Project Settings > API > Project API keys.
+⚠️ **WARNING**: The service role key has admin privileges, so keep it secure!
 
 Replace the values with your actual information:
 - `your-gmail@gmail.com`: Your Gmail address
@@ -83,23 +93,37 @@ To test if your email setup is working:
 
 If emails are not being sent properly:
 
-1. **Check Logs**: View the Edge Function logs in the Supabase dashboard
+1. **Check Edge Function Logs**: View the logs in the Supabase dashboard
    - Go to Functions > send-email > Logs
+   - Go to Functions > notify-admins > Logs
 
 2. **Verify Environment Variables**: Make sure all secrets are set correctly
-   - You can check this in the Supabase dashboard under Functions > send-email > Settings
+   - You can check this in the Supabase dashboard under each function's Settings
+   - The notify-admins function requires the `SUPABASE_SERVICE_ROLE_KEY` variable to be set
 
-3. **Gmail Settings**: Make sure your Gmail account doesn't have security settings blocking the app
+3. **Service Role Permission**: Make sure the service role key has the necessary permissions
+   - This key is required to access auth.users table to get admin email addresses
+   - If you're getting "service role key" errors, verify it in your Supabase dashboard
+
+4. **Gmail Settings**: Make sure your Gmail account doesn't have security settings blocking the app
    - Check if less secure app access might be affecting it (though App Passwords should bypass this)
+   - Check your Gmail account for any security alerts about blocked sign-in attempts
 
-4. **CORS Issues**: If you're experiencing CORS problems, make sure your app's domain is added to the allowed origins in your Supabase project settings
+5. **CORS Issues**: If you're experiencing CORS problems:
+   - Make sure your app's domain is added to the allowed origins in your Supabase project settings
+   - For local testing, you might need to add http://localhost:XXXX to allowed origins
 
-5. **Database Schema**: Remember that email addresses are stored in the `auth.users` table, not in the `profiles` table
-   - When querying for user emails, you need to use the auth relation: `auth:id (email)`
-   - Common error: "column profiles.email does not exist" occurs when trying to directly access email from profiles table
+6. **Database Structure**: The app expects a specific database structure
+   - Admin detection is based on profiles with user_role = 'Administrator'
+   - The client doesn't have direct access to the auth.users table (where emails are stored)
 
-6. **Rate Limiting**: Gmail has rate limits for sending emails
-   - Add small delays between sending multiple emails (the code includes a 500ms delay)
+7. **Rate Limiting**: Gmail has rate limits for sending emails
+   - The Edge Function adds a 500ms delay between sending multiple emails
+   - If you have many admins, some emails might fail due to rate limiting
+
+8. **Function Errors**: Common errors and solutions:
+   - "column profiles.email does not exist" - Fixed by using the server-side admin notification function
+   - "relationship between profiles and auth not found" - Fixed by using service role to separately query auth.users
 
 ## Security Considerations
 

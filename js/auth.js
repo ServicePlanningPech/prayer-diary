@@ -330,91 +330,25 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
     }
     
     try {
-        // Fetch all administrators with their email addresses
-        // Note: emails are stored in auth.users table, not profiles table
-        const { data: admins, error } = await supabase
-            .from('profiles')
-            .select(`
-                id, 
-                full_name,
-                auth:id (
-                    email
-                )
-            `)
-            .eq('user_role', 'Administrator')
-            .eq('approval_state', 'Approved');
-            
-        if (error) throw error;
+        console.log(`Attempting to notify admins about new user: ${userName} (${userEmail})`);
         
-        if (!admins || admins.length === 0) {
-            console.log('No admin users found to notify');
-            return;
-        }
-        
-        // Create email content
-        const subject = `Prayer Diary: New User Registration - ${userName}`;
-        const htmlContent = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #483D8B;">New User Registration</h2>
-                <p>A new user has registered for Prayer Diary and is awaiting your approval:</p>
-                
-                <div style="background-color: #f5f5f5; border-left: 4px solid #483D8B; padding: 15px; margin: 15px 0;">
-                    <p><strong>Name:</strong> ${userName}</p>
-                    <p><strong>Email:</strong> ${userEmail}</p>
-                    <p><strong>Status:</strong> Pending Approval</p>
-                </div>
-                
-                <p>Please log in to the admin panel to review and approve this user.</p>
-                
-                <div style="margin: 25px 0;">
-                    <a href="https://serviceplanningpech.github.io/prayer-diary" 
-                       style="background-color: #483D8B; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
-                        Go to Admin Panel
-                    </a>
-                </div>
-                
-                <hr style="border: 1px solid #eee; margin: 20px 0;">
-                <p style="font-size: 12px; color: #666;">
-                    This is an automated notification from Prayer Diary. Please do not reply to this email.
-                </p>
-            </div>
-        `;
-        
-        // Send email to each admin
-        for (const admin of admins) {
-            try {
-                // Extract email from the auth relation
-                const adminEmail = admin.auth ? admin.auth.email : null;
-                
-                if (!adminEmail) {
-                    console.log(`No email found for admin ${admin.full_name} (${admin.id})`);
-                    continue;
-                }
-                
-                const { data, error } = await supabase.functions.invoke('send-email', {
-                    body: {
-                        to: adminEmail,
-                        subject: subject,
-                        html: htmlContent,
-                        text: `New User Registration: ${userName} (${userEmail}) has registered and is awaiting approval. Please log in to the admin panel to review this request.`,
-                        userId: admin.id,
-                        type: 'new_user_notification',
-                        contentId: userEmail
-                    }
-                });
-                
-                if (error) {
-                    console.error(`Failed to send email to admin ${adminEmail}:`, error);
-                } else {
-                    console.log(`Notification email sent to admin: ${adminEmail}`);
-                }
-                
-                // Add a small delay between sending emails to avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, 500));
-            } catch (err) {
-                console.error(`Error sending email to admin ${admin.email}:`, err);
+        // Use the dedicated Edge Function to handle the entire notification process
+        const { data, error } = await supabase.functions.invoke('notify-admins', {
+            body: {
+                newUserName: userName,
+                newUserEmail: userEmail,
+                subject: `Prayer Diary: New User Registration - ${userName}`,
+                notificationType: 'new_user'
             }
+        });
+        
+        if (error) {
+            throw error;
         }
+        
+        console.log('Admin notification results:', data);
+        return data;
+        
     } catch (error) {
         console.error('Error notifying admins about new user:', error);
     }
