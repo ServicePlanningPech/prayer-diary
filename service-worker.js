@@ -6,6 +6,7 @@ const urlsToCache = [
   '/index.html',
   '/manifest.json',
   '/css/style.css',
+  '/css/bootstrap-morph.min.css',
   '/js/app.js',
   '/js/auth.js',
   '/js/ui.js',
@@ -15,20 +16,17 @@ const urlsToCache = [
   '/js/profile.js',
   '/js/admin.js',
   '/js/notifications.js',
+  '/js/notification-processor.js',
+  '/js/email-test.js',
   '/js/config.js',
   '/img/placeholder-profile.png',
   '/img/logo.png',
   '/img/prayer-banner.jpg',
-  '/img/icons/icon-72x72.png',
-  '/img/icons/icon-96x96.png',
-  '/img/icons/icon-128x128.png',
-  '/img/icons/icon-144x144.png',
-  '/img/icons/icon-152x152.png',
-  '/img/icons/icon-192x192.png',
-  '/img/icons/icon-384x384.png',
-  '/img/icons/icon-512x512.png',
-  'https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+  '/img/icons/icon.svg',
+  '/img/icons/favicon.ico',
+  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
+  'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
+  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'https://cdn.quilljs.com/1.3.6/quill.snow.css',
   'https://cdn.quilljs.com/1.3.6/quill.min.js'
@@ -40,7 +38,16 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Opened cache');
-        return cache.addAll(urlsToCache);
+        // Use a more resilient caching strategy that won't fail if a single file is missing
+        return Promise.all(
+          urlsToCache.map(url => {
+            return cache.add(url).catch(error => {
+              console.warn('Could not cache asset:', url, error.message);
+              // Continue despite the error
+              return Promise.resolve();
+            });
+          })
+        );
       })
   );
 });
