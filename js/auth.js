@@ -391,7 +391,6 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
             console.log('Admin found but no email address available');
             return false;
         }
-=======
         
         console.log(`Found admin to notify about new user registration: ${admin.full_name} (${admin.email})`);
         
