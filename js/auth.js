@@ -183,6 +183,12 @@ async function logout() {
     try {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
+        
+        // Immediately update UI state without waiting for the event
+        currentUser = null;
+        userProfile = null;
+        showLoggedOutState();
+        
     } catch (error) {
         console.error('Logout error:', error);
         showNotification('Logout Error', `There was a problem logging out: ${error.message}`);
