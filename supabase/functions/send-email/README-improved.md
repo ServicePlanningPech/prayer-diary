@@ -10,10 +10,16 @@ If you're getting CORS errors like:
 Access to fetch at 'https://your-project.supabase.co/functions/v1/send-email' has been blocked by CORS policy
 ```
 
-**Solution**: Update the CORS configuration:
+**Solution**: Update the CORS configuration, being sure to include all necessary headers:
 ```bash
+# Add your domain to allowed origins
 supabase functions update-cors send-email --add-origins="https://serviceplanningpech.github.io"
+
+# Allow specific headers that Supabase uses for authentication
+supabase functions update-cors send-email --add-headers="apikey,Authorization,x-client-info,Content-Type"
 ```
+
+**Important**: The `apikey` header is specifically required for Supabase client requests. If you see an error about "Request header field apikey is not allowed," make sure to include it in your allowed headers.
 
 ### Function Not Found
 If you're getting errors like:

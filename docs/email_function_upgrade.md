@@ -70,8 +70,14 @@ Follow these steps to deploy the improved Edge Function:
 
 5. Configure CORS for your domain:
    ```bash
+   # Add your domain to allowed origins
    supabase functions update-cors send-email --add-origins="https://serviceplanningpech.github.io"
+   
+   # Allow specific headers including the critical 'apikey' header
+   supabase functions update-cors send-email --add-headers="apikey,Authorization,x-client-info,Content-Type"
    ```
+   
+   **Important**: The `apikey` header must be explicitly allowed for Supabase client requests to work.
 
 6. Allow anonymous access (if your app doesn't require authentication):
    ```bash

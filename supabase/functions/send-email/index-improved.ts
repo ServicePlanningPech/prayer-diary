@@ -18,7 +18,7 @@ interface EmailRequest {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*', // Consider restricting this to your specific domain in production
   'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
   'Access-Control-Max-Age': '86400', // 24 hours caching of preflight requests
 }
 

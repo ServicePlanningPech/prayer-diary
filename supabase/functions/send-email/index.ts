@@ -3,14 +3,15 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { SmtpClient } from 'https://deno.land/x/smtp@v0.7.0/mod.ts'
 
 interface EmailRequest {
-  to: string
-  subject: string
-  html: string
+  to?: string
+  subject?: string
+  html?: string
   text?: string
   cc?: string | string[]
   bcc?: string | string[]
   replyTo?: string
   from?: string
+  testConnection?: boolean
 }
 
 serve(async (req) => {
@@ -21,7 +22,7 @@ serve(async (req) => {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
       },
     })
   }
@@ -34,12 +35,30 @@ serve(async (req) => {
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
         },
       })
     }
 
     // Parse request body
     const requestData = await req.json() as EmailRequest
+
+    // Handle test connection request
+    if (requestData.testConnection === true) {
+      console.log('Handling test connection request');
+      return new Response(JSON.stringify({ 
+        status: 'ok', 
+        message: 'Email function is deployed and reachable',
+        timestamp: new Date().toISOString(),
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
+        },
+      });
+    }
 
     // Validate required fields
     if (!requestData.to || !requestData.subject || !requestData.html) {
@@ -50,6 +69,7 @@ serve(async (req) => {
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
           },
         }
       )
@@ -92,6 +112,7 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
       },
     })
   } catch (error) {
@@ -108,6 +129,7 @@ serve(async (req) => {
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
         },
       }
     )
