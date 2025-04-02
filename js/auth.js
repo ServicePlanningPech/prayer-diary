@@ -355,7 +355,7 @@ async function createSuperAdmin() {
     }
 }
 
-// Notify admins about new user registration
+// Notify admin about new user registration
 async function notifyAdminsAboutNewUser(userName, userEmail) {
     if (!EMAIL_ENABLED) {
         console.log('Email notifications are disabled. Would have sent admin notification for new user:', userName);
@@ -363,26 +363,35 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
     }
     
     try {
-        // Fetch all administrator emails from the profiles table
-        const { data: admins, error } = await supabase
+        // Fetch the first administrator with approval_admin flag set to TRUE
+        const { data: admin, error } = await supabase
             .from('profiles')
             .select(`
                 id, 
                 full_name, 
-                user_role,
                 auth:id (email)
             `)
             .eq('user_role', 'Administrator')
-            .eq('approval_state', 'Approved');
+            .eq('approval_state', 'Approved')
+            .eq('approval_admin', true)
+            .limit(1)
+            .single();
             
-        if (error) throw error;
-        
-        if (!admins || admins.length === 0) {
-            console.log('No admin users found to notify');
-            return;
+        if (error) {
+            // If no matching record was found or another error occurred
+            if (error.code === 'PGRST116') {
+                console.log('No admin with approval_admin rights found to notify');
+                return false;
+            }
+            throw error;
         }
         
-        console.log(`Found ${admins.length} admin(s) to notify about new user registration`);
+        if (!admin || !admin.auth || !admin.auth.email) {
+            console.log('No admin email found to notify');
+            return false;
+        }
+        
+        console.log(`Found admin to notify about new user registration: ${admin.full_name}`);
         
         // Create email content for admin notification
         const htmlContent = `
@@ -412,28 +421,24 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
             </div>
         `;
         
-        // Send email to each admin directly
-        for (const admin of admins) {
-            if (admin.auth && admin.auth.email) {
-                try {
-                    await sendEmail({
-                        to: admin.auth.email,
-                        subject: `Prayer Diary: New User Registration - ${userName}`,
-                        html: htmlContent,
-                        userId: admin.id,
-                        contentType: 'new_user_notification'
-                    });
-                    
-                    console.log(`Sent notification email to admin: ${admin.full_name} (${admin.auth.email})`);
-                } catch (emailError) {
-                    console.error(`Failed to send email to admin ${admin.id}:`, emailError);
-                }
-            }
-        }
+        // Send the email using the Edge Function mechanism
+        const result = await sendEmail({
+            to: admin.auth.email,
+            subject: `Prayer Diary: New User Registration - ${userName}`,
+            html: htmlContent,
+            userId: admin.id,
+            contentType: 'new_user_notification'
+        });
         
-        return true;
+        if (result.success) {
+            console.log(`Successfully sent notification email to approval admin: ${admin.full_name} (${admin.auth.email})`);
+            return true;
+        } else {
+            console.error(`Failed to send notification email: ${result.error}`);
+            return false;
+        }
     } catch (error) {
-        console.error('Error notifying admins about new user:', error);
+        console.error('Error notifying admin about new user:', error);
         return false;
     }
 }
