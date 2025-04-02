@@ -151,6 +151,14 @@ async function handleAuth(e) {
                 }
             });
             
+            // Also update the profile's full_name directly to ensure it's set
+            if (data && data.user) {
+                await supabase
+                    .from('profiles')
+                    .update({ full_name: fullName })
+                    .eq('id', data.user.id);
+            }
+            
             if (error) throw error;
             
             // Close modal on success

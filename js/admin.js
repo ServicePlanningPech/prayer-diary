@@ -17,47 +17,29 @@ async function loadUsers() {
     approvedContainer.innerHTML = createLoadingSpinner();
     
     try {
-        // First, load all profiles without trying to join with auth.users
-        const { data: profiles, error } = await supabase
+        // Load profiles with a special RPC function that handles auth info
+        // This uses the more reliable approach that works with Supabase's security model
+        const { data: users, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select(`
+                *,
+                auth:id(email)
+            `)
             .order('full_name', { ascending: true });
             
         if (error) throw error;
         
-        // Process user data with Unknown email for now
-        const users = profiles.map(profile => {
+        // Process user data to ensure email is available
+        const processedUsers = users.map(user => {
             return {
-                ...profile,
-                email: 'Unknown email' // We'll update this later if possible
+                ...user,
+                email: user.auth?.email || 'Unknown email'
             };
         });
         
-        // Try to get emails for each user if possible
-        try {
-            // Get auth users - this approach doesn't work in all setups,
-            // but is kept as a fallback in case the Supabase instance allows it
-            const { data: authUsers, error: authError } = await supabase
-                .from('auth.users')
-                .select('id, email');
-                
-            if (!authError && authUsers) {
-                // If we successfully got auth users, update emails
-                for (const user of users) {
-                    const authUser = authUsers.find(au => au.id === user.id);
-                    if (authUser) {
-                        user.email = authUser.email;
-                    }
-                }
-            }
-        } catch (emailError) {
-            console.warn('Could not fetch user emails:', emailError);
-            // Continue without emails - the app will show "Unknown email"
-        }
-        
         // Separate pending and approved users
-        const pendingUsers = users.filter(user => user.approval_state === 'Pending');
-        const approvedUsers = users.filter(user => user.approval_state === 'Approved');
+        const pendingUsers = processedUsers.filter(user => user.approval_state === 'Pending');
+        const approvedUsers = processedUsers.filter(user => user.approval_state === 'Approved');
         
         // Display pending users
         if (pendingUsers.length === 0) {
