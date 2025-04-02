@@ -365,11 +365,15 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
                 
                 if (error) {
                     console.error(`Failed to queue notification for admin ${admin.id}:`, error);
+                    // Log we still attempted to notify this admin even if the DB insert failed
+                    console.log(`Would notify admin ${admin.id} (${admin.full_name}) about new user: ${userName} (${userEmail})`);
                 } else {
                     console.log(`Notification queued for admin ${admin.id}`);
                 }
             } catch (err) {
                 console.error(`Error queueing notification for admin ${admin.id}:`, err);
+                // Fallback to logging
+                console.log(`Would notify admin ${admin.id} (${admin.full_name}) about new user: ${userName} (${userEmail})`);
             }
         }
         

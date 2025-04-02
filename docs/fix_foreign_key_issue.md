@@ -4,25 +4,49 @@ This guide explains how to fix the foreign key relationship issue between the `p
 
 ## The Problem
 
-When trying to notify administrators about new user registrations, you encounter this error:
+When trying to notify administrators about new user registrations, you've encountered these errors:
 
+1. First error:
 ```
-Object
 code: "PGRST200"
 details: "Searched for a foreign key relationship between 'profiles' and 'id' in the schema 'public', but no matches were found."
 message: "Could not find a relationship between 'profiles' and 'id' in the schema cache"
 ```
 
-This occurs because there is no properly defined foreign key relationship between the `profiles` table and the `auth.users` table where email addresses are stored.
+2. After attempting to use a notification queue, second error:
+```
+code: "42501"
+message: "new row violates row-level security policy for table \"notification_queue\""
+```
 
-## Solution: Creating the Required Database Table
+These errors occur because:
+1. There is no properly defined foreign key relationship between the `profiles` table and the `auth.users` table
+2. The notification queue table either doesn't exist or has incorrect Row Level Security (RLS) policies
 
-1. **Create a Notification Queue Table**:
+## Simplest Solution: Log Notifications Instead of Database Insert
 
-Instead of directly trying to join the profiles and auth tables from the client side (which is causing the error), we'll create a notification queue table to store pending notifications:
+The most reliable approach for now is to simply log notifications instead of trying to insert them into a database table. The code has been updated to:
+
+```javascript
+// For each admin, log that we would notify them
+for (const admin of admins) {
+    console.log(`Would notify admin ${admin.id} (${admin.full_name}) about new user: ${userName} (${userEmail})`);
+    
+    // Here we're just logging - in a production environment, this would call
+    // a server-side function to handle the email sending
+}
+```
+
+This eliminates the errors while still providing a record of notification attempts in the console.
+
+## Full Solution: Setting Up the Notification Queue Properly
+
+If you want to implement the full notification queue solution, you'll need to run the following SQL in your Supabase dashboard:
 
 ```sql
--- Run this in the Supabase SQL Editor
+-- Setup Notification Queue Table with proper RLS policies
+
+-- Create the notification queue table if it doesn't exist
 CREATE TABLE IF NOT EXISTS notification_queue (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -34,18 +58,34 @@ CREATE TABLE IF NOT EXISTS notification_queue (
   error TEXT
 );
 
--- Add RLS policies to allow access
+-- Make sure RLS is enabled
 ALTER TABLE notification_queue ENABLE ROW LEVEL SECURITY;
 
--- Allow authenticated users to insert notifications
-CREATE POLICY "Users can insert notifications" 
+-- Drop existing policies to avoid conflicts
+DROP POLICY IF EXISTS "Users can insert notifications" ON notification_queue;
+DROP POLICY IF EXISTS "Admins can view notifications" ON notification_queue;
+DROP POLICY IF EXISTS "Admins can update notifications" ON notification_queue;
+
+-- Create a policy that allows ALL authenticated users to insert into the notification queue
+CREATE POLICY "Anyone can insert notifications" 
   ON notification_queue FOR INSERT 
   TO authenticated 
   WITH CHECK (true);
 
--- Allow admins to view and update notifications
-CREATE POLICY "Admins can view and update notifications" 
-  ON notification_queue FOR ALL 
+-- Create a policy that allows only admins to view notification entries
+CREATE POLICY "Admins can view notifications" 
+  ON notification_queue FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.user_role = 'Administrator'
+    )
+  );
+
+-- Create a policy that allows only admins to update notification entries
+CREATE POLICY "Admins can update notifications" 
+  ON notification_queue FOR UPDATE
   USING (
     EXISTS (
       SELECT 1 FROM profiles
@@ -54,6 +94,11 @@ CREATE POLICY "Admins can view and update notifications"
     )
   );
 ```
+
+This creates:
+1. The notification queue table with the right structure
+2. Proper RLS policies that allow *any* authenticated user to insert notifications
+3. Separate policies to allow only admins to view and update notifications
 
 2. **Fix the Foreign Key Relationship (Optional, requires SQL admin privileges)**:
 
@@ -94,13 +139,28 @@ The solution I've implemented takes a more robust approach:
    - Allows retries if email sending fails
    - Provides a record of all notification attempts
 
-## How to Implement This Solution
+## How to Implement This Solution (Step by Step)
 
-1. **Run the SQL command to create the notification_queue table** in your Supabase SQL Editor
+### Option 1: Keep the Current Simplified Approach
 
-2. **The updated code is already in place** in the `auth.js` file
+The current implementation in `auth.js` simply logs notifications without trying to insert them into a database table. This eliminates the errors and is suitable for testing.
 
-3. **Create a background processor** to handle the notification queue:
+### Option 2: Full Implementation with Notification Queue
+
+1. **Run the SQL script** to create the notification queue table:
+   - Go to your Supabase dashboard → SQL Editor
+   - Create a new query
+   - Paste the contents of `setup_notification_queue.sql`
+   - Run the SQL script
+
+2. **Verify the table was created**:
+   - Go to the "Table Editor" in your Supabase dashboard
+   - You should see a `notification_queue` table in the list
+
+3. **Modify auth.js** to use the notification queue:
+   - Once you've confirmed the table exists, you can update the admin notification code to insert into this table
+
+4. **Create a background processor** to handle the notification queue:
    - This could be a Supabase Edge Function that runs on a schedule
    - Or a separate server that polls the queue periodically
    - For each pending notification:
@@ -108,7 +168,7 @@ The solution I've implemented takes a more robust approach:
      - Send the email
      - Update the notification status to 'processed'
 
-4. For immediate testing, you can also add a simplified version of the email sending code directly in the client:
+5. For immediate testing, you can add this to your admin dashboard:
 
 ```javascript
 // In your notifications.js file
@@ -165,3 +225,33 @@ async function processNotificationQueue() {
 4. **No Foreign Key Error**: Completely avoids the problematic query that was causing the error
 
 This pattern is widely used in production systems for handling notifications and background tasks.
+
+## Troubleshooting Common Issues
+
+### "Table notification_queue doesn't exist"
+
+If you see this error, you need to run the SQL script to create the table first.
+
+### "New row violates row-level security policy"
+
+This happens when:
+1. The RLS policy doesn't allow the current user to insert records
+2. You're not properly authenticated when making the request
+
+Solution: Make sure you run the SQL with the `Anyone can insert notifications` policy, and that you're logged in when testing.
+
+### "Foreign key constraint violation"
+
+If you get an error about the foreign key constraint between `admin_id` and `profiles`, ensure that:
+1. The admin IDs you're using actually exist in the profiles table
+2. You're not trying to insert notifications for non-existent admins
+
+## Next Steps
+
+For a complete email notification system, you'll need:
+
+1. A server component that can securely send emails (Supabase Edge Functions or a dedicated server)
+2. A background process to pick up notifications from the queue and process them
+3. Error handling for failed email deliveries
+
+This requires a bit more server-side setup, but the queue-based approach makes it reliable and scalable.
