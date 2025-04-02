@@ -17,39 +17,35 @@ async function loadUsers() {
     approvedContainer.innerHTML = createLoadingSpinner();
     
     try {
-        // First, load all profiles
-        const { data: profiles, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .order('full_name', { ascending: true });
+        // Use our new database function to get profiles with emails
+        const { data, error } = await supabase.rpc('get_profiles_with_emails');
+        
+        if (error) {
+            // Fallback to the profiles table if the function doesn't exist yet
+            const { data: profiles, error: profilesError } = await supabase
+                .from('profiles')
+                .select('*')
+                .order('full_name', { ascending: true });
+                
+            if (profilesError) throw profilesError;
             
-        if (error) throw error;
-        
-        // Create a users array with emails defaulting to "Unknown"
-        let processedUsers = profiles.map(profile => {
-            return {
-                ...profile,
-                email: 'Unknown email'
-            };
-        });
-        
-        // Attempt to get user emails through Supabase admin functions
-        // This is done separately because direct joins to auth.users often don't work
-        try {
-            // For each user, get their email using the Supabase auth API
-            for (const user of processedUsers) {
-                try {
-                    const { data: userInfo, error: userError } = await supabase.auth.admin.getUserById(user.id);
-                    
-                    if (!userError && userInfo && userInfo.user) {
-                        user.email = userInfo.user.email;
-                    }
-                } catch (individualError) {
-                    console.warn(`Could not fetch email for user ${user.id}:`, individualError);
-                }
-            }
-        } catch (emailError) {
-            console.warn('Could not fetch user emails:', emailError);
+            // For each profile, fetch the email using our custom function
+            processedUsers = await Promise.all(profiles.map(async (profile) => {
+                // Get email using our custom function
+                const { data: email, error: emailError } = await supabase
+                    .rpc('get_user_email', { user_id: profile.id });
+                
+                return {
+                    ...profile,
+                    email: emailError ? 'Unknown email' : email || 'Unknown email'
+                };
+            }));
+        } else {
+            // If the function exists, use its results directly
+            processedUsers = data.map(user => ({
+                ...user,
+                email: user.email || 'Unknown email'
+            }));
         }
         
         // Separate pending and approved users
@@ -224,7 +220,13 @@ async function updateUserApproval(userId, state) {
 // Send approval email to user
 async function sendApprovalEmail(userId) {
     try {
-        // Get user profile info
+        // Get user email using our custom function
+        const { data: email, error: emailError } = await supabase
+            .rpc('get_user_email', { user_id: userId });
+            
+        if (emailError) throw emailError;
+        
+        // Get user profile
         const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('full_name')
@@ -233,12 +235,6 @@ async function sendApprovalEmail(userId) {
             
         if (profileError) throw profileError;
         
-        // Get user email separately using the auth API
-        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
-        
-        if (userError) throw userError;
-        
-        const email = userData.user ? userData.user.email : null;
         const name = profileData.full_name || 'Church Member';
         
         if (!email) {
