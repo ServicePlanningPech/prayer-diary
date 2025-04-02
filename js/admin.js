@@ -17,7 +17,7 @@ async function loadUsers() {
     approvedContainer.innerHTML = createLoadingSpinner();
     
     try {
-        // Get all profiles first
+        // Get all profiles with their stored emails
         const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
             .select('*')
@@ -25,61 +25,24 @@ async function loadUsers() {
             
         if (profilesError) throw profilesError;
         
-        // Initialize processed users with "Unknown email"
-        processedUsers = profiles.map(profile => ({
-            ...profile,
-            email: 'Unknown email'
-        }));
-        
-        // Special case for super admin
-        for (let user of processedUsers) {
-            if (user.user_role === 'Administrator' && user.full_name === 'Super Admin') {
-                user.email = 'prayerdiary@pech.co.uk';
-            }
-        }
-        
-        // Now, let's try to get actual emails using the Supabase auth API
-        try {
-            // For better performance, let's get all users at once if possible
-            const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        // Process users, using stored email if available
+        processedUsers = profiles.map(profile => {
+            // Use the profile.email field if it exists, otherwise fall back to defaults
+            const email = profile.email || (
+                // Super admin fallback
+                (profile.user_role === 'Administrator' && profile.full_name === 'Super Admin') 
+                ? 'prayerdiary@pech.co.uk' 
+                // Email extraction from name fallback
+                : (profile.full_name && profile.full_name.includes('@')) 
+                  ? profile.full_name 
+                  : "Unknown email"
+            );
             
-            if (!authError && authUsers && authUsers.users) {
-                // Create a map for quick lookup
-                const emailMap = {};
-                authUsers.users.forEach(authUser => {
-                    emailMap[authUser.id] = authUser.email;
-                });
-                
-                // Update our processed users with actual emails
-                processedUsers.forEach(user => {
-                    if (emailMap[user.id]) {
-                        user.email = emailMap[user.id];
-                    }
-                });
-            } else {
-                // Fallback to individual lookups if bulk lookup fails
-                console.log("Falling back to individual email lookups");
-                
-                for (let user of processedUsers) {
-                    try {
-                        // Skip super admin since we already handled it
-                        if (user.user_role === 'Administrator' && user.full_name === 'Super Admin') {
-                            continue;
-                        }
-                        
-                        const { data, error } = await supabase.auth.admin.getUserById(user.id);
-                        
-                        if (!error && data && data.user) {
-                            user.email = data.user.email;
-                        }
-                    } catch (e) {
-                        console.warn(`Could not fetch email for user ${user.id}:`, e);
-                    }
-                }
-            }
-        } catch (emailError) {
-            console.warn('Could not fetch user emails:', emailError);
-        }
+            return {
+                ...profile,
+                email: email
+            };
+        });
         
         // Separate pending and approved users
         const pendingUsers = processedUsers.filter(user => user.approval_state === 'Pending');

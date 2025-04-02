@@ -151,11 +151,14 @@ async function handleAuth(e) {
                 }
             });
             
-            // Also update the profile's full_name directly to ensure it's set
+            // Also update the profile's full_name and email directly to ensure it's set
             if (data && data.user) {
                 await supabase
                     .from('profiles')
-                    .update({ full_name: fullName })
+                    .update({ 
+                        full_name: fullName,
+                        email: email
+                    })
                     .eq('id', data.user.id);
             }
             
@@ -324,7 +327,8 @@ async function createSuperAdmin() {
                     prayer_calendar_editor: true,
                     prayer_update_editor: true,
                     urgent_prayer_editor: true,
-                    full_name: 'Super Admin'  // Explicitly set the name
+                    full_name: 'Super Admin',  // Explicitly set the name
+                    email: 'prayerdiary@pech.co.uk'  // Explicitly set the email
                 })
                 .eq('id', data.user.id);
                 
