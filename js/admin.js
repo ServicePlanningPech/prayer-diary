@@ -17,36 +17,28 @@ async function loadUsers() {
     approvedContainer.innerHTML = createLoadingSpinner();
     
     try {
-        // Use our new database function to get profiles with emails
-        const { data, error } = await supabase.rpc('get_profiles_with_emails');
-        
-        if (error) {
-            // Fallback to the profiles table if the function doesn't exist yet
-            const { data: profiles, error: profilesError } = await supabase
-                .from('profiles')
-                .select('*')
-                .order('full_name', { ascending: true });
-                
-            if (profilesError) throw profilesError;
+        // Simplest approach - just get the profiles
+        const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*')
+            .order('full_name', { ascending: true });
             
-            // For each profile, fetch the email using our custom function
-            processedUsers = await Promise.all(profiles.map(async (profile) => {
-                // Get email using our custom function
-                const { data: email, error: emailError } = await supabase
-                    .rpc('get_user_email', { user_id: profile.id });
-                
-                return {
-                    ...profile,
-                    email: emailError ? 'Unknown email' : email || 'Unknown email'
-                };
-            }));
-        } else {
-            // If the function exists, use its results directly
-            processedUsers = data.map(user => ({
-                ...user,
-                email: user.email || 'Unknown email'
-            }));
-        }
+        if (profilesError) throw profilesError;
+        
+        // For super admin, hardcode the email
+        processedUsers = profiles.map(profile => {
+            let email = 'Unknown email';
+            
+            // If this is the super admin, we know the email
+            if (profile.user_role === 'Administrator' && profile.full_name === 'Super Admin') {
+                email = 'prayerdiary@pech.co.uk';
+            }
+            
+            return {
+                ...profile,
+                email: email
+            };
+        });
         
         // Separate pending and approved users
         const pendingUsers = processedUsers.filter(user => user.approval_state === 'Pending');

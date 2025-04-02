@@ -4,7 +4,7 @@
 // Development mode settings
 const devTools = {
     // Settings
-    isDevelopmentMode: localStorage.getItem('prayerDiary_devMode') === 'true' || false,
+    isDevelopmentMode: localStorage.getItem('prayerDiary_devMode') === 'true' || window.PRAYER_DIARY_DEV_MODE || false,
     
     // Initialize dev tools
     init() {

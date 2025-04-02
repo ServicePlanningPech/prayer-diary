@@ -1015,14 +1015,17 @@
         loadScript("js/app.js");
     </script>
     
+    <!-- Development Mode Global Flag -->
+    <script>
+        // Global development mode flag
+        window.PRAYER_DIARY_DEV_MODE = true;
+    </script>
+    
     <!-- Service Worker Registration -->
     <script>
-        // Development mode flag - set to true to disable service worker during testing
-        const DEVELOPMENT_MODE = true;
-        
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                if (DEVELOPMENT_MODE) {
+                if (window.PRAYER_DIARY_DEV_MODE) {
                     // Unregister existing service workers during development
                     navigator.serviceWorker.getRegistrations().then(function(registrations) {
                         for (let registration of registrations) {
