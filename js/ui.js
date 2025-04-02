@@ -55,6 +55,11 @@ function setupNavigation() {
         initUrgentEditor();
         loadUrgentAdmin();
     });
+    
+    document.getElementById('nav-test-email').addEventListener('click', () => {
+        showView('test-email-view');
+        initEmailTestView();
+    });
 }
 
 // Function to show a specific view and hide others

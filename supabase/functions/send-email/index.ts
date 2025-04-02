@@ -1,87 +1,115 @@
-// Supabase Edge Function for sending emails via Google SMTP
+// Supabase Edge Function for sending emails using Google SMTP
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { SmtpClient } from 'https://deno.land/x/smtp@v0.7.0/mod.ts'
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { SmtpClient } from 'https://deno.land/x/smtp@v0.7.0/mod.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+interface EmailRequest {
+  to: string
+  subject: string
+  html: string
+  text?: string
+  cc?: string | string[]
+  bcc?: string | string[]
+  replyTo?: string
+  from?: string
+}
 
 serve(async (req) => {
-  try {
-    // Parse request body
-    const { to, subject, html, text, userId, type, contentId } = await req.json();
-    
-    // Validate the request
-    if (!to || !subject || (!html && !text)) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields (to, subject, and either html or text)' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Get environment variables
-    const GMAIL_USER = Deno.env.get('GMAIL_USER');
-    const GMAIL_APP_PASSWORD = Deno.env.get('GMAIL_APP_PASSWORD');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
-    
-    if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
-      throw new Error('Gmail credentials are not configured');
-    }
-    
-    // Create SMTP client 
-    const client = new SmtpClient();
-    
-    // Connect to Google's SMTP server
-    await client.connectTLS({
-      hostname: 'smtp.gmail.com',
-      port: 465,
-      username: GMAIL_USER,
-      password: GMAIL_APP_PASSWORD,
-    });
-    
-    // Create a nice from name
-    const fromName = "Prayer Diary";
-    
-    // Send email
-    await client.send({
-      from: `${fromName} <${GMAIL_USER}>`,
-      to: to,
-      subject: subject,
-      content: text || '',
-      html: html || '',
-    });
-    
-    // Close connection
-    await client.close();
-    
-    // Log to notification_logs table if userId is provided
-    if (userId && SUPABASE_URL && SUPABASE_ANON_KEY) {
-      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      
-      await supabase
-        .from('notification_logs')
-        .insert({
-          user_id: userId,
-          notification_type: 'email',
-          content_type: type || 'general',
-          content_id: contentId || null,
-          status: 'sent'
-        });
-    }
-    
-    return new Response(
-      JSON.stringify({ success: true, message: 'Email sent successfully' }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
-    
-  } catch (error) {
-    console.error('Error sending email:', error);
-    
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message || 'An error occurred while sending the email' 
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+  // Handle CORS preflight request
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    })
   }
-});
+
+  try {
+    // Only allow POST requests
+    if (req.method !== 'POST') {
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      })
+    }
+
+    // Parse request body
+    const requestData = await req.json() as EmailRequest
+
+    // Validate required fields
+    if (!requestData.to || !requestData.subject || !requestData.html) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required email parameters' }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      )
+    }
+
+    // Environment variables
+    const SMTP_HOSTNAME = Deno.env.get('SMTP_HOSTNAME') || 'smtp.gmail.com'
+    const SMTP_PORT = parseInt(Deno.env.get('SMTP_PORT') || '465')
+    const SMTP_USERNAME = Deno.env.get('SMTP_USERNAME') || 'your-email@gmail.com'
+    const SMTP_PASSWORD = Deno.env.get('SMTP_PASSWORD') || 'your-app-password'
+    const DEFAULT_FROM = Deno.env.get('DEFAULT_FROM') || 'Prayer Diary <prayerdiary@pech.co.uk>'
+
+    // Configure SMTP client
+    const client = new SmtpClient()
+    await client.connectTLS({
+      hostname: SMTP_HOSTNAME,
+      port: SMTP_PORT,
+      username: SMTP_USERNAME,
+      password: SMTP_PASSWORD,
+    })
+
+    // Send the email
+    await client.send({
+      from: requestData.from || DEFAULT_FROM,
+      to: requestData.to,
+      subject: requestData.subject,
+      content: requestData.html,
+      html: requestData.html,
+      cc: requestData.cc,
+      bcc: requestData.bcc,
+      replyTo: requestData.replyTo,
+    })
+
+    // Close the connection
+    await client.close()
+
+    // Return success response
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    })
+  } catch (error) {
+    console.error('Error sending email:', error)
+
+    // Return error response
+    return new Response(
+      JSON.stringify({
+        error: error.message || 'Failed to send email',
+        details: error.toString(),
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
+    )
+  }
+})

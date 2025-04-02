@@ -177,27 +177,39 @@ async function sendPushNotifications(type, title) {
 }
 
 // Send a welcome email to a newly approved user
-async function sendWelcomeEmail(email, name) {
+async function sendWelcomeEmail(email, name, userId = null) {
     try {
-        // In a real implementation, we would use an email service API
-        console.log(`[EMAIL] Sending welcome email to ${name} (${email})`);
-        
-        // This is just a placeholder until you implement the actual email sending
-        // using a service like SendGrid, Mailgun, AWS SES, etc.
-        const emailContent = `
-            Dear ${name},
-            
-            Your Prayer Diary account has been approved. You can now log in and use all features of the app.
-            
-            Thank you for being part of our prayer community!
-            
-            Blessings,
-            The Prayer Diary Team
+        // Create HTML email content
+        const htmlContent = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #483D8B;">Welcome to Prayer Diary!</h2>
+                <p>Dear ${name},</p>
+                
+                <p>Your Prayer Diary account has been approved. You can now log in and use all features of the app.</p>
+                
+                <p>Thank you for being part of our prayer community!</p>
+                
+                <div style="margin: 25px 0;">
+                    <a href="${window.location.origin}" 
+                    style="background-color: #483D8B; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+                        Open Prayer Diary
+                    </a>
+                </div>
+                
+                <p>Blessings,<br>The Prayer Diary Team</p>
+            </div>
         `;
         
-        console.log(emailContent);
+        // Send email using our general email function
+        const result = await sendEmail({
+            to: email,
+            subject: 'Welcome to Prayer Diary - Your Account is Approved',
+            html: htmlContent,
+            userId: userId,
+            contentType: 'welcome_email'
+        });
         
-        return true;
+        return result.success;
     } catch (error) {
         console.error('Error sending welcome email:', error);
         return false;
@@ -285,31 +297,93 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-// Implementation of email sending via Supabase Edge Function
-async function sendEmail(to, subject, html, text, userId, type, contentId = null) {
+// Implementation of email sending via Supabase Edge Function with Google SMTP
+// This is a general purpose function that can be used throughout the app
+async function sendEmail(options) {
+    // Set default values if not provided
+    const {
+        to,                    // Recipient email (required)
+        subject,               // Email subject (required)
+        html,                  // HTML content (required)
+        text = null,           // Plain text fallback (optional)
+        cc = null,             // CC recipients (optional)
+        bcc = null,            // BCC recipients (optional)
+        replyTo = null,        // Reply-To address (optional)
+        from = null,           // Sender address override (optional) - if not provided, will use default in Edge function
+        userId = null,         // User ID for logging (optional)
+        contentType = null     // Content type for logging (optional)
+    } = options;
+
+    // Validate required fields
+    if (!to || !subject || !html) {
+        console.error('Missing required email parameters');
+        return { success: false, error: 'Missing required email parameters' };
+    }
+
+    // Check if email is enabled in config
     if (!EMAIL_ENABLED) {
         console.log(`Email disabled. Would have sent email to ${to}`);
         return { success: false, error: 'Email is not enabled' };
     }
     
     try {
+        // Call the Supabase Edge Function for sending email through Google SMTP
         const { data, error } = await supabase.functions.invoke('send-email', {
             body: {
                 to: to,
                 subject: subject,
                 html: html,
                 text: text || html.replace(/<[^>]*>/g, ''), // Fallback plain text
-                userId: userId,
-                type: type,
-                contentId: contentId
+                cc: cc,
+                bcc: bcc,
+                replyTo: replyTo,
+                from: from
             }
         });
         
         if (error) throw error;
+        
+        // Log successful email delivery
         console.log('Email sent successfully to:', to);
+        
+        // Log to notification_logs table if userId is provided
+        if (userId && contentType) {
+            try {
+                await supabase
+                    .from('notification_logs')
+                    .insert({
+                        user_id: userId,
+                        notification_type: 'email',
+                        content_type: contentType,
+                        status: 'sent'
+                    });
+            } catch (logError) {
+                console.error('Failed to log email notification:', logError);
+                // Continue even if logging fails
+            }
+        }
+        
         return { success: true, data };
     } catch (error) {
         console.error('Error sending email:', error);
+        
+        // Log failed email if userId is provided
+        if (userId && contentType) {
+            try {
+                await supabase
+                    .from('notification_logs')
+                    .insert({
+                        user_id: userId,
+                        notification_type: 'email',
+                        content_type: contentType,
+                        status: 'failed',
+                        error_message: error.message
+                    });
+            } catch (logError) {
+                console.error('Failed to log email error:', logError);
+            }
+        }
+        
         return { success: false, error: error.message };
     }
 }

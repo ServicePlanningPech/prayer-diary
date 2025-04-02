@@ -330,10 +330,15 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
     }
     
     try {
-        // Fetch all administrator IDs from the profiles table
+        // Fetch all administrator emails from the profiles table
         const { data: admins, error } = await supabase
             .from('profiles')
-            .select('id, full_name, user_role')
+            .select(`
+                id, 
+                full_name, 
+                user_role,
+                auth:id (email)
+            `)
             .eq('user_role', 'Administrator')
             .eq('approval_state', 'Approved');
             
@@ -346,71 +351,51 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
         
         console.log(`Found ${admins.length} admin(s) to notify about new user registration`);
         
-        // Create admin notification entry in the database
-        // This will be processed by a separate background job or function
-        for (const admin of admins) {
-            try {
-                const { data, error } = await supabase
-                    .from('notification_queue')
-                    .insert({
-                        admin_id: admin.id,
-                        notification_type: 'new_user_registration',
-                        content: JSON.stringify({
-                            userName: userName,
-                            userEmail: userEmail,
-                            registrationTime: new Date().toISOString()
-                        }),
-                        status: 'pending'
-                    });
+        // Create email content for admin notification
+        const htmlContent = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #483D8B;">New User Registration</h2>
+                <p>A new user has registered for Prayer Diary and is awaiting your approval:</p>
                 
-                if (error) {
-                    console.error(`Failed to queue notification for admin ${admin.id}:`, error);
-                    // Log we still attempted to notify this admin even if the DB insert failed
-                    console.log(`Would notify admin ${admin.id} (${admin.full_name}) about new user: ${userName} (${userEmail})`);
-                } else {
-                    console.log(`Notification queued for admin ${admin.id}`);
-                }
-            } catch (err) {
-                console.error(`Error queueing notification for admin ${admin.id}:`, err);
-                // Fallback to logging
-                console.log(`Would notify admin ${admin.id} (${admin.full_name}) about new user: ${userName} (${userEmail})`);
-            }
-        }
-        
-        // For immediate testing, also try to send emails directly if the function exists
-        if (typeof sendEmail === 'function') {
-            // Create email content
-            const subject = `Prayer Diary: New User Registration - ${userName}`;
-            const htmlContent = `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #483D8B;">New User Registration</h2>
-                    <p>A new user has registered for Prayer Diary and is awaiting your approval:</p>
-                    
-                    <div style="background-color: #f5f5f5; border-left: 4px solid #483D8B; padding: 15px; margin: 15px 0;">
-                        <p><strong>Name:</strong> ${userName}</p>
-                        <p><strong>Email:</strong> ${userEmail}</p>
-                        <p><strong>Status:</strong> Pending Approval</p>
-                    </div>
-                    
-                    <p>Please log in to the admin panel to review and approve this user.</p>
-                    
-                    <div style="margin: 25px 0;">
-                        <a href="https://serviceplanningpech.github.io/prayer-diary" 
-                        style="background-color: #483D8B; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
-                            Go to Admin Panel
-                        </a>
-                    </div>
-                    
-                    <hr style="border: 1px solid #eee; margin: 20px 0;">
-                    <p style="font-size: 12px; color: #666;">
-                        This is an automated notification from Prayer Diary. Please do not reply to this email.
-                    </p>
+                <div style="background-color: #f5f5f5; border-left: 4px solid #483D8B; padding: 15px; margin: 15px 0;">
+                    <p><strong>Name:</strong> ${userName}</p>
+                    <p><strong>Email:</strong> ${userEmail}</p>
+                    <p><strong>Status:</strong> Pending Approval</p>
                 </div>
-            `;
-            
-            // For testing, just log the content
-            console.log('Would send email with subject:', subject);
-            console.log('Email content available for sending to admins');
+                
+                <p>Please log in to the admin panel to review and approve this user.</p>
+                
+                <div style="margin: 25px 0;">
+                    <a href="${window.location.origin}" 
+                    style="background-color: #483D8B; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+                        Go to Admin Panel
+                    </a>
+                </div>
+                
+                <hr style="border: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 12px; color: #666;">
+                    This is an automated notification from Prayer Diary. Please do not reply to this email.
+                </p>
+            </div>
+        `;
+        
+        // Send email to each admin directly
+        for (const admin of admins) {
+            if (admin.auth && admin.auth.email) {
+                try {
+                    await sendEmail({
+                        to: admin.auth.email,
+                        subject: `Prayer Diary: New User Registration - ${userName}`,
+                        html: htmlContent,
+                        userId: admin.id,
+                        contentType: 'new_user_notification'
+                    });
+                    
+                    console.log(`Sent notification email to admin: ${admin.full_name} (${admin.auth.email})`);
+                } catch (emailError) {
+                    console.error(`Failed to send email to admin ${admin.id}:`, emailError);
+                }
+            }
         }
         
         return true;

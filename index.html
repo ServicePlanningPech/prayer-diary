@@ -77,6 +77,12 @@
                                     <i class="bi bi-bell"></i> Manage Urgent Prayers
                                 </a>
                             </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" id="nav-test-email" href="#">
+                                    <i class="bi bi-envelope"></i> Test Email Sending
+                                </a>
+                            </li>
                         </ul>
                     </li>
                 </ul>
@@ -551,6 +557,127 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Test Email Sending View -->
+            <div id="test-email-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">Test Email Sending</h1>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card shadow border-0">
+                            <div class="card-header bg-primary text-white py-3">
+                                <h4 class="card-title mb-0">
+                                    <i class="bi bi-envelope me-2"></i>Send Test Email
+                                </h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <form id="test-email-form">
+                                    <div class="mb-3">
+                                        <label for="test-email-to" class="form-label fw-bold">Recipient Email</label>
+                                        <input type="email" class="form-control" id="test-email-to" placeholder="recipient@example.com" required>
+                                        <div class="form-text">The email address to send the test message to</div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="test-email-subject" class="form-label fw-bold">Subject</label>
+                                        <input type="text" class="form-control" id="test-email-subject" value="Prayer Diary Test Email" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="test-email-content" class="form-label fw-bold">Email Content (HTML)</label>
+                                        <textarea class="form-control" id="test-email-content" rows="6" required>
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #483D8B;">Prayer Diary Test Email</h2>
+    <p>This is a test email from the Prayer Diary application.</p>
+    <p>If you received this email, the email sending functionality is working correctly.</p>
+    <hr style="border: 1px solid #eee; margin: 20px 0;">
+    <p style="font-size: 12px; color: #666;">
+        This is a test message sent at: ${new Date().toLocaleString()}
+    </p>
+</div>
+                                        </textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Advanced Options</label>
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label for="test-email-cc" class="form-label">CC</label>
+                                                    <input type="email" class="form-control" id="test-email-cc" placeholder="cc@example.com">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="test-email-bcc" class="form-label">BCC</label>
+                                                    <input type="email" class="form-control" id="test-email-bcc" placeholder="bcc@example.com">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="test-email-reply-to" class="form-label">Reply-To</label>
+                                                    <input type="email" class="form-control" id="test-email-reply-to" placeholder="reply@example.com">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid mt-4">
+                                        <button class="btn btn-primary btn-lg" type="submit" id="send-test-email-btn">
+                                            <i class="bi bi-send me-2"></i>Send Test Email
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card shadow border-0 mb-4">
+                            <div class="card-header bg-primary text-white py-3">
+                                <h4 class="card-title mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>Email Testing Information
+                                </h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <p>Use this tool to test the email sending functionality of Prayer Diary.</p>
+                                
+                                <h5 class="mt-3 mb-2">Email Configuration Status:</h5>
+                                <div id="email-config-status" class="alert alert-info">
+                                    Checking email configuration...
+                                </div>
+                                
+                                <h5 class="mt-4 mb-2">Tips for Testing:</h5>
+                                <ul>
+                                    <li>Start with a simple test to your own email address</li>
+                                    <li>Check your spam folder if the email doesn't arrive</li>
+                                    <li>You can customize the HTML content for more complex tests</li>
+                                    <li>The email sending function uses Google SMTP</li>
+                                </ul>
+                                
+                                <h5 class="mt-4 mb-2">Troubleshooting:</h5>
+                                <ul>
+                                    <li>Verify the Edge Function is deployed correctly</li>
+                                    <li>Ensure the SMTP credentials are set up in Supabase</li>
+                                    <li>Check the browser console for detailed error messages</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="card shadow border-0">
+                            <div class="card-header bg-primary text-white py-3">
+                                <h4 class="card-title mb-0">
+                                    <i class="bi bi-clock-history me-2"></i>Test Results
+                                </h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <div id="test-results-container">
+                                    <div class="text-center text-muted">
+                                        <p>No test emails sent yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -865,6 +992,7 @@
     <script src="js/admin.js"></script>
     <script src="js/notifications.js"></script>
     <script src="js/notification-processor.js"></script>
+    <script src="js/email-test.js"></script>
     <script src="js/app.js"></script>
     
     <!-- Service Worker Registration -->
