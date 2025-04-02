@@ -368,11 +368,7 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
         // Fetch the first administrator with approval_admin flag set to TRUE
         const { data: admins, error: queryError } = await supabase
             .from('profiles')
-            .select(`
-                id, 
-                full_name, 
-                auth:id (email)
-            `)
+            .select('id, full_name, email')
             .eq('user_role', 'Administrator')
             .eq('approval_state', 'Approved')
             .eq('approval_admin', true);
@@ -391,12 +387,13 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
         // Get the first admin from the results
         const admin = admins[0];
         
-        if (!admin.auth || !admin.auth.email) {
+        if (!admin.email) {
             console.log('Admin found but no email address available');
             return false;
         }
+=======
         
-        console.log(`Found admin to notify about new user registration: ${admin.full_name}`);
+        console.log(`Found admin to notify about new user registration: ${admin.full_name} (${admin.email})`);
         
         // Create email content for admin notification
         const htmlContent = `
@@ -426,12 +423,12 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
             </div>
         `;
         
-        console.log(`Attempting to send email to ${admin.auth.email}...`);
+        console.log(`Attempting to send email to ${admin.email}...`);
         
         // Send the email using the Edge Function mechanism
         try {
             const result = await sendEmail({
-                to: admin.auth.email,
+                to: admin.email,
                 subject: `Prayer Diary: New User Registration - ${userName}`,
                 html: htmlContent,
                 userId: admin.id,
