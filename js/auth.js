@@ -323,7 +323,8 @@ async function createSuperAdmin() {
                     approval_state: 'Approved',
                     prayer_calendar_editor: true,
                     prayer_update_editor: true,
-                    urgent_prayer_editor: true
+                    urgent_prayer_editor: true,
+                    full_name: 'Super Admin'  // Explicitly set the name
                 })
                 .eq('id', data.user.id);
                 

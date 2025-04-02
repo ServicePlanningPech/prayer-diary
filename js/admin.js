@@ -17,25 +17,40 @@ async function loadUsers() {
     approvedContainer.innerHTML = createLoadingSpinner();
     
     try {
-        // Load profiles with a special RPC function that handles auth info
-        // This uses the more reliable approach that works with Supabase's security model
-        const { data: users, error } = await supabase
+        // First, load all profiles
+        const { data: profiles, error } = await supabase
             .from('profiles')
-            .select(`
-                *,
-                auth:id(email)
-            `)
+            .select('*')
             .order('full_name', { ascending: true });
             
         if (error) throw error;
         
-        // Process user data to ensure email is available
-        const processedUsers = users.map(user => {
+        // Create a users array with emails defaulting to "Unknown"
+        let processedUsers = profiles.map(profile => {
             return {
-                ...user,
-                email: user.auth?.email || 'Unknown email'
+                ...profile,
+                email: 'Unknown email'
             };
         });
+        
+        // Attempt to get user emails through Supabase admin functions
+        // This is done separately because direct joins to auth.users often don't work
+        try {
+            // For each user, get their email using the Supabase auth API
+            for (const user of processedUsers) {
+                try {
+                    const { data: userInfo, error: userError } = await supabase.auth.admin.getUserById(user.id);
+                    
+                    if (!userError && userInfo && userInfo.user) {
+                        user.email = userInfo.user.email;
+                    }
+                } catch (individualError) {
+                    console.warn(`Could not fetch email for user ${user.id}:`, individualError);
+                }
+            }
+        } catch (emailError) {
+            console.warn('Could not fetch user emails:', emailError);
+        }
         
         // Separate pending and approved users
         const pendingUsers = processedUsers.filter(user => user.approval_state === 'Pending');
@@ -209,20 +224,22 @@ async function updateUserApproval(userId, state) {
 // Send approval email to user
 async function sendApprovalEmail(userId) {
     try {
-        // Get user email
-        const { data: userData, error: userError } = await supabase
+        // Get user profile info
+        const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select(`
-                auth:id (email),
-                full_name
-            `)
+            .select('full_name')
             .eq('id', userId)
             .single();
             
+        if (profileError) throw profileError;
+        
+        // Get user email separately using the auth API
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+        
         if (userError) throw userError;
         
-        const email = userData.auth ? userData.auth.email : null;
-        const name = userData.full_name;
+        const email = userData.user ? userData.user.email : null;
+        const name = profileData.full_name || 'Church Member';
         
         if (!email) {
             throw new Error('Unable to retrieve user email');
