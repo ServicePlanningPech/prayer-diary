@@ -341,7 +341,8 @@ async function createSuperAdmin() {
                     prayer_update_editor: true,
                     urgent_prayer_editor: true,
                     full_name: 'Super Admin',  // Explicitly set the name
-                    email: 'prayerdiary@pech.co.uk'  // Explicitly set the email
+                    email: 'prayerdiary@pech.co.uk',  // Explicitly set the email
+                    approval_admin: true  // Give super admin approval rights
                 })
                 .eq('id', data.user.id);
                 

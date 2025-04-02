@@ -131,11 +131,34 @@ function openEditUserModal(user) {
     document.getElementById('update-editor').checked = user.prayer_update_editor;
     document.getElementById('urgent-editor').checked = user.urgent_prayer_editor;
     
+    // Handle approval admin checkbox
+    const approvalAdminField = document.querySelector('.admin-permission-field');
+    const approvalAdminCheckbox = document.getElementById('approval-admin');
+    
+    // Only show approval admin field for administrator role
+    if (user.user_role === 'Administrator') {
+        approvalAdminField.style.display = 'block';
+        approvalAdminCheckbox.checked = user.approval_admin || false;
+    } else {
+        approvalAdminField.style.display = 'none';
+        approvalAdminCheckbox.checked = false;
+    }
+    
     // Show modal
     modal.classList.add('is-active');
     
     // Set up save button
     document.getElementById('save-user').onclick = saveUserPermissions;
+    
+    // Set up role change handler to show/hide admin permissions
+    document.getElementById('user-role').addEventListener('change', function() {
+        if (this.value === 'Administrator') {
+            approvalAdminField.style.display = 'block';
+        } else {
+            approvalAdminField.style.display = 'none';
+            approvalAdminCheckbox.checked = false;
+        }
+    });
 }
 
 // Save user permissions
@@ -153,6 +176,12 @@ async function saveUserPermissions() {
         const updateEditor = document.getElementById('update-editor').checked;
         const urgentEditor = document.getElementById('urgent-editor').checked;
         
+        // Get approval_admin value (only applies to Administrators)
+        let approvalAdmin = false;
+        if (userRole === 'Administrator') {
+            approvalAdmin = document.getElementById('approval-admin').checked;
+        }
+        
         // Update user profile
         const { data, error } = await supabase
             .from('profiles')
@@ -161,7 +190,8 @@ async function saveUserPermissions() {
                 approval_state: approvalState,
                 prayer_calendar_editor: calendarEditor,
                 prayer_update_editor: updateEditor,
-                urgent_prayer_editor: urgentEditor
+                urgent_prayer_editor: urgentEditor,
+                approval_admin: approvalAdmin
             })
             .eq('id', userId);
             
