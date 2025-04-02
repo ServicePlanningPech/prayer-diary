@@ -284,22 +284,34 @@
 
             <!-- Admin Views -->
             <!-- Manage Users View -->
-            <div id="manage-users-view" class="view-content is-hidden">
-                <h1 class="title is-4">Manage Users</h1>
-                <div class="tabs">
-                    <ul>
-                        <li class="is-active"><a data-tab="pending-users">Pending Approval</a></li>
-                        <li><a data-tab="approved-users">Approved Users</a></li>
-                    </ul>
-                </div>
-                <div id="pending-users" class="tab-content">
-                    <div id="pending-users-container">
-                        <!-- Pending users will be dynamically inserted here -->
+            <div id="manage-users-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">Manage Users</h1>
+                
+                <ul class="nav nav-tabs mb-4" id="usersTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="pending-users-tab" data-bs-toggle="tab" 
+                                data-bs-target="#pending-users" type="button" role="tab" 
+                                aria-controls="pending-users" aria-selected="true">Pending Approval</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="approved-users-tab" data-bs-toggle="tab" 
+                                data-bs-target="#approved-users" type="button" role="tab" 
+                                aria-controls="approved-users" aria-selected="false">Approved Users</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="usersTabContent">
+                    <div class="tab-pane fade show active" id="pending-users" role="tabpanel" 
+                         aria-labelledby="pending-users-tab">
+                        <div id="pending-users-container">
+                            <!-- Pending users will be dynamically inserted here -->
+                        </div>
                     </div>
-                </div>
-                <div id="approved-users" class="tab-content is-hidden">
-                    <div id="approved-users-container">
-                        <!-- Approved users will be dynamically inserted here -->
+                    <div class="tab-pane fade" id="approved-users" role="tabpanel" 
+                         aria-labelledby="approved-users-tab">
+                        <div id="approved-users-container">
+                            <!-- Approved users will be dynamically inserted here -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -727,215 +739,198 @@
     </div>
 
     <!-- Edit User Modal -->
-    <div class="modal" id="edit-user-modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Edit User Permissions</p>
-                <button class="delete" aria-label="close"></button>
-            </header>
-            <section class="modal-card-body">
-                <form id="edit-user-form">
-                    <input type="hidden" id="edit-user-id">
-                    <div class="field">
-                        <label class="label">User Role</label>
-                        <div class="control">
-                            <div class="select is-fullwidth">
-                                <select id="user-role">
-                                    <option value="User">User</option>
-                                    <option value="Administrator">Administrator</option>
-                                </select>
+    <div class="modal fade" id="edit-user-modal" tabindex="-1" aria-labelledby="edit-user-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-user-title">Edit User Permissions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-user-form">
+                        <input type="hidden" id="edit-user-id">
+                        <div class="mb-3">
+                            <label for="user-role" class="form-label">User Role</label>
+                            <select class="form-select" id="user-role">
+                                <option value="User">User</option>
+                                <option value="Administrator">Administrator</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="approval-state" class="form-label">Approval State</label>
+                            <select class="form-select" id="approval-state">
+                                <option value="Pending">Pending</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Permissions</label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="calendar-editor">
+                                <label class="form-check-label" for="calendar-editor">
+                                    Prayer Calendar Editor
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="update-editor">
+                                <label class="form-check-label" for="update-editor">
+                                    Prayer Update Editor
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="urgent-editor">
+                                <label class="form-check-label" for="urgent-editor">
+                                    Urgent Prayer Editor
+                                </label>
+                            </div>
+                            <!-- Only display this for admin users -->
+                            <div class="form-check mb-2 admin-permission-field" style="display: none;">
+                                <input class="form-check-input" type="checkbox" id="approval-admin">
+                                <label class="form-check-label" for="approval-admin">
+                                    User Registration Approval
+                                </label>
+                                <div class="form-text">Authorized to approve new user registrations</div>
                             </div>
                         </div>
-                    </div>
-                    <div class="field">
-                        <label class="label">Approval State</label>
-                        <div class="control">
-                            <div class="select is-fullwidth">
-                                <select id="approval-state">
-                                    <option value="Pending">Pending</option>
-                                    <option value="Approved">Approved</option>
-                                    <option value="Rejected">Rejected</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label class="label">Permissions</label>
-                        <div class="control">
-                            <label class="checkbox">
-                                <input type="checkbox" id="calendar-editor">
-                                Prayer Calendar Editor
-                            </label>
-                        </div>
-                        <div class="control">
-                            <label class="checkbox">
-                                <input type="checkbox" id="update-editor">
-                                Prayer Update Editor
-                            </label>
-                        </div>
-                        <div class="control">
-                            <label class="checkbox">
-                                <input type="checkbox" id="urgent-editor">
-                                Urgent Prayer Editor
-                            </label>
-                        </div>
-                        <!-- Only display this for admin users -->
-                        <div class="control admin-permission-field" style="display: none;">
-                            <label class="checkbox">
-                                <input type="checkbox" id="approval-admin">
-                                User Registration Approval
-                            </label>
-                            <p class="help">Authorized to approve new user registrations</p>
-                        </div>
-                    </div>
-                </form>
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button is-primary" id="save-user">Save changes</button>
-                <button class="button" id="cancel-edit-user">Cancel</button>
-            </footer>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="save-user">Save changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancel-edit-user">Cancel</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Edit Prayer Calendar Entry Modal -->
-    <div class="modal" id="edit-calendar-modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Edit Prayer Calendar Entry</p>
-                <button class="delete" aria-label="close"></button>
-            </header>
-            <section class="modal-card-body">
-                <form id="edit-calendar-form">
-                    <input type="hidden" id="edit-calendar-id">
-                    <div class="field">
-                        <label class="label">Day of Month</label>
-                        <div class="control">
-                            <div class="select is-fullwidth">
-                                <select id="edit-calendar-day">
-                                    <!-- Options 1-31 will be added dynamically -->
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div id="edit-other-entry-container">
-                        <div class="field">
-                            <label class="label">Name</label>
-                            <div class="control">
-                                <input class="input" type="text" id="edit-calendar-name" placeholder="Person or organization name">
-                            </div>
+    <div class="modal fade" id="edit-calendar-modal" tabindex="-1" aria-labelledby="edit-calendar-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-calendar-title">Edit Prayer Calendar Entry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-calendar-form">
+                        <input type="hidden" id="edit-calendar-id">
+                        <div class="mb-3">
+                            <label for="edit-calendar-day" class="form-label">Day of Month</label>
+                            <select class="form-select" id="edit-calendar-day">
+                                <!-- Options 1-31 will be added dynamically -->
+                            </select>
                         </div>
                         
-                        <div class="field">
-                            <label class="label">Image</label>
-                            <div class="file has-name is-fullwidth">
-                                <label class="file-label">
-                                    <input class="file-input" type="file" id="edit-calendar-image" accept="image/*">
-                                    <span class="file-cta">
-                                        <span class="file-icon">
-                                            <i class="fas fa-upload"></i>
-                                        </span>
-                                        <span class="file-label">
-                                            Choose a file…
-                                        </span>
-                                    </span>
-                                    <span class="file-name" id="edit-calendar-image-name">
-                                        No file selected
-                                    </span>
-                                </label>
+                        <div id="edit-other-entry-container">
+                            <div class="mb-3">
+                                <label for="edit-calendar-name" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="edit-calendar-name" placeholder="Person or organization name">
                             </div>
-                            <div class="mt-2">
-                                <img id="edit-calendar-image-preview" style="max-width: 100%; max-height: 200px;">
+                            
+                            <div class="mb-3">
+                                <label for="edit-calendar-image" class="form-label">Image</label>
+                                <div class="input-group mb-2">
+                                    <input type="file" class="form-control" id="edit-calendar-image" accept="image/*">
+                                    <label class="input-group-text" for="edit-calendar-image">
+                                        <i class="bi bi-upload"></i>
+                                    </label>
+                                </div>
+                                <div class="form-text" id="edit-calendar-image-name">No file selected</div>
+                                <div class="mt-2">
+                                    <img id="edit-calendar-image-preview" class="img-fluid" style="max-height: 200px;">
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="field">
-                            <label class="label">Prayer Points</label>
-                            <div class="control">
-                                <textarea class="textarea" id="edit-calendar-prayer-points" placeholder="Enter prayer points"></textarea>
+                            
+                            <div class="mb-3">
+                                <label for="edit-calendar-prayer-points" class="form-label">Prayer Points</label>
+                                <textarea class="form-control" id="edit-calendar-prayer-points" rows="4" placeholder="Enter prayer points"></textarea>
                             </div>
                         </div>
-                    </div>
-                </form>
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button is-primary" id="save-calendar-entry">Save changes</button>
-                <button class="button" id="cancel-edit-calendar">Cancel</button>
-            </footer>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="save-calendar-entry">Save changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancel-edit-calendar">Cancel</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Edit Prayer Update Modal -->
-    <div class="modal" id="edit-update-modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Edit Prayer Update</p>
-                <button class="delete" aria-label="close"></button>
-            </header>
-            <section class="modal-card-body">
-                <form id="edit-update-form">
-                    <input type="hidden" id="edit-update-id">
-                    <div class="field">
-                        <label class="label">Title</label>
-                        <div class="control">
-                            <input class="input" type="text" id="edit-update-title" placeholder="Weekly Prayer Update - [date]">
+    <div class="modal fade" id="edit-update-modal" tabindex="-1" aria-labelledby="edit-update-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-update-title">Edit Prayer Update</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-update-form">
+                        <input type="hidden" id="edit-update-id">
+                        <div class="mb-3">
+                            <label for="edit-update-title-input" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="edit-update-title-input" placeholder="Weekly Prayer Update - [date]">
                         </div>
-                    </div>
-                    
-                    <div class="field">
-                        <label class="label">Content</label>
-                        <div class="control">
+                        
+                        <div class="mb-3">
+                            <label for="edit-update-editor" class="form-label">Content</label>
                             <div id="edit-update-editor"></div>
                         </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <div>
+                            <button type="button" class="btn btn-danger me-2" id="delete-update">Delete</button>
+                            <button type="button" class="btn btn-warning me-2" id="archive-update">Archive</button>
+                            <button type="button" class="btn btn-success me-2" id="unarchive-update">Unarchive</button>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal" id="cancel-edit-update">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="save-update">Save changes</button>
+                        </div>
                     </div>
-                </form>
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button is-primary" id="save-update">Save changes</button>
-                <button class="button" id="archive-update">Archive Update</button>
-                <button class="button" id="unarchive-update">Unarchive Update</button>
-                <button class="button is-danger" id="delete-update">Delete Update</button>
-                <button class="button" id="cancel-edit-update">Cancel</button>
-            </footer>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Edit Urgent Prayer Modal -->
-    <div class="modal" id="edit-urgent-modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Edit Urgent Prayer Request</p>
-                <button class="delete" aria-label="close"></button>
-            </header>
-            <section class="modal-card-body">
-                <form id="edit-urgent-form">
-                    <input type="hidden" id="edit-urgent-id">
-                    <div class="field">
-                        <label class="label">Title</label>
-                        <div class="control">
-                            <input class="input" type="text" id="edit-urgent-title" placeholder="Urgent prayer for...">
+    <div class="modal fade" id="edit-urgent-modal" tabindex="-1" aria-labelledby="edit-urgent-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-urgent-title">Edit Urgent Prayer Request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-urgent-form">
+                        <input type="hidden" id="edit-urgent-id">
+                        <div class="mb-3">
+                            <label for="edit-urgent-title-input" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="edit-urgent-title-input" placeholder="Urgent prayer for...">
                         </div>
-                    </div>
-                    
-                    <div class="field">
-                        <label class="label">Content</label>
-                        <div class="control">
+                        
+                        <div class="mb-3">
+                            <label for="edit-urgent-editor" class="form-label">Content</label>
                             <div id="edit-urgent-editor"></div>
                         </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <div>
+                            <button type="button" class="btn btn-danger me-2" id="delete-urgent">Delete</button>
+                            <button type="button" class="btn btn-warning me-2" id="deactivate-urgent">Deactivate</button>
+                            <button type="button" class="btn btn-success me-2" id="activate-urgent">Activate</button>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal" id="cancel-edit-urgent">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="save-urgent">Save changes</button>
+                        </div>
                     </div>
-                </form>
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button is-primary" id="save-urgent">Save changes</button>
-                <button class="button is-warning" id="deactivate-urgent">Deactivate Request</button>
-                <button class="button is-success" id="activate-urgent">Activate Request</button>
-                <button class="button is-danger" id="delete-urgent">Delete Request</button>
-                <button class="button" id="cancel-edit-urgent">Cancel</button>
-            </footer>
+                </div>
+            </div>
         </div>
     </div>
 

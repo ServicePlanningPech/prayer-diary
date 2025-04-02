@@ -273,41 +273,43 @@ async function createUrgentPrayer(e) {
 
 // Open edit urgent prayer modal
 function openEditUrgentModal(prayer) {
-    const modal = document.getElementById('edit-urgent-modal');
-    
     // Populate form
     document.getElementById('edit-urgent-id').value = prayer.id;
-    document.getElementById('edit-urgent-title').value = prayer.title;
+    document.getElementById('edit-urgent-title-input').value = prayer.title;
     
     // Set content in Quill editor
     editUrgentEditor.root.innerHTML = prayer.content;
     
     // Show/hide activate/deactivate buttons based on current state
     if (prayer.is_active) {
-        document.getElementById('activate-urgent').classList.add('is-hidden');
-        document.getElementById('deactivate-urgent').classList.remove('is-hidden');
+        document.getElementById('activate-urgent').style.display = 'none';
+        document.getElementById('deactivate-urgent').style.display = 'inline-block';
     } else {
-        document.getElementById('activate-urgent').classList.remove('is-hidden');
-        document.getElementById('deactivate-urgent').classList.add('is-hidden');
+        document.getElementById('activate-urgent').style.display = 'inline-block';
+        document.getElementById('deactivate-urgent').style.display = 'none';
     }
     
     // Set up event listeners
     document.getElementById('save-urgent').onclick = saveUrgentPrayer;
     document.getElementById('deactivate-urgent').onclick = () => {
         toggleUrgentActive(prayer.id, false);
-        modal.classList.remove('is-active');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-urgent-modal'));
+        modal.hide();
     };
     document.getElementById('activate-urgent').onclick = () => {
         toggleUrgentActive(prayer.id, true);
-        modal.classList.remove('is-active');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-urgent-modal'));
+        modal.hide();
     };
     document.getElementById('delete-urgent').onclick = () => {
         deleteUrgentPrayer(prayer.id);
-        modal.classList.remove('is-active');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-urgent-modal'));
+        modal.hide();
     };
     
-    // Show modal
-    modal.classList.add('is-active');
+    // Show modal using Bootstrap
+    const modal = new bootstrap.Modal(document.getElementById('edit-urgent-modal'));
+    modal.show();
 }
 
 // Save edited urgent prayer
@@ -319,7 +321,7 @@ async function saveUrgentPrayer() {
     
     try {
         const prayerId = document.getElementById('edit-urgent-id').value;
-        const title = document.getElementById('edit-urgent-title').value.trim();
+        const title = document.getElementById('edit-urgent-title-input').value.trim();
         const content = editUrgentEditor.root.innerHTML;
         
         if (!title) {
@@ -342,7 +344,8 @@ async function saveUrgentPrayer() {
         if (error) throw error;
         
         // Close modal
-        document.getElementById('edit-urgent-modal').classList.remove('is-active');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-urgent-modal'));
+        modal.hide();
         
         // Reload urgent prayers
         loadUrgentAdmin();

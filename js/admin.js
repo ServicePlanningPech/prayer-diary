@@ -121,8 +121,6 @@ async function loadUsers() {
 
 // Open the edit user modal
 function openEditUserModal(user) {
-    const modal = document.getElementById('edit-user-modal');
-    
     // Populate form fields
     document.getElementById('edit-user-id').value = user.id;
     document.getElementById('user-role').value = user.user_role;
@@ -144,8 +142,9 @@ function openEditUserModal(user) {
         approvalAdminCheckbox.checked = false;
     }
     
-    // Show modal
-    modal.classList.add('is-active');
+    // Show modal using Bootstrap's modal method
+    const modal = new bootstrap.Modal(document.getElementById('edit-user-modal'));
+    modal.show();
     
     // Set up save button
     document.getElementById('save-user').onclick = saveUserPermissions;
@@ -197,8 +196,9 @@ async function saveUserPermissions() {
             
         if (error) throw error;
         
-        // Close modal
-        document.getElementById('edit-user-modal').classList.remove('is-active');
+        // Close modal using Bootstrap's modal method
+        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-user-modal'));
+        modal.hide();
         
         // Reload users
         loadUsers();

@@ -294,22 +294,20 @@ async function createPrayerUpdate(e) {
 
 // Open edit update modal
 function openEditUpdateModal(update) {
-    const modal = document.getElementById('edit-update-modal');
-    
     // Populate form
     document.getElementById('edit-update-id').value = update.id;
-    document.getElementById('edit-update-title').value = update.title;
+    document.getElementById('edit-update-title-input').value = update.title;
     
     // Set content in Quill editor
     editUpdateEditor.root.innerHTML = update.content;
     
     // Show/hide archive/unarchive buttons based on current state
     if (update.is_archived) {
-        document.getElementById('archive-update').classList.add('is-hidden');
-        document.getElementById('unarchive-update').classList.remove('is-hidden');
+        document.getElementById('archive-update').style.display = 'none';
+        document.getElementById('unarchive-update').style.display = 'inline-block';
     } else {
-        document.getElementById('archive-update').classList.remove('is-hidden');
-        document.getElementById('unarchive-update').classList.add('is-hidden');
+        document.getElementById('archive-update').style.display = 'inline-block';
+        document.getElementById('unarchive-update').style.display = 'none';
     }
     
     // Set up event listeners
@@ -318,8 +316,9 @@ function openEditUpdateModal(update) {
     document.getElementById('unarchive-update').onclick = () => toggleArchiveUpdate(update.id, false);
     document.getElementById('delete-update').onclick = () => deleteUpdate(update.id);
     
-    // Show modal
-    modal.classList.add('is-active');
+    // Show modal using Bootstrap
+    const modal = new bootstrap.Modal(document.getElementById('edit-update-modal'));
+    modal.show();
 }
 
 // Save edited update
@@ -331,7 +330,7 @@ async function saveUpdate() {
     
     try {
         const updateId = document.getElementById('edit-update-id').value;
-        const title = document.getElementById('edit-update-title').value.trim();
+        const title = document.getElementById('edit-update-title-input').value.trim();
         const content = editUpdateEditor.root.innerHTML;
         
         if (!title) {
@@ -353,8 +352,9 @@ async function saveUpdate() {
             
         if (error) throw error;
         
-        // Close modal
-        document.getElementById('edit-update-modal').classList.remove('is-active');
+        // Close modal using Bootstrap
+        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-update-modal'));
+        modal.hide();
         
         // Reload updates
         loadUpdatesAdmin();
@@ -384,7 +384,8 @@ async function toggleArchiveUpdate(updateId, archive) {
         if (error) throw error;
         
         // Close modal if open
-        document.getElementById('edit-update-modal').classList.remove('is-active');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-update-modal'));
+        if (modal) modal.hide();
         
         // Reload updates
         loadUpdatesAdmin();
@@ -412,8 +413,9 @@ async function deleteUpdate(updateId) {
             
         if (error) throw error;
         
-        // Close modal
-        document.getElementById('edit-update-modal').classList.remove('is-active');
+        // Close modal using Bootstrap
+        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-update-modal'));
+        if (modal) modal.hide();
         
         // Reload updates
         loadUpdatesAdmin();
