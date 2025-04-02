@@ -216,22 +216,42 @@ async function updateUserApproval(userId, state) {
 // Send approval email to user
 async function sendApprovalEmail(userId) {
     try {
-        // Get user email using our custom function
-        const { data: email, error: emailError } = await supabase
-            .rpc('get_user_email', { user_id: userId });
-            
-        if (emailError) throw emailError;
-        
-        // Get user profile
+        // First try to get email from profile
         const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('full_name')
+            .select('full_name, email')
             .eq('id', userId)
             .single();
             
         if (profileError) throw profileError;
         
         const name = profileData.full_name || 'Church Member';
+        let email = profileData.email;
+        
+        // Fallback to RPC function if email not in profile
+        if (!email) {
+            try {
+                const { data: emailData, error: emailError } = await supabase
+                    .rpc('get_user_email', { user_id: userId });
+                
+                if (!emailError && emailData) {
+                    email = emailData;
+                    
+                    // Save email to profile for future use
+                    await supabase
+                        .from('profiles')
+                        .update({ email: email })
+                        .eq('id', userId);
+                }
+            } catch (e) {
+                console.warn('Error getting email from RPC:', e);
+            }
+        }
+        
+        // Final fallback
+        if (!email && name.includes('@')) {
+            email = name;
+        }
         
         if (!email) {
             throw new Error('Unable to retrieve user email');

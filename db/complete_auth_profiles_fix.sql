@@ -44,7 +44,7 @@ GRANT EXECUTE ON FUNCTION public.get_user_full_name TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_full_name TO anon;
 GRANT EXECUTE ON FUNCTION public.get_user_full_name TO service_role;
 
--- Step 4: Update the user trigger function to correctly set the full name
+-- Step 4: Update the user trigger function to correctly set the full name and email
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -53,8 +53,8 @@ BEGIN
   -- Get the full name from metadata if available, otherwise use email
   SELECT COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email) INTO full_name_val;
   
-  INSERT INTO public.profiles (id, full_name, user_role, approval_state)
-  VALUES (NEW.id, full_name_val, 'User', 'Pending');
+  INSERT INTO public.profiles (id, full_name, user_role, approval_state, email)
+  VALUES (NEW.id, full_name_val, 'User', 'Pending', NEW.email);
   
   RETURN NEW;
 END;

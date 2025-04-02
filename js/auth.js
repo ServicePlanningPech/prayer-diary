@@ -153,13 +153,26 @@ async function handleAuth(e) {
             
             // Also update the profile's full_name and email directly to ensure it's set
             if (data && data.user) {
-                await supabase
-                    .from('profiles')
-                    .update({ 
-                        full_name: fullName,
-                        email: email
-                    })
-                    .eq('id', data.user.id);
+                // Wait a moment for the profile to be created by the trigger
+                setTimeout(async () => {
+                    try {
+                        const { error: updateError } = await supabase
+                            .from('profiles')
+                            .update({ 
+                                full_name: fullName,
+                                email: email
+                            })
+                            .eq('id', data.user.id);
+                            
+                        if (updateError) {
+                            console.error('Error updating profile during signup:', updateError);
+                        } else {
+                            console.log('Successfully updated profile during signup');
+                        }
+                    } catch (e) {
+                        console.error('Exception updating profile during signup:', e);
+                    }
+                }, 1000); // Give the trigger a second to create the profile
             }
             
             if (error) throw error;
