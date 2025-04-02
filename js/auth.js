@@ -359,12 +359,14 @@ async function createSuperAdmin() {
 async function notifyAdminsAboutNewUser(userName, userEmail) {
     if (!EMAIL_ENABLED) {
         console.log('Email notifications are disabled. Would have sent admin notification for new user:', userName);
-        return;
+        return false;
     }
     
     try {
+        console.log('Attempting to find admin with approval rights...');
+        
         // Fetch the first administrator with approval_admin flag set to TRUE
-        const { data: admin, error } = await supabase
+        const { data: admins, error: queryError } = await supabase
             .from('profiles')
             .select(`
                 id, 
@@ -373,21 +375,24 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
             `)
             .eq('user_role', 'Administrator')
             .eq('approval_state', 'Approved')
-            .eq('approval_admin', true)
-            .limit(1)
-            .single();
+            .eq('approval_admin', true);
             
-        if (error) {
-            // If no matching record was found or another error occurred
-            if (error.code === 'PGRST116') {
-                console.log('No admin with approval_admin rights found to notify');
-                return false;
-            }
-            throw error;
+        if (queryError) {
+            console.error('Database query error:', queryError.message);
+            return false;
         }
         
-        if (!admin || !admin.auth || !admin.auth.email) {
-            console.log('No admin email found to notify');
+        // Check if we found any admins
+        if (!admins || admins.length === 0) {
+            console.log('No admin with approval_admin rights found to notify');
+            return false;
+        }
+        
+        // Get the first admin from the results
+        const admin = admins[0];
+        
+        if (!admin.auth || !admin.auth.email) {
+            console.log('Admin found but no email address available');
             return false;
         }
         
@@ -421,24 +426,34 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
             </div>
         `;
         
-        // Send the email using the Edge Function mechanism
-        const result = await sendEmail({
-            to: admin.auth.email,
-            subject: `Prayer Diary: New User Registration - ${userName}`,
-            html: htmlContent,
-            userId: admin.id,
-            contentType: 'new_user_notification'
-        });
+        console.log(`Attempting to send email to ${admin.auth.email}...`);
         
-        if (result.success) {
-            console.log(`Successfully sent notification email to approval admin: ${admin.full_name} (${admin.auth.email})`);
-            return true;
-        } else {
-            console.error(`Failed to send notification email: ${result.error}`);
+        // Send the email using the Edge Function mechanism
+        try {
+            const result = await sendEmail({
+                to: admin.auth.email,
+                subject: `Prayer Diary: New User Registration - ${userName}`,
+                html: htmlContent,
+                userId: admin.id,
+                contentType: 'new_user_notification'
+            });
+            
+            if (result && result.success) {
+                console.log(`Successfully sent notification email to approval admin: ${admin.full_name}`);
+                return true;
+            } else {
+                const errorMsg = result && result.error ? result.error : 'Unknown email error';
+                console.error(`Failed to send notification email: ${errorMsg}`);
+                return false;
+            }
+        } catch (emailError) {
+            console.error('Email sending error:', emailError.message || emailError);
             return false;
         }
     } catch (error) {
-        console.error('Error notifying admin about new user:', error);
+        // Improved error logging with more details
+        console.error('Error in notifyAdminsAboutNewUser:', error.message || error);
+        if (error.stack) console.error(error.stack);
         return false;
     }
 }
