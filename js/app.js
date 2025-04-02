@@ -1,5 +1,8 @@
 // Main Application JavaScript
 
+// Version timestamp for cache busting
+const APP_VERSION_TIMESTAMP = Date.now();
+
 // Initialize the app when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
 
