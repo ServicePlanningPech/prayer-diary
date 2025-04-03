@@ -186,12 +186,15 @@ async function testDatabaseConnection() {
         // Test 1: Basic connection test
         let test1Result = '<div class="alert alert-info">Checking Supabase connection...</div>';
         try {
-            const { data, error } = await supabase.from('profiles').select('count(*)', { count: 'exact' }).limit(0);
+            // Correct Supabase count query syntax
+            const { count, error } = await supabase
+                .from('profiles')
+                .select('*', { count: 'exact', head: true });
             
             if (error) {
                 test1Result = `<div class="alert alert-danger">Database connection error: ${error.message}</div>`;
             } else {
-                test1Result = `<div class="alert alert-success">Database connection successful. Found ${data?.count || 0} profiles.</div>`;
+                test1Result = `<div class="alert alert-success">Database connection successful. Found ${count || 0} profiles.</div>`;
             }
         } catch (err) {
             test1Result = `<div class="alert alert-danger">Exception during database test: ${err.message}</div>`;
@@ -200,11 +203,29 @@ async function testDatabaseConnection() {
         // Test 2: User creation test
         let test2Result = '<div class="alert alert-info">Testing user creation...</div>';
         try {
+            // First test a simple database query
+            const { error: tableError } = await supabase
+                .from('profiles')
+                .select('id')
+                .limit(1);
+                
+            if (tableError) {
+                test2Result = `<div class="alert alert-danger">
+                    Cannot access profiles table: ${tableError.message}<br>
+                    This suggests a permission or database connectivity issue.
+                </div>`;
+                return; // Skip user creation if basic query fails
+            }
+            
             // Generate unique test credentials
             const timestamp = Date.now();
-            const testEmail = `test-${timestamp}@example.com`;
+            const randomString = Math.random().toString(36).substring(2, 8);
+            const testEmail = `test-${timestamp}-${randomString}@example.com`;
             const testPassword = `Test${timestamp}!`;
             
+            console.log('Testing auth with email:', testEmail);
+            
+            // Try a minimal signup with no additional options
             const { data, error } = await supabase.auth.signUp({
                 email: testEmail,
                 password: testPassword
@@ -214,7 +235,15 @@ async function testDatabaseConnection() {
                 test2Result = `<div class="alert alert-danger">
                     User creation failed: ${error.message}<br>
                     Code: ${error.code || 'N/A'}<br>
+                    Status: ${error.status || 'N/A'}<br>
                     ${error.details ? `Details: ${JSON.stringify(error.details)}` : ''}
+                </div>`;
+                
+                // Add Supabase connection info
+                test2Result += `<div class="mt-3 text-muted small">
+                    Connection info:<br>
+                    URL: ${SUPABASE_URL.substring(0, 20)}... (first 20 chars)<br>
+                    Key: ${SUPABASE_ANON_KEY.substring(0, 20)}... (first 20 chars)
                 </div>`;
             } else {
                 test2Result = `<div class="alert alert-success">
@@ -222,6 +251,39 @@ async function testDatabaseConnection() {
                     User ID: ${data?.user?.id || 'Unknown'}<br>
                     Email: ${testEmail}
                 </div>`;
+                
+                // Try to create a profile manually as well
+                if (data?.user?.id) {
+                    try {
+                        const { error: profileError } = await supabase
+                            .from('profiles')
+                            .insert({
+                                id: data.user.id,
+                                full_name: 'Test User',
+                                user_role: 'User',
+                                approval_state: 'Pending',
+                                profile_set: false,
+                                prayer_update_notification_method: 'email',
+                                urgent_prayer_notification_method: 'email',
+                                GDPR_accepted: false
+                            });
+                            
+                        if (profileError) {
+                            test2Result += `<div class="alert alert-warning mt-2">
+                                User created but profile creation failed: ${profileError.message}<br>
+                                This indicates the database trigger or RLS policies may be the issue.
+                            </div>`;
+                        } else {
+                            test2Result += `<div class="alert alert-success mt-2">
+                                Profile record also created successfully!
+                            </div>`;
+                        }
+                    } catch (profileError) {
+                        test2Result += `<div class="alert alert-warning mt-2">
+                            Profile creation threw an exception: ${profileError.message}
+                        </div>`;
+                    }
+                }
             }
         } catch (err) {
             test2Result = `<div class="alert alert-danger">Exception during user creation test: ${err.message}</div>`;
