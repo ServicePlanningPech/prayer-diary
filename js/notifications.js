@@ -219,6 +219,20 @@ async function sendWelcomeEmail(email, name, userId = null) {
 // Log a notification in the database
 async function logNotification(userId, notificationType, contentType, status, errorMessage = null) {
     try {
+        // Only log notifications if the user is approved
+        // This prevents 403 errors during registration when the user profile might not be fully set up yet
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('approval_state')
+            .eq('id', userId)
+            .single();
+            
+        // Skip logging for unapproved users or if there was an error checking the profile
+        if (profileError || (profile && profile.approval_state !== 'Approved')) {
+            console.log(`Skipping notification logging for non-approved user or unknown user: ${userId}`);
+            return true;
+        }
+        
         const { data, error } = await supabase
             .from('notification_logs')
             .insert({
@@ -230,10 +244,14 @@ async function logNotification(userId, notificationType, contentType, status, er
                 error_message: errorMessage
             });
             
-        if (error) throw error;
+        if (error) {
+            console.error('Error inserting notification log:', error);
+            return false;
+        }
         
         return true;
     } catch (error) {
+        // Just log the error but don't let it break the app flow
         console.error('Error logging notification:', error);
         return false;
     }
@@ -346,17 +364,29 @@ async function sendEmail(options) {
         // Log successful email delivery
         console.log('Email sent successfully to:', to);
         
-        // Log to notification_logs table if userId is provided
+        // Log to notification_logs table if userId is provided and user is approved
         if (userId && contentType) {
             try {
-                await supabase
-                    .from('notification_logs')
-                    .insert({
-                        user_id: userId,
-                        notification_type: 'email',
-                        content_type: contentType,
-                        status: 'sent'
-                    });
+                // Check if the user is approved first
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('approval_state')
+                    .eq('id', userId)
+                    .single();
+                    
+                // Only log for approved users
+                if (!profileError && profile && profile.approval_state === 'Approved') {
+                    await supabase
+                        .from('notification_logs')
+                        .insert({
+                            user_id: userId,
+                            notification_type: 'email',
+                            content_type: contentType,
+                            status: 'sent'
+                        });
+                } else {
+                    console.log('Skipping notification logging for non-approved user');
+                }
             } catch (logError) {
                 console.error('Failed to log email notification:', logError);
                 // Continue even if logging fails
@@ -367,18 +397,30 @@ async function sendEmail(options) {
     } catch (error) {
         console.error('Error sending email:', error);
         
-        // Log failed email if userId is provided
+        // Log failed email if userId is provided and user is approved
         if (userId && contentType) {
             try {
-                await supabase
-                    .from('notification_logs')
-                    .insert({
-                        user_id: userId,
-                        notification_type: 'email',
-                        content_type: contentType,
-                        status: 'failed',
-                        error_message: error.message
-                    });
+                // Check if the user is approved first
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('approval_state')
+                    .eq('id', userId)
+                    .single();
+                    
+                // Only log for approved users
+                if (!profileError && profile && profile.approval_state === 'Approved') {
+                    await supabase
+                        .from('notification_logs')
+                        .insert({
+                            user_id: userId,
+                            notification_type: 'email',
+                            content_type: contentType,
+                            status: 'failed',
+                            error_message: error.message
+                        });
+                } else {
+                    console.log('Skipping error logging for non-approved user');
+                }
             } catch (logError) {
                 console.error('Failed to log email error:', logError);
             }

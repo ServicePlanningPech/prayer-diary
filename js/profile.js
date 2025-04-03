@@ -132,22 +132,41 @@ async function saveProfile(e) {
         const profileImage = document.getElementById('profile-image').files[0];
         
         if (profileImage) {
-            const fileExt = profileImage.name.split('.').pop();
-            const fileName = `${getUserId()}_${Date.now()}.${fileExt}`;
-            const filePath = `profiles/${fileName}`;
-            
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('prayer-diary')
-                .upload(filePath, profileImage);
+            try {
+                console.log('Uploading profile image...');
+                const fileExt = profileImage.name.split('.').pop();
+                const fileName = `${getUserId()}_${Date.now()}.${fileExt}`;
+                const filePath = `profiles/${fileName}`;
                 
-            if (uploadError) throw uploadError;
-            
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('prayer-diary')
-                .getPublicUrl(filePath);
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('prayer-diary')
+                    .upload(filePath, profileImage);
+                    
+                if (uploadError) {
+                    console.error('Profile image upload error:', uploadError);
+                    
+                    // Provide a user-friendly error message based on the error type
+                    if (uploadError.statusCode === 403) {
+                        throw new Error('Permission denied when uploading image. Your account may need approval first.');
+                    } else {
+                        throw uploadError;
+                    }
+                }
                 
-            profileImageUrl = publicUrl;
+                console.log('Profile image uploaded successfully');
+                
+                // Get public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('prayer-diary')
+                    .getPublicUrl(filePath);
+                    
+                profileImageUrl = publicUrl;
+                console.log('Profile image URL:', profileImageUrl);
+            } catch (uploadErr) {
+                console.error('Error in image upload process:', uploadErr);
+                // Continue with profile update even if image upload fails
+                showNotification('Warning', `Profile saved, but image upload failed: ${uploadErr.message}`);
+            }
         }
         
         // Update the profile
