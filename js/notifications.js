@@ -325,21 +325,14 @@ async function sendEmail(options) {
         
         if (error) throw error;
         
-        
-        return { success: true, data };
-    } catch (error) {
-        console.error('Error sending email:', error);
-        
-        // Notification logging has been disabled
-
-        
-        return { success: false, error: error.message };
-
         // Log successful email delivery
         console.log('Email sent successfully to:', to);
         
         return { success: true, data };
-
+    } catch (error) {
+        console.error('Error sending email:', error);
+        return { success: false, error: error.message };
+    }
 }
 
 // Actual implementation of SMS sending via Twilio (to be implemented)
