@@ -197,20 +197,57 @@ async function saveProfile(e) {
 // Show GDPR consent modal
 function showGdprConsentModal() {
     // Get the modal element
-    gdprModal = new bootstrap.Modal(document.getElementById('gdpr-consent-modal'));
+    const modalElement = document.getElementById('gdpr-consent-modal');
+    gdprModal = new bootstrap.Modal(modalElement);
     
     // Set up the event listeners
     document.getElementById('gdpr-consent-check').addEventListener('change', function() {
         document.getElementById('gdpr-consent-submit').disabled = !this.checked;
     });
     
-    document.getElementById('gdpr-consent-submit').addEventListener('click', async function() {
-        gdprModal.hide();
+    // Handle modal hidden event - ensure we clean up backdrop
+    modalElement.addEventListener('hidden.bs.modal', function() {
+        // Remove the backdrop manually if it's still present
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.parentNode.removeChild(backdrop);
+        }
+        // Restore body classes
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
         
-        // Complete the profile save with GDPR consent
-        if (profileDataToSave) {
-            profileDataToSave.gdprAccepted = true;
-            await completeProfileSave(profileDataToSave);
+        // Reset button state if user canceled
+        if (profileDataToSave && profileDataToSave.submitBtn) {
+            profileDataToSave.submitBtn.textContent = profileDataToSave.originalText;
+            profileDataToSave.submitBtn.disabled = false;
+        }
+    });
+    
+    // Handle cancel button
+    document.getElementById('gdpr-consent-cancel').addEventListener('click', function() {
+        gdprModal.hide();
+        // Reset button state
+        if (profileDataToSave && profileDataToSave.submitBtn) {
+            profileDataToSave.submitBtn.textContent = profileDataToSave.originalText;
+            profileDataToSave.submitBtn.disabled = false;
+            showNotification('Info', 'Profile save canceled. You must accept the data privacy notice to save your profile.');
+        }
+    });
+    
+    document.getElementById('gdpr-consent-submit').addEventListener('click', async function() {
+        try {
+            // Complete the profile save with GDPR consent
+            if (profileDataToSave) {
+                profileDataToSave.gdprAccepted = true;
+                await completeProfileSave(profileDataToSave);
+            }
+        } finally {
+            // Ensure modal is properly disposed
+            gdprModal.hide();
+            setTimeout(() => {
+                gdprModal.dispose();
+            }, 500);
         }
     });
     

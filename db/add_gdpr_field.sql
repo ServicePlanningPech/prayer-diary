@@ -3,7 +3,7 @@
 
 -- Add the GDPR_accepted column if it doesn't exist
 ALTER TABLE profiles 
-ADD COLUMN IF NOT EXISTS GDPR_accepted BOOLEAN NOT NULL DEFAULT FALSE;
+ADD COLUMN IF NOT EXISTS "GDPR_accepted" BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Administrators are automatically set to GDPR_accepted = TRUE
 UPDATE profiles 
