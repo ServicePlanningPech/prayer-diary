@@ -12,6 +12,9 @@ function initEmailTestView() {
     // Set up the form submission
     document.getElementById('test-email-form').addEventListener('submit', sendTestEmail);
     
+    // Set up database test button
+    document.getElementById('test-database-btn').addEventListener('click', testDatabaseConnection);
+    
     // Check email configuration status
     checkEmailConfig();
     
@@ -171,5 +174,71 @@ function updateTestResults(to, subject, result) {
         for (let i = 5; i < results.length; i++) {
             container.removeChild(results[i]);
         }
+    }
+}
+
+// Add new diagnostic test function
+async function testDatabaseConnection() {
+    try {
+        const container = document.getElementById('test-results-container');
+        container.innerHTML = '<div class="alert alert-info">Testing database connection...</div>';
+        
+        // Test 1: Basic connection test
+        let test1Result = '<div class="alert alert-info">Checking Supabase connection...</div>';
+        try {
+            const { data, error } = await supabase.from('profiles').select('count(*)', { count: 'exact' }).limit(0);
+            
+            if (error) {
+                test1Result = `<div class="alert alert-danger">Database connection error: ${error.message}</div>`;
+            } else {
+                test1Result = `<div class="alert alert-success">Database connection successful. Found ${data?.count || 0} profiles.</div>`;
+            }
+        } catch (err) {
+            test1Result = `<div class="alert alert-danger">Exception during database test: ${err.message}</div>`;
+        }
+        
+        // Test 2: User creation test
+        let test2Result = '<div class="alert alert-info">Testing user creation...</div>';
+        try {
+            // Generate unique test credentials
+            const timestamp = Date.now();
+            const testEmail = `test-${timestamp}@example.com`;
+            const testPassword = `Test${timestamp}!`;
+            
+            const { data, error } = await supabase.auth.signUp({
+                email: testEmail,
+                password: testPassword
+            });
+            
+            if (error) {
+                test2Result = `<div class="alert alert-danger">
+                    User creation failed: ${error.message}<br>
+                    Code: ${error.code || 'N/A'}<br>
+                    ${error.details ? `Details: ${JSON.stringify(error.details)}` : ''}
+                </div>`;
+            } else {
+                test2Result = `<div class="alert alert-success">
+                    User creation successful!<br>
+                    User ID: ${data?.user?.id || 'Unknown'}<br>
+                    Email: ${testEmail}
+                </div>`;
+            }
+        } catch (err) {
+            test2Result = `<div class="alert alert-danger">Exception during user creation test: ${err.message}</div>`;
+        }
+        
+        // Update the results container with all tests
+        container.innerHTML = `
+            <h5>Diagnostic Test Results</h5>
+            <div class="mb-3">Test 1: Database Connection</div>
+            ${test1Result}
+            <div class="mb-3 mt-4">Test 2: User Creation</div>
+            ${test2Result}
+        `;
+        
+    } catch (error) {
+        console.error('Error running diagnostic tests:', error);
+        document.getElementById('test-results-container').innerHTML = 
+            `<div class="alert alert-danger">Error running diagnostic tests: ${error.message}</div>`;
     }
 }

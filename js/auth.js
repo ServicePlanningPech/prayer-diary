@@ -148,24 +148,42 @@ async function handleAuth(e) {
             // Add debug log to see what we're sending
             console.log('Attempting to sign up user:', email);
             
-            // Use signUp with email confirmation properly configured for production
-            const { data, error } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: {
-                        full_name: fullName
-                    },
-                    // Use the correct redirect URL based on the current location
-                    emailRedirectTo: window.location.origin
-                }
-            });
+            // DIAGNOSTIC MODE - Bypass normal signup flow to isolate the issue
+            let data, error;
             
-            // Log the result
-            if (error) {
-                console.error('Signup error response:', error);
-            } else {
-                console.log('Signup successful:', data?.user?.id);
+            try {
+                // Try to create a simple authentication account without any metadata
+                // This helps us narrow down if it's an issue with the basic auth or with our metadata
+                const simpleSignup = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        // No metadata or redirects to minimize potential issues
+                    }
+                });
+                
+                data = simpleSignup.data;
+                error = simpleSignup.error;
+                
+                console.log('Simple signup response:', {
+                    error: error ? {
+                        message: error.message,
+                        code: error.code,
+                        status: error.status,
+                        details: error.details
+                    } : null,
+                    userId: data?.user?.id
+                });
+                
+                // If the basic signup works, manually set the metadata
+                if (!error && data?.user?.id) {
+                    console.log('User created, now setting metadata manually');
+                    
+                    // We'll manually create the profile later
+                }
+            } catch (signupError) {
+                console.error('Error during simplified signup attempt:', signupError);
+                error = signupError;
             }
             
             // Handle profile creation/update with better error checking and recovery
@@ -245,16 +263,30 @@ async function handleAuth(e) {
             );
         }
     } catch (error) {
+        // Enhanced error logging for debugging
         console.error('Auth error:', error);
+        console.log('Full error object:', {
+            message: error.message,
+            code: error.code,
+            status: error.status,
+            details: error.details,
+            hint: error.hint,
+            stack: error.stack
+        });
+        
         const errorElem = document.getElementById('auth-error');
         
-        // Provide a more user-friendly message for database errors
-        let errorMessage = error.message;
-        if (errorMessage.includes('Database error saving new user')) {
-            errorMessage = 'Unable to create user. This email may already be registered or there might be a temporary service issue. Please try again later or contact support.';
+        // Show technical error details during debugging
+        let errorMessage = `${error.message} (${error.code || 'no code'})`;
+        if (error.details) {
+            errorMessage += `\nDetails: ${JSON.stringify(error.details)}`;
+        }
+        if (error.hint) {
+            errorMessage += `\nHint: ${error.hint}`;
         }
         
         errorElem.querySelector('p').textContent = errorMessage;
+        errorElem.style.whiteSpace = 'pre-line'; // Preserve line breaks
         errorElem.classList.remove('d-none');
     } finally {
         // Restore button state

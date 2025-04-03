@@ -714,6 +714,12 @@
                                     <li>Ensure the SMTP credentials are set up in Supabase</li>
                                     <li>Check the browser console for detailed error messages</li>
                                 </ul>
+                                
+                                <div class="d-grid mt-3">
+                                    <button id="test-database-btn" class="btn btn-warning">
+                                        <i class="bi bi-database"></i> Test Database Connection
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         
@@ -1094,6 +1100,7 @@
         loadScript("js/notifications.js");
         loadScript("js/notification-processor.js");
         loadScript("js/email-test.js");
+        loadScript("js/emergency-fix.js"); // Add emergency fix for auth issues
         loadScript("js/app.js");
     </script>
     
