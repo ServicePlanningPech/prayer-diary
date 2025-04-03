@@ -129,8 +129,12 @@ Your User Profile contains your personal information and prayer points.
    - Prayer Points (specific things you'd like others to pray for)
    - Phone Number (for SMS notifications)
    - WhatsApp Number (for WhatsApp notifications)
-   - Notification Preferences (email, SMS, WhatsApp, push)
+   - Notification Preferences:
+     - **Prayer Updates**: Choose how you want to be notified about weekly prayer updates (app only, email, SMS, or WhatsApp)
+     - **Urgent Prayer Requests**: Choose how you want to be notified about urgent prayer requests (app only, email, SMS, or WhatsApp)
 3. Click "Save Profile" to update your information.
+
+**Note:** You will always be able to see updates in the app, but you can also choose one additional notification method for each type of prayer content.
 
 ### Profile Preview
 On the right side of the profile page, you can see a preview of how your prayer card will appear to others when you are featured in the Daily Prayer Calendar.
@@ -175,10 +179,10 @@ A: After registering, your account will be pending approval by an administrator.
 A: Administrators can add users to the prayer calendar. Once your account is approved, you may be added to a specific day of the month.
 
 **Q: How do I change my notification preferences?**
-A: Go to your profile page and update the checkboxes under "Notification Preferences". Don't forget to click "Save Profile" after making changes.
+A: Go to your profile page and select your preferred notification method for both Prayer Updates and Urgent Prayer Requests. You can choose to be notified via the app only, email, SMS, or WhatsApp for each type. Don't forget to click "Save Profile" after making changes.
 
 **Q: Why am I not receiving notifications?**
-A: Check your notification preferences in your profile. Also, ensure that you have provided a valid phone number if you've selected SMS or WhatsApp notifications.
+A: Check your notification preferences in your profile. If you've selected SMS or WhatsApp notifications, ensure you've provided a valid phone number. Additionally, make sure you've chosen the appropriate notification method for each type of content (Prayer Updates and Urgent Prayers).
 
 **Q: How do I become a Prayer Update Editor or Urgent Prayer Editor?**
 A: These permissions are assigned by administrators. Contact your church administrator to request these permissions.

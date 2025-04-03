@@ -39,7 +39,12 @@ async function sendNotification(type, title, notificationMethods = []) {
 // Send email notifications for the specified type
 async function sendEmailNotifications(type, title) {
     try {
-        // Get users who have opted in for email notifications
+        // Get appropriate notification field based on type
+        const notificationField = type === 'prayer_update' 
+            ? 'prayer_update_notification_method' 
+            : 'urgent_prayer_notification_method';
+        
+        // Get users who have opted in for email notifications for this type
         const { data: users, error } = await supabase
             .from('profiles')
             .select(`
@@ -48,7 +53,7 @@ async function sendEmailNotifications(type, title) {
                 auth:id (email)
             `)
             .eq('approval_state', 'Approved')
-            .eq('notification_email', true);
+            .eq(notificationField, 'email');
             
         if (error) throw error;
         
@@ -79,7 +84,12 @@ async function sendEmailNotifications(type, title) {
 // Send SMS notifications for the specified type
 async function sendSmsNotifications(type, title) {
     try {
-        // Get users who have opted in for SMS notifications
+        // Get appropriate notification field based on type
+        const notificationField = type === 'prayer_update' 
+            ? 'prayer_update_notification_method' 
+            : 'urgent_prayer_notification_method';
+            
+        // Get users who have opted in for SMS notifications for this type
         const { data: users, error } = await supabase
             .from('profiles')
             .select(`
@@ -88,7 +98,7 @@ async function sendSmsNotifications(type, title) {
                 phone_number
             `)
             .eq('approval_state', 'Approved')
-            .eq('notification_sms', true)
+            .eq(notificationField, 'sms')
             .not('phone_number', 'is', null);
             
         if (error) throw error;
@@ -118,7 +128,12 @@ async function sendSmsNotifications(type, title) {
 // Send WhatsApp notifications for the specified type
 async function sendWhatsAppNotifications(type, title) {
     try {
-        // Get users who have opted in for WhatsApp notifications
+        // Get appropriate notification field based on type
+        const notificationField = type === 'prayer_update' 
+            ? 'prayer_update_notification_method' 
+            : 'urgent_prayer_notification_method';
+            
+        // Get users who have opted in for WhatsApp notifications for this type
         const { data: users, error } = await supabase
             .from('profiles')
             .select(`
@@ -127,7 +142,7 @@ async function sendWhatsAppNotifications(type, title) {
                 whatsapp_number
             `)
             .eq('approval_state', 'Approved')
-            .eq('notification_whatsapp', true)
+            .eq(notificationField, 'whatsapp')
             .not('whatsapp_number', 'is', null);
             
         if (error) throw error;

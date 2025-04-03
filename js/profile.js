@@ -19,11 +19,16 @@ async function loadUserProfile() {
         document.getElementById('profile-phone').value = userProfile.phone_number || '';
         document.getElementById('profile-whatsapp').value = userProfile.whatsapp_number || '';
         
-        // Set notification checkboxes
-        document.getElementById('notify-email').checked = userProfile.notification_email;
-        document.getElementById('notify-sms').checked = userProfile.notification_sms;
-        document.getElementById('notify-whatsapp').checked = userProfile.notification_whatsapp;
-        document.getElementById('notify-push').checked = userProfile.notification_push;
+        // Set prayer update notification radio button
+        const prayerUpdateMethod = userProfile.prayer_update_notification_method || 'email';
+        document.querySelector(`input[name="prayer-update-notification"][value="${prayerUpdateMethod}"]`).checked = true;
+        
+        // Set urgent prayer notification radio button
+        const urgentPrayerMethod = userProfile.urgent_prayer_notification_method || 'email';
+        document.querySelector(`input[name="urgent-prayer-notification"][value="${urgentPrayerMethod}"]`).checked = true;
+        
+        // Keep push notification setting in the background
+        document.getElementById('notify-push').checked = userProfile.notification_push || false;
         
         // Set profile preview
         updateProfilePreview();
@@ -118,9 +123,11 @@ async function saveProfile(e) {
         const phoneNumber = document.getElementById('profile-phone').value.trim();
         const whatsappNumber = document.getElementById('profile-whatsapp').value.trim();
         
-        const notifyEmail = document.getElementById('notify-email').checked;
-        const notifySms = document.getElementById('notify-sms').checked;
-        const notifyWhatsapp = document.getElementById('notify-whatsapp').checked;
+        // Get notification preferences
+        const prayerUpdateNotification = document.querySelector('input[name="prayer-update-notification"]:checked').value;
+        const urgentPrayerNotification = document.querySelector('input[name="urgent-prayer-notification"]:checked').value;
+        
+        // Keep push notification setting (hidden in UI)
         const notifyPush = document.getElementById('notify-push').checked;
         
         if (!fullName) {
@@ -178,9 +185,8 @@ async function saveProfile(e) {
                 profile_image_url: profileImageUrl,
                 phone_number: phoneNumber,
                 whatsapp_number: whatsappNumber || phoneNumber, // Use phone number as default if WhatsApp not provided
-                notification_email: notifyEmail,
-                notification_sms: notifySms,
-                notification_whatsapp: notifyWhatsapp,
+                prayer_update_notification_method: prayerUpdateNotification,
+                urgent_prayer_notification_method: urgentPrayerNotification,
                 notification_push: notifyPush,
                 profile_set: true, // Mark profile as completed
                 updated_at: new Date().toISOString()

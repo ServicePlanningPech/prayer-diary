@@ -89,7 +89,8 @@ These steps are optional and can be implemented if you need additional features.
 1. **Test User Registration**
    - Register a new user account
    - Log in as the admin and approve the new user
-   - Verify the new user can access the app features
+   - Verify the new user is prompted to complete their profile before accessing other features
+   - Verify that email notifications are selected by default for both Prayer Updates and Urgent Prayers
 
 2. **Test Prayer Calendar**
    - Add users and other prayer subjects to the calendar

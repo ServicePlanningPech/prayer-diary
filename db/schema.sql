@@ -10,10 +10,9 @@ CREATE TABLE profiles (
   prayer_calendar_editor BOOLEAN NOT NULL DEFAULT FALSE,
   prayer_update_editor BOOLEAN NOT NULL DEFAULT FALSE,
   urgent_prayer_editor BOOLEAN NOT NULL DEFAULT FALSE,
-  notification_email BOOLEAN NOT NULL DEFAULT TRUE,
-  notification_sms BOOLEAN NOT NULL DEFAULT FALSE,
-  notification_whatsapp BOOLEAN NOT NULL DEFAULT FALSE,
-  notification_push BOOLEAN NOT NULL DEFAULT FALSE,
+  prayer_update_notification_method TEXT NOT NULL DEFAULT 'email',
+  urgent_prayer_notification_method TEXT NOT NULL DEFAULT 'email',
+  notification_push BOOLEAN NOT NULL DEFAULT FALSE, -- Keeping for future use
   phone_number TEXT,
   whatsapp_number TEXT,
   profile_set BOOLEAN NOT NULL DEFAULT FALSE,
@@ -143,13 +142,23 @@ CREATE POLICY "Administrators can view all notification logs"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, user_role, approval_state, profile_set)
+  INSERT INTO public.profiles (
+    id, 
+    full_name, 
+    user_role, 
+    approval_state, 
+    profile_set,
+    prayer_update_notification_method,
+    urgent_prayer_notification_method
+  )
   VALUES (
     NEW.id, 
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), 
     'User', 
     'Pending',
-    FALSE
+    FALSE,
+    'email',
+    'email'
   );
   RETURN NEW;
 END;
