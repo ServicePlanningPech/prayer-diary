@@ -239,7 +239,7 @@ async function logNotification(userId, notificationType, contentType, status, er
                 user_id: userId,
                 notification_type: notificationType,
                 content_type: contentType,
-                content_id: null, // We're not tracking specific content IDs yet
+                content_id: crypto.randomUUID(), // Generate a random UUID for the required field
                 status: status,
                 error_message: errorMessage
             });
