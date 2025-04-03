@@ -378,7 +378,7 @@ function showLoggedInState() {
                 <p>Please log out and check your email for the approval notification.</p>
                 <hr>
                 <div class="text-center">
-                    <button id="pending-logout-btn" class="btn btn-primary">Log Out</button>
+                    <button id="pending-logout-btn" class="btn btn-primary" type="button">Log Out</button>
                 </div>
             </div>
         `;
