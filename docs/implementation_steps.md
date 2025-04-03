@@ -12,6 +12,7 @@ This document provides a step-by-step guide to deploying the Prayer Diary app fr
    - Navigate to the SQL Editor in your Supabase dashboard
    - Copy and paste the contents of `db/schema.sql` into the editor
    - Run the SQL script to create all necessary tables and security policies
+   - If you're upgrading an existing installation, also run `db/add_profile_set_field.sql` to add the profile completion tracking
 
 3. **Set Up Storage Buckets**
    - Create a new bucket named `prayer-diary`

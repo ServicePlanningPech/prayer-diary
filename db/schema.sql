@@ -16,6 +16,7 @@ CREATE TABLE profiles (
   notification_push BOOLEAN NOT NULL DEFAULT FALSE,
   phone_number TEXT,
   whatsapp_number TEXT,
+  profile_set BOOLEAN NOT NULL DEFAULT FALSE,
   CONSTRAINT user_role_check CHECK (user_role IN ('Administrator', 'User')),
   CONSTRAINT approval_state_check CHECK (approval_state IN ('Pending', 'Approved', 'Rejected'))
 );
@@ -142,12 +143,13 @@ CREATE POLICY "Administrators can view all notification logs"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, user_role, approval_state)
+  INSERT INTO public.profiles (id, full_name, user_role, approval_state, profile_set)
   VALUES (
     NEW.id, 
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), 
     'User', 
-    'Pending'
+    'Pending',
+    FALSE
   );
   RETURN NEW;
 END;

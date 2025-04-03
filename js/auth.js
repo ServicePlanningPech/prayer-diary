@@ -348,25 +348,44 @@ function showLoggedInState() {
         document.getElementById('landing-view').classList.add('d-none');
         document.getElementById('app-views').classList.remove('d-none');
         
-        // Load initial view (prayer calendar)
-        showView('calendar-view');
-        loadPrayerCalendar();
+        // If profile is not set yet, take user directly to profile page
+        if (userProfile.profile_set === false) {
+            showView('profile-view');
+            showNotification('Welcome', 'Please complete your profile information before using the Prayer Diary.');
+        } else {
+            // Load initial view (prayer calendar)
+            showView('calendar-view');
+            loadPrayerCalendar();
+        }
     } else {
         // Show pending approval message
         document.getElementById('landing-view').classList.remove('d-none');
         document.getElementById('app-views').classList.add('d-none');
         
-        const statusMessage = document.getElementById('auth-status-message');
-        statusMessage.innerHTML = `<div class="alert alert-warning">
-            <p>Your account is pending approval by an administrator. You'll receive an email when your account is approved.</p>
-            <p>In the meantime, you can <a href="#" id="nav-to-profile">complete your profile</a> with your details and prayer points. Your changes will be saved.</p>
-        </div>`;
+        // Disable all navigation buttons except logout
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.id !== 'btn-logout') {
+                link.classList.add('disabled');
+                link.style.pointerEvents = 'none';
+            }
+        });
         
-        // Add profile navigation link
-        document.getElementById('nav-to-profile').addEventListener('click', () => {
-            document.getElementById('landing-view').classList.add('d-none');
-            document.getElementById('app-views').classList.remove('d-none');
-            showView('profile-view');
+        const statusMessage = document.getElementById('auth-status-message');
+        statusMessage.innerHTML = `
+            <div class="alert alert-warning">
+                <h4 class="alert-heading">Account Pending Approval</h4>
+                <p>Your account is pending approval by an administrator. You'll receive an email when your account is approved.</p>
+                <p>Please log out and check your email for the approval notification.</p>
+                <hr>
+                <div class="text-center">
+                    <button id="pending-logout-btn" class="btn btn-primary">Log Out</button>
+                </div>
+            </div>
+        `;
+        
+        // Add logout button event listener
+        document.getElementById('pending-logout-btn').addEventListener('click', () => {
+            logout();
         });
     }
 }

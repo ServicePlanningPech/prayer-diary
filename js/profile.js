@@ -170,37 +170,26 @@ async function saveProfile(e) {
         }
         
         // Update the profile
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .update({
-                    full_name: fullName,
-                    prayer_points: prayerPoints,
-                    profile_image_url: profileImageUrl,
-                    phone_number: phoneNumber,
-                    whatsapp_number: whatsappNumber || phoneNumber, // Use phone number as default if WhatsApp not provided
-                    notification_email: notifyEmail,
-                    notification_sms: notifySms,
-                    notification_whatsapp: notifyWhatsapp,
-                    notification_push: notifyPush,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', getUserId());
-                
-            if (error) {
-                console.error('Profile update error:', error);
-                
-                if (error.code === '42501') { // Permission denied PostgreSQL error
-                    throw new Error('Permission denied. This might be due to a policy restriction. Please try again after your account is approved, or contact the administrator.');
-                } else {
-                    throw error;
-                }
-            }
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({
+                full_name: fullName,
+                prayer_points: prayerPoints,
+                profile_image_url: profileImageUrl,
+                phone_number: phoneNumber,
+                whatsapp_number: whatsappNumber || phoneNumber, // Use phone number as default if WhatsApp not provided
+                notification_email: notifyEmail,
+                notification_sms: notifySms,
+                notification_whatsapp: notifyWhatsapp,
+                notification_push: notifyPush,
+                profile_set: true, // Mark profile as completed
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', getUserId());
             
-            console.log('Profile updated successfully');
-        } catch (updateError) {
-            throw updateError;
-        }
+        if (error) throw error;
+        
+        console.log('Profile updated successfully and marked as set');
         
         // Refresh user profile
         await fetchUserProfile();
