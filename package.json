@@ -1,0 +1,22 @@
+{
+  "name": "prayer-diary",
+  "version": "1.0.0",
+  "description": "A Progressive Web App for church prayer ministry management",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "test:registration": "cypress run --spec \"cypress/e2e/user_registration.cy.js\"",
+    "test:registration:debug": "cypress run --spec \"cypress/e2e/user_registration.cy.js\" --browser chrome --no-exit"
+  },
+  "keywords": [
+    "prayer",
+    "church",
+    "pwa",
+    "supabase"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {}
+}
