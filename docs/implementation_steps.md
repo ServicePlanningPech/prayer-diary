@@ -17,6 +17,7 @@ This document provides a step-by-step guide to deploying the Prayer Diary app fr
    - Create a new bucket named `prayer-diary`
    - Inside that bucket, create folders: `profiles` and `calendar`
    - Set up public access for the buckets
+   - **IMPORTANT:** Execute the SQL file `db/fix_problem_with_saving_profiles.sql` to apply the necessary Storage policies that allow users to save their profiles before approval
 
 4. **Configure Email Authentication**
    - Enable email authentication in the Authentication settings

@@ -169,7 +169,7 @@ Administrators have additional functions to manage the Prayer Diary app. If you 
 ## FAQ
 
 **Q: How do I get my account approved?**
-A: After registering, your account will be pending approval by an administrator. You will receive an email notification once your account is approved. You can complete your profile while waiting for approval.
+A: After registering, your account will be pending approval by an administrator. You will receive an email notification once your account is approved. You can complete your profile while waiting for approval - we encourage you to fill in your details and save your profile, even before your account is fully approved.
 
 **Q: How do I get added to the prayer calendar?**
 A: Administrators can add users to the prayer calendar. Once your account is approved, you may be added to a specific day of the month.

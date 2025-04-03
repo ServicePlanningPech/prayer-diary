@@ -359,7 +359,7 @@ function showLoggedInState() {
         const statusMessage = document.getElementById('auth-status-message');
         statusMessage.innerHTML = `<div class="alert alert-warning">
             <p>Your account is pending approval by an administrator. You'll receive an email when your account is approved.</p>
-            <p>In the meantime, you can <a href="#" id="nav-to-profile">complete your profile</a> with your details and prayer points.</p>
+            <p>In the meantime, you can <a href="#" id="nav-to-profile">complete your profile</a> with your details and prayer points. Your changes will be saved.</p>
         </div>`;
         
         // Add profile navigation link
