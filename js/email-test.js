@@ -97,8 +97,8 @@ async function sendTestEmail(e) {
             html,
             cc,
             bcc,
-            replyTo,
-            contentType: 'test_email'
+            replyTo
+            // Notification logging parameters removed
         });
         
         // Update results container

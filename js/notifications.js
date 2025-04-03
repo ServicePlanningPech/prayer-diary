@@ -204,9 +204,8 @@ async function sendWelcomeEmail(email, name, userId = null) {
         const result = await sendEmail({
             to: email,
             subject: 'Welcome to Prayer Diary - Your Account is Approved',
-            html: htmlContent,
-            userId: userId,
-            contentType: 'welcome_email'
+            html: htmlContent
+            // Notification logging parameters removed
         });
         
         return result.success;
@@ -216,45 +215,11 @@ async function sendWelcomeEmail(email, name, userId = null) {
     }
 }
 
-// Log a notification in the database
+// Log a notification in the database - disabled to avoid DB issues
 async function logNotification(userId, notificationType, contentType, status, errorMessage = null) {
-    try {
-        // Only log notifications if the user is approved
-        // This prevents 403 errors during registration when the user profile might not be fully set up yet
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('approval_state')
-            .eq('id', userId)
-            .single();
-            
-        // Skip logging for unapproved users or if there was an error checking the profile
-        if (profileError || (profile && profile.approval_state !== 'Approved')) {
-            console.log(`Skipping notification logging for non-approved user or unknown user: ${userId}`);
-            return true;
-        }
-        
-        const { data, error } = await supabase
-            .from('notification_logs')
-            .insert({
-                user_id: userId,
-                notification_type: notificationType,
-                content_type: contentType,
-                content_id: crypto.randomUUID(), // Generate a random UUID for the required field
-                status: status,
-                error_message: errorMessage
-            });
-            
-        if (error) {
-            console.error('Error inserting notification log:', error);
-            return false;
-        }
-        
-        return true;
-    } catch (error) {
-        // Just log the error but don't let it break the app flow
-        console.error('Error logging notification:', error);
-        return false;
-    }
+    // Function has been disabled - notification logging removed
+    console.log(`Notification would have been logged: ${notificationType} for user ${userId}`);
+    return true;
 }
 
 // Request permission for push notifications
@@ -327,9 +292,8 @@ async function sendEmail(options) {
         cc = null,             // CC recipients (optional)
         bcc = null,            // BCC recipients (optional)
         replyTo = null,        // Reply-To address (optional)
-        from = null,           // Sender address override (optional) - if not provided, will use default in Edge function
-        userId = null,         // User ID for logging (optional)
-        contentType = null     // Content type for logging (optional)
+        from = null            // Sender address override (optional) - if not provided, will use default in Edge function
+        // userId and contentType parameters removed to avoid notification logging
     } = options;
 
     // Validate required fields
@@ -361,70 +325,32 @@ async function sendEmail(options) {
         
         if (error) throw error;
         
-        // Log successful email delivery
-        console.log('Email sent successfully to:', to);
-        
-        // Log to notification_logs table if userId is provided and user is approved
-        if (userId && contentType) {
-            try {
-                // Check if the user is approved first
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('approval_state')
-                    .eq('id', userId)
-                    .single();
-                    
-                // Only log for approved users
-                if (!profileError && profile && profile.approval_state === 'Approved') {
-                    await supabase
-                        .from('notification_logs')
-                        .insert({
-                            user_id: userId,
-                            notification_type: 'email',
-                            content_type: contentType,
-                            status: 'sent'
-                        });
-                } else {
-                    console.log('Skipping notification logging for non-approved user');
-                }
-            } catch (logError) {
-                console.error('Failed to log email notification:', logError);
-                // Continue even if logging fails
-            }
-        }
         
         return { success: true, data };
     } catch (error) {
         console.error('Error sending email:', error);
         
-        // Log failed email if userId is provided and user is approved
-        if (userId && contentType) {
-            try {
-                // Check if the user is approved first
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('approval_state')
-                    .eq('id', userId)
-                    .single();
-                    
-                // Only log for approved users
-                if (!profileError && profile && profile.approval_state === 'Approved') {
-                    await supabase
-                        .from('notification_logs')
-                        .insert({
-                            user_id: userId,
-                            notification_type: 'email',
-                            content_type: contentType,
-                            status: 'failed',
-                            error_message: error.message
-                        });
-                } else {
-                    console.log('Skipping error logging for non-approved user');
-                }
-            } catch (logError) {
-                console.error('Failed to log email error:', logError);
-            }
-        }
+        // Notification logging has been disabled
+=======
+        
+        return { success: false, error: error.message };
+=======
+        // Log successful email delivery
+        console.log('Email sent successfully to:', to);
+        
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error sending email:', error);
+        
+        return { success: false, error: error.message };
+=======
+        
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error sending email:', error);
+        
+        // Notification logging has been disabled
+=======
         
         return { success: false, error: error.message };
     }

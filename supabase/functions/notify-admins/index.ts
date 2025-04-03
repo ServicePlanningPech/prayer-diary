@@ -151,16 +151,8 @@ This is an automated notification from Prayer Diary. Please do not reply to this
           html: htmlContent,
         });
         
-        // Log the notification
-        await supabase
-          .from('notification_logs')
-          .insert({
-            user_id: admin.id,
-            notification_type: 'email',
-            content_type: notificationType || 'new_user',
-            content_id: newUserEmail,
-            status: 'sent'
-          });
+        // Notification logging has been disabled
+        console.log(`Email notification sent to ${adminEmail}`);
         
         results.push({ 
           adminId: admin.id, 

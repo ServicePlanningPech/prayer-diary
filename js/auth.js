@@ -517,12 +517,12 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
         
         // Send the email using the Edge Function mechanism
         try {
+            // Modified to not use notification logging
             const result = await sendEmail({
                 to: admin.email,
                 subject: `Prayer Diary: New User Registration - ${userName}`,
-                html: htmlContent,
-                userId: admin.id,
-                contentType: 'new_user_notification'
+                html: htmlContent
+                // userId and contentType params removed to avoid notification logging
             });
             
             if (result && result.success) {
