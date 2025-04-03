@@ -30,6 +30,15 @@ async function loadUserProfile() {
         // Keep push notification setting in the background
         document.getElementById('notify-push').checked = userProfile.notification_push || false;
         
+        // Reset GDPR consent checkbox and button
+        if (document.getElementById('gdpr-consent-check')) {
+            document.getElementById('gdpr-consent-check').checked = false;
+            document.getElementById('gdpr-consent-submit').disabled = true;
+        }
+        
+        // Log GDPR acceptance status
+        console.log('GDPR accepted:', userProfile.GDPR_accepted);
+        
         // Set profile preview
         updateProfilePreview();
         
@@ -108,6 +117,11 @@ function updateProfilePreview() {
     }
 }
 
+// Variables for GDPR consent
+let profileDataToSave = null;
+let profileSubmitButton = null;
+let gdprModal = null;
+
 // Save the user's profile
 async function saveProfile(e) {
     e.preventDefault();
@@ -134,7 +148,81 @@ async function saveProfile(e) {
             throw new Error('Please enter your full name');
         }
         
-        // Handle profile image upload
+        // Check if user has accepted GDPR
+        if (!userProfile.GDPR_accepted) {
+            // Store the profile data and button for later
+            profileDataToSave = {
+                fullName,
+                prayerPoints,
+                phoneNumber,
+                whatsappNumber,
+                prayerUpdateNotification,
+                urgentPrayerNotification,
+                notifyPush,
+                submitBtn,
+                originalText
+            };
+            
+            // Store submit button for later
+            profileSubmitButton = submitBtn;
+            
+            // Show GDPR consent modal
+            showGdprConsentModal();
+            return;
+        }
+        
+        // If we get here, user has already accepted GDPR
+        await completeProfileSave({
+            fullName,
+            prayerPoints,
+            phoneNumber,
+            whatsappNumber,
+            prayerUpdateNotification,
+            urgentPrayerNotification,
+            notifyPush,
+            submitBtn,
+            originalText
+        });
+        
+    } catch (error) {
+        console.error('Error saving profile:', error);
+        showNotification('Error', `Failed to save profile: ${error.message}`);
+        
+        // Reset button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+// Show GDPR consent modal
+function showGdprConsentModal() {
+    // Get the modal element
+    gdprModal = new bootstrap.Modal(document.getElementById('gdpr-consent-modal'));
+    
+    // Set up the event listeners
+    document.getElementById('gdpr-consent-check').addEventListener('change', function() {
+        document.getElementById('gdpr-consent-submit').disabled = !this.checked;
+    });
+    
+    document.getElementById('gdpr-consent-submit').addEventListener('click', async function() {
+        gdprModal.hide();
+        
+        // Complete the profile save with GDPR consent
+        if (profileDataToSave) {
+            profileDataToSave.gdprAccepted = true;
+            await completeProfileSave(profileDataToSave);
+        }
+    });
+    
+    // Show the modal
+    gdprModal.show();
+}
+
+// Complete profile save after GDPR check
+async function completeProfileSave(data) {
+    try {
+        // Get profile image
+        const profileImage = document.getElementById('profile-image').files[0];
         let profileImageUrl = userProfile.profile_image_url;
         const profileImage = document.getElementById('profile-image').files[0];
         
@@ -176,19 +264,64 @@ async function saveProfile(e) {
             }
         }
         
+        let profileImageUrl = userProfile.profile_image_url;
+        const profileImage = document.getElementById('profile-image').files[0];
+        
+        if (profileImage) {
+            try {
+                console.log('Uploading profile image...');
+                const fileExt = profileImage.name.split('.').pop();
+                const fileName = `${getUserId()}_${Date.now()}.${fileExt}`;
+                const filePath = `profiles/${fileName}`;
+                
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('prayer-diary')
+                    .upload(filePath, profileImage);
+                    
+                if (uploadError) {
+                    console.error('Profile image upload error:', uploadError);
+                    
+                    // Provide a user-friendly error message based on the error type
+                    if (uploadError.statusCode === 403) {
+                        throw new Error('Permission denied when uploading image. Your account may need approval first.');
+                    } else {
+                        throw uploadError;
+                    }
+                }
+                
+                console.log('Profile image uploaded successfully');
+                
+                // Get public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('prayer-diary')
+                    .getPublicUrl(filePath);
+                    
+                profileImageUrl = publicUrl;
+                console.log('Profile image URL:', profileImageUrl);
+            } catch (uploadErr) {
+                console.error('Error in image upload process:', uploadErr);
+                // Continue with profile update even if image upload fails
+                showNotification('Warning', `Profile saved, but image upload failed: ${uploadErr.message}`);
+            }
+        }
+        
+        // Determine if GDPR was accepted in this save
+        const gdprAccepted = data.gdprAccepted === true ? true : userProfile.GDPR_accepted || false;
+        
         // Update the profile
-        const { data, error } = await supabase
+        const { data: updateData, error } = await supabase
             .from('profiles')
             .update({
-                full_name: fullName,
-                prayer_points: prayerPoints,
+                full_name: data.fullName,
+                prayer_points: data.prayerPoints,
                 profile_image_url: profileImageUrl,
-                phone_number: phoneNumber,
-                whatsapp_number: whatsappNumber || phoneNumber, // Use phone number as default if WhatsApp not provided
-                prayer_update_notification_method: prayerUpdateNotification,
-                urgent_prayer_notification_method: urgentPrayerNotification,
-                notification_push: notifyPush,
+                phone_number: data.phoneNumber,
+                whatsapp_number: data.whatsappNumber || data.phoneNumber, // Use phone number as default if WhatsApp not provided
+                prayer_update_notification_method: data.prayerUpdateNotification,
+                urgent_prayer_notification_method: data.urgentPrayerNotification,
+                notification_push: data.notifyPush,
                 profile_set: true, // Mark profile as completed
+                GDPR_accepted: gdprAccepted, // Set GDPR acceptance status
                 updated_at: new Date().toISOString()
             })
             .eq('id', getUserId());
@@ -206,7 +339,7 @@ async function saveProfile(e) {
         console.error('Error saving profile:', error);
         showNotification('Error', `Failed to save profile: ${error.message}`);
     } finally {
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
+        data.submitBtn.textContent = data.originalText;
+        data.submitBtn.disabled = false;
     }
 }

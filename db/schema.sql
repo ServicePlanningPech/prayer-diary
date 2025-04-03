@@ -16,6 +16,7 @@ CREATE TABLE profiles (
   phone_number TEXT,
   whatsapp_number TEXT,
   profile_set BOOLEAN NOT NULL DEFAULT FALSE,
+  GDPR_accepted BOOLEAN NOT NULL DEFAULT FALSE,
   CONSTRAINT user_role_check CHECK (user_role IN ('Administrator', 'User')),
   CONSTRAINT approval_state_check CHECK (approval_state IN ('Pending', 'Approved', 'Rejected'))
 );
@@ -149,7 +150,8 @@ BEGIN
     approval_state, 
     profile_set,
     prayer_update_notification_method,
-    urgent_prayer_notification_method
+    urgent_prayer_notification_method,
+    GDPR_accepted
   )
   VALUES (
     NEW.id, 
@@ -158,7 +160,8 @@ BEGIN
     'Pending',
     FALSE,
     'email',
-    'email'
+    'email',
+    FALSE
   );
   RETURN NEW;
 END;

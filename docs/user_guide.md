@@ -133,6 +133,7 @@ Your User Profile contains your personal information and prayer points.
      - **Prayer Updates**: Choose how you want to be notified about weekly prayer updates (app only, email, SMS, or WhatsApp)
      - **Urgent Prayer Requests**: Choose how you want to be notified about urgent prayer requests (app only, email, SMS, or WhatsApp)
 3. Click "Save Profile" to update your information.
+4. On your first profile save, you will be asked to review and accept a data privacy notice explaining how your information will be used within the app.
 
 **Note:** You will always be able to see updates in the app, but you can also choose one additional notification method for each type of prayer content.
 

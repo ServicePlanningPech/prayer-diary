@@ -971,6 +971,46 @@
         </div>
     </div>
 
+    <!-- GDPR Consent Modal -->
+    <div class="modal fade" id="gdpr-consent-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="gdpr-consent-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="gdpr-consent-title">Data Privacy Consent</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <h6 class="fw-bold">Privacy Notice</h6>
+                        <p>To ensure compliance with UK data protection law (UK GDPR), please review how we use your information:</p>
+                        
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2">How we use your data:</h6>
+                                <ul class="mb-0">
+                                    <li>Your profile picture and prayer requests will be visible to other approved members of the church.</li>
+                                    <li>Your phone number and WhatsApp number will only be visible to administrators if you've provided them.</li>
+                                    <li>Your data is stored securely and will only be used for prayer ministry purposes.</li>
+                                    <li>We will not share your data with third parties without your consent.</li>
+                                    <li>You can request deletion of your data at any time by contacting an administrator.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="gdpr-consent-check">
+                        <label class="form-check-label" for="gdpr-consent-check">
+                            I understand and consent to the use of my data as described above.
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="gdpr-consent-submit" disabled>Save Profile</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- View Prayer Card Modal -->
     <div class="modal fade" id="view-card-modal" tabindex="-1" aria-labelledby="card-modal-title" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
