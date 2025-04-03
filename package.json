@@ -8,7 +8,9 @@
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "test:registration": "cypress run --spec \"cypress/e2e/user_registration.cy.js\"",
-    "test:registration:debug": "cypress run --spec \"cypress/e2e/user_registration.cy.js\" --browser chrome --no-exit"
+    "test:registration:debug": "cypress run --spec \"cypress/e2e/user_registration.cy.js\" --browser chrome --no-exit",
+    "test:login": "cypress run --spec \"cypress/e2e/login_existing_user.cy.js\"",
+    "test:mock": "cypress run --spec \"cypress/e2e/mock_registration.cy.js\""
   },
   "keywords": [
     "prayer",

@@ -145,6 +145,9 @@ async function handleAuth(e) {
             // Signup
             const fullName = document.getElementById('signup-name').value;
             
+            // Add debug log to see what we're sending
+            console.log('Attempting to sign up user:', email);
+            
             // Use signUp with email confirmation properly configured for production
             const { data, error } = await supabase.auth.signUp({
                 email,
@@ -153,11 +156,17 @@ async function handleAuth(e) {
                     data: {
                         full_name: fullName
                     },
-                    // Use the GitHub Pages URL where your app is hosted for testing
-                    // This ensures Supabase sends confirmation emails with the correct URL
-                    emailRedirectTo: 'https://serviceplanningpech.github.io/prayer-diary'
+                    // Use the correct redirect URL based on the current location
+                    emailRedirectTo: window.location.origin
                 }
             });
+            
+            // Log the result
+            if (error) {
+                console.error('Signup error response:', error);
+            } else {
+                console.log('Signup successful:', data?.user?.id);
+            }
             
             // Handle profile creation/update with better error checking and recovery
             if (data && data.user) {
@@ -178,14 +187,18 @@ async function handleAuth(e) {
                         if (!existingProfile || existingProfile.length === 0 || checkError) {
                             console.log('Profile not found, creating it manually');
                             
-                            // Create a new profile
+                            // Create a new profile with all required fields
                             const { error: insertError } = await supabase
                                 .from('profiles')
                                 .insert({ 
                                     id: data.user.id,
                                     full_name: fullName,
                                     user_role: 'User',
-                                    approval_state: 'Pending'
+                                    approval_state: 'Pending',
+                                    profile_set: false,
+                                    prayer_update_notification_method: 'email',
+                                    urgent_prayer_notification_method: 'email',
+                                    GDPR_accepted: false
                                 });
                                 
                             if (insertError) {
@@ -213,7 +226,7 @@ async function handleAuth(e) {
                     } catch (e) {
                         console.error('Exception managing profile during signup:', e);
                     }
-                }, 2000); // Increased to 2 seconds to give the trigger more time
+                }, 3000); // Increased to 3 seconds to give the trigger more time
             }
             
             if (error) throw error;
@@ -234,7 +247,14 @@ async function handleAuth(e) {
     } catch (error) {
         console.error('Auth error:', error);
         const errorElem = document.getElementById('auth-error');
-        errorElem.querySelector('p').textContent = error.message;
+        
+        // Provide a more user-friendly message for database errors
+        let errorMessage = error.message;
+        if (errorMessage.includes('Database error saving new user')) {
+            errorMessage = 'Unable to create user. This email may already be registered or there might be a temporary service issue. Please try again later or contact support.';
+        }
+        
+        errorElem.querySelector('p').textContent = errorMessage;
         errorElem.classList.remove('d-none');
     } finally {
         // Restore button state
