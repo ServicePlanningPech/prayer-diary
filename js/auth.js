@@ -10,13 +10,21 @@ document.addEventListener('DOMContentLoaded', initAuth);
 // Init auth
 async function initAuth() {
     try {
+        console.log("Initializing authentication...");
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (session) {
+            console.log("Session found, user is logged in");
             currentUser = session.user;
-            await fetchUserProfile();
+            const profile = await fetchUserProfile();
+            if (profile) {
+                console.log("Profile loaded successfully:", profile.full_name);
+            } else {
+                console.warn("Could not load user profile after login");
+            }
             showLoggedInState();
         } else {
+            console.log("No session found, user is logged out");
             showLoggedOutState();
         }
         
@@ -151,28 +159,61 @@ async function handleAuth(e) {
                 }
             });
             
-            // Also update the profile's full_name and email directly to ensure it's set
+            // Handle profile creation/update with better error checking and recovery
             if (data && data.user) {
-                // Wait a moment for the profile to be created by the trigger
+                // Wait longer for the profile to be created by the trigger
                 setTimeout(async () => {
                     try {
-                        const { error: updateError } = await supabase
+                        // First check if profile exists
+                        const { data: existingProfile, error: checkError } = await supabase
                             .from('profiles')
-                            .update({ 
-                                full_name: fullName,
-                                email: email
-                            })
+                            .select('id')
                             .eq('id', data.user.id);
                             
-                        if (updateError) {
-                            console.error('Error updating profile during signup:', updateError);
+                        if (checkError) {
+                            console.error('Error checking for profile:', checkError);
+                        }
+                        
+                        // If no profile exists or error occurred, create one manually
+                        if (!existingProfile || existingProfile.length === 0 || checkError) {
+                            console.log('Profile not found, creating it manually');
+                            
+                            // Create a new profile
+                            const { error: insertError } = await supabase
+                                .from('profiles')
+                                .insert({ 
+                                    id: data.user.id,
+                                    full_name: fullName,
+                                    user_role: 'User',
+                                    approval_state: 'Pending'
+                                });
+                                
+                            if (insertError) {
+                                console.error('Error creating profile manually:', insertError);
+                            } else {
+                                console.log('Successfully created profile manually');
+                            }
                         } else {
-                            console.log('Successfully updated profile during signup');
+                            // Profile exists, just update it
+                            console.log('Profile exists, updating it');
+                            
+                            const { error: updateError } = await supabase
+                                .from('profiles')
+                                .update({ 
+                                    full_name: fullName
+                                })
+                                .eq('id', data.user.id);
+                                
+                            if (updateError) {
+                                console.error('Error updating profile during signup:', updateError);
+                            } else {
+                                console.log('Successfully updated profile during signup');
+                            }
                         }
                     } catch (e) {
-                        console.error('Exception updating profile during signup:', e);
+                        console.error('Exception managing profile during signup:', e);
                     }
-                }, 1000); // Give the trigger a second to create the profile
+                }, 2000); // Increased to 2 seconds to give the trigger more time
             }
             
             if (error) throw error;
@@ -219,18 +260,68 @@ async function logout() {
     }
 }
 
-// Fetch current user's profile
+// Fetch current user's profile with retry mechanism
 async function fetchUserProfile() {
     try {
         if (!currentUser) return null;
         
-        const { data, error } = await supabase
+        // First attempt to get the profile
+        let { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', currentUser.id)
             .single();
             
-        if (error) throw error;
+        // If we get a "no rows returned" error, the profile might not be created yet
+        if (error && error.code === 'PGRST116') {
+            console.log('Profile not found on first attempt, waiting and retrying...');
+            
+            // Wait a moment and try again
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Check if profile exists now
+            const { data: checkData, error: checkError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', currentUser.id)
+                .single();
+                
+            if (checkError) {
+                // Profile still doesn't exist, create it manually
+                console.log('Profile still not found, creating it manually');
+                
+                const { error: insertError } = await supabase
+                    .from('profiles')
+                    .insert({ 
+                        id: currentUser.id,
+                        full_name: currentUser.email, // Use email as fallback name
+                        user_role: 'User',
+                        approval_state: 'Pending'
+                    });
+                    
+                if (insertError) {
+                    console.error('Error creating profile manually:', insertError);
+                    throw insertError;
+                }
+                
+                // Fetch the newly created profile
+                const { data: newData, error: newError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', currentUser.id)
+                    .single();
+                    
+                if (newError) throw newError;
+                
+                data = newData;
+            } else {
+                // Use the data from the retry
+                data = checkData;
+            }
+        } else if (error) {
+            // Handle other types of errors
+            throw error;
+        }
         
         userProfile = data;
         return data;
