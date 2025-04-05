@@ -13,8 +13,8 @@ async function loadUserProfile() {
             return;
         }
         
-        // Populate form fields
-        document.getElementById('profile-name').value = userProfile.full_name || '';
+        // Populate form fields - full_name comes from auth user metadata and is read-only
+        document.getElementById('profile-name').value = userProfile.full_name || currentUser.user_metadata?.full_name || currentUser.email || '';
         document.getElementById('profile-prayer-points').value = userProfile.prayer_points || '';
         document.getElementById('profile-phone').value = userProfile.phone_number || '';
         document.getElementById('profile-whatsapp').value = userProfile.whatsapp_number || '';
@@ -132,7 +132,8 @@ async function saveProfile(e) {
     submitBtn.disabled = true;
     
     try {
-        const fullName = document.getElementById('profile-name').value.trim();
+        // Get name from profile as it's now read-only
+        const fullName = userProfile.full_name || currentUser.user_metadata?.full_name || currentUser.email || '';
         const prayerPoints = document.getElementById('profile-prayer-points').value.trim();
         const phoneNumber = document.getElementById('profile-phone').value.trim();
         const whatsappNumber = document.getElementById('profile-whatsapp').value.trim();
@@ -143,10 +144,6 @@ async function saveProfile(e) {
         
         // Keep push notification setting (hidden in UI)
         const notifyPush = document.getElementById('notify-push').checked;
-        
-        if (!fullName) {
-            throw new Error('Please enter your full name');
-        }
         
         // Check if user has accepted GDPR
         if (!userProfile.gdpr_accepted) {

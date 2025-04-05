@@ -189,7 +189,8 @@
                                 <form id="profile-form">
                                     <div class="mb-3">
                                         <label for="profile-name" class="form-label">Full Name</label>
-                                        <input type="text" class="form-control" id="profile-name" placeholder="Your full name">
+                                        <input type="text" class="form-control" id="profile-name" placeholder="Your full name" readonly>
+                                        <div class="form-text text-muted">Your name is set during registration and cannot be changed.</div>
                                     </div>
                                     
                                     <div class="mb-3">
@@ -979,13 +980,13 @@
         </div>
     </div>
 
-    <!-- GDPR Consent Modal -->
+    <!-- GDPR Consent Modal - Static backdrop, no keyboard escape, no close on outside click -->
     <div class="modal fade" id="gdpr-consent-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="gdpr-consent-title" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="gdpr-consent-title">Data Privacy Consent</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="gdpr-modal-close"></button>
+                    <!-- Close button removed to prevent dismissal -->
                 </div>
                 <div class="modal-body">
                     <div class="mb-4">
