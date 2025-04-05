@@ -39,7 +39,13 @@ function setupNavigation() {
     // Admin navigation
     document.getElementById('nav-manage-users').addEventListener('click', () => {
         showView('manage-users-view');
-        loadUsers();
+        // Check if loadUsers is defined before calling it
+        if (typeof loadUsers === 'function') {
+            loadUsers();
+        } else {
+            console.error('loadUsers function is not defined. Check that admin.js is loaded before ui.js.');
+            showNotification('Error', 'Could not load users. Please refresh the page or contact support.');
+        }
     });
     
     document.getElementById('nav-manage-calendar').addEventListener('click', () => {
@@ -337,17 +343,20 @@ function createUserCard(user, isPending = true) {
                     }
                     
                     if (imagePath) {
-                        const { data, error } = await supabase.storage
+                        // Remove await and use promise chain instead (since we're inside a non-async callback)
+                        supabase.storage
                             .from('prayer-diary')
-                            .createSignedUrl(imagePath, 3600); // 1 hour validity
-                        
-                        if (!error) {
-                            // Find all images for this user and update them
-                            const userImages = document.querySelectorAll(`img.user-avatar[data-user-id="${userId}"]`);
-                            userImages.forEach(img => {
-                                img.src = data.signedUrl;
-                            });
-                        }
+                            .createSignedUrl(imagePath, 3600) // 1 hour validity
+                            .then(({ data, error }) => {
+                                if (!error && data) {
+                                    // Find all images for this user and update them
+                                    const userImages = document.querySelectorAll(`img.user-avatar[data-user-id="${userId}"]`);
+                                    userImages.forEach(img => {
+                                        img.src = data.signedUrl;
+                                    });
+                                }
+                            })
+                            .catch(err => console.error(`Error getting signed URL for ${user.full_name}:`, err));
                     }
                 } catch (e) {
                     console.error(`Error loading image for ${user.full_name}:`, e);

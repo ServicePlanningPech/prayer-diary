@@ -1095,12 +1095,13 @@
         // Load all scripts with cache busting
         loadScript("js/config.js");
         loadScript("js/auth.js");
+        // Admin.js needs to be loaded before UI.js since UI.js references functions from admin.js
+        loadScript("js/admin.js");
         loadScript("js/ui.js");
         loadScript("js/calendar.js");
         loadScript("js/updates.js");
         loadScript("js/urgent.js");
         loadScript("js/profile.js");
-        loadScript("js/admin.js");
         loadScript("js/notifications.js");
         loadScript("js/notification-processor.js");
         loadScript("js/email-test.js");
