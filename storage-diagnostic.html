@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Storage URL Diagnostic</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Supabase Storage URL Diagnostic</h1>
+        <div class="alert alert-warning">
+            <strong>Diagnosing 400 Bad Request Errors for Supabase Storage</strong>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title">Configuration</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="supabaseUrl" class="form-label">Supabase URL</label>
+                    <input type="text" id="supabaseUrl" class="form-control" placeholder="https://your-project.supabase.co">
+                </div>
+                <div class="mb-3">
+                    <label for="supabaseKey" class="form-label">Supabase Anon Key</label>
+                    <input type="text" id="supabaseKey" class="form-control" placeholder="your-anon-key">
+                </div>
+                <div class="mb-3">
+                    <button id="loadConfig" class="btn btn-secondary">Load from config.js</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title">Run All Diagnostics</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="checkBucket" class="form-label">Bucket Name</label>
+                    <input type="text" id="checkBucket" class="form-control" value="prayer-diary">
+                </div>
+                <div class="mb-3">
+                    <label for="checkPath" class="form-label">File Path to Check (optional)</label>
+                    <input type="text" id="checkPath" class="form-control" placeholder="profiles/user123.jpg">
+                </div>
+                <div class="mb-3">
+                    <button id="runAllTests" class="btn btn-danger">Run All Diagnostics</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title">Advanced: Manual URL Testing</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="directUrl" class="form-label">Direct URL to Test</label>
+                    <input type="text" id="directUrl" class="form-control" placeholder="https://...">
+                </div>
+                <div class="mb-3">
+                    <button id="testDirectUrl" class="btn btn-warning">Test Direct URL</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h3 class="card-title">Results</h3>
+            </div>
+            <div class="card-body">
+                <div id="results" class="bg-dark text-light p-3 rounded" style="min-height: 300px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">
+                    <p>Diagnostic results will appear here...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load config from config.js if available
+        document.getElementById('loadConfig').addEventListener('click', async () => {
+            try {
+                const response = await fetch('js/config.js');
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                
+                const configText = await response.text();
+                
+                // Extract Supabase URL and key using regex
+                const urlMatch = configText.match(/SUPABASE_URL\s*=\s*['"]([^'"]+)['"]/);
+                const keyMatch = configText.match(/SUPABASE_ANON_KEY\s*=\s*['"]([^'"]+)['"]/);
+                
+                if (urlMatch && urlMatch[1]) {
+                    document.getElementById('supabaseUrl').value = urlMatch[1];
+                    log(`Found Supabase URL: ${urlMatch[1]}`);
+                } else {
+                    log('Could not find SUPABASE_URL in config.js', 'error');
+                }
+                
+                if (keyMatch && keyMatch[1]) {
+                    document.getElementById('supabaseKey').value = keyMatch[1];
+                    log(`Found Supabase key (first 10 chars): ${keyMatch[1].substring(0, 10)}...`);
+                } else {
+                    log('Could not find SUPABASE_ANON_KEY in config.js', 'error');
+                }
+            } catch (error) {
+                log(`Error loading config: ${error.message}`, 'error');
+            }
+        });
+
+        // Initialize Supabase client
+        function getSupabaseClient() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            
+            if (!url || !key) {
+                log('Please enter Supabase URL and Anon Key', 'error');
+                return null;
+            }
+            
+            return supabase.createClient(url, key);
+        }
+
+        // Run all tests
+        document.getElementById('runAllTests').addEventListener('click', async () => {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+            
+            const bucket = document.getElementById('checkBucket').value;
+            const path = document.getElementById('checkPath').value;
+            
+            if (!bucket) {
+                log('Please enter a bucket name', 'error');
+                return;
+            }
+            
+            // Clear previous results
+            clearResults();
+            
+            log('=== RUNNING COMPREHENSIVE STORAGE DIAGNOSTICS ===', 'header');
+            log(`Testing bucket: ${bucket}`);
+            if (path) log(`Testing specific path: ${path}`);
+            
+            // Test 1: Check if bucket exists
+            await testBucketExists(supabase, bucket);
+            
+            // Test 2: Check bucket permissions
+            await testBucketPermissions(supabase, bucket);
+            
+            // Test 3: List bucket contents (root or specified path)
+            await testListContents(supabase, bucket, path ? path.split('/')[0] : '');
+            
+            // Test 4: Test URL construction methods
+            if (path) {
+                await testUrlConstruction(supabase, bucket, path);
+            } else {
+                log('Skipping URL construction test - no specific path provided', 'info');
+            }
+            
+            // Test 5: Check browser CORS issues
+            testCORS();
+            
+            // Test 6: Check for URL format issues
+            if (path) {
+                testUrlFormat(bucket, path);
+            } else {
+                log('Skipping URL format test - no specific path provided', 'info');
+            }
+            
+            // Test 7: Verify config.js and settings
+            log('\n=== CONFIGURATION VERIFICATION ===', 'header');
+            await verifyPWASettings();
+            
+            log('\n=== DIAGNOSTICS COMPLETE ===', 'success');
+            log('Review the results above to identify the issue with your storage URLs.');
+        });
+
+        // Test direct URL
+        document.getElementById('testDirectUrl').addEventListener('click', async () => {
+            const url = document.getElementById('directUrl').value;
+            
+            if (!url) {
+                log('Please enter a URL to test', 'error');
+                return;
+            }
+            
+            log(`Testing direct URL: ${url}`, 'header');
+            
+            try {
+                // Regular fetch
+                log('Attempting standard fetch...');
+                const response = await fetch(url, { 
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-store'
+                });
+                
+                if (response.ok) {
+                    log(`✅ URL is accessible! Status: ${response.status} ${response.statusText}`, 'success');
+                    log('Response headers:');
+                    response.headers.forEach((value, key) => {
+                        log(`  ${key}: ${value}`);
+                    });
+                    
+                    // Try to get content type and length
+                    const contentType = response.headers.get('content-type');
+                    const contentLength = response.headers.get('content-length');
+                    
+                    if (contentType) {
+                        log(`Content-Type: ${contentType}`);
+                        
+                        // For images, try to display
+                        if (contentType.startsWith('image/')) {
+                            const blob = await response.blob();
+                            const objectUrl = URL.createObjectURL(blob);
+                            log(`Image successfully loaded (${contentLength} bytes)`, 'success');
+                            
+                            // Add image to results
+                            const img = document.createElement('img');
+                            img.src = objectUrl;
+                            img.style.maxWidth = '100%';
+                            img.style.maxHeight = '200px';
+                            document.getElementById('results').appendChild(img);
+                        }
+                    }
+                } else {
+                    log(`❌ URL returned error: ${response.status} ${response.statusText}`, 'error');
+                    log('Response headers:');
+                    response.headers.forEach((value, key) => {
+                        log(`  ${key}: ${value}`);
+                    });
+                    
+                    // For 400 errors, try to get more details
+                    if (response.status === 400) {
+                        log('\nAnalyzing 400 Bad Request error:', 'header');
+                        log('Possible causes:');
+                        log('1. The URL is malformed or contains invalid characters');
+                        log('2. The file does not exist or has been deleted');
+                        log('3. The bucket is misconfigured or doesn\'t allow public access');
+                        log('4. Content-Type issues with the stored file');
+                        
+                        // Try to parse any error response
+                        try {
+                            const text = await response.text();
+                            if (text) {
+                                log('\nError response body:');
+                                log(text);
+                            }
+                        } catch (e) {
+                            log('Could not read error response body');
+                        }
+                    }
+                }
+            } catch (error) {
+                log(`❌ Error fetching URL: ${error.message}`, 'error');
+                log('This might be due to CORS issues or network problems.');
+            }
+            
+            // Try image tag directly
+            log('\nTesting URL with an image tag...');
+            const img = document.createElement('img');
+            img.style.display = 'none';
+            img.onload = () => {
+                log('✅ Image loaded successfully via img tag!', 'success');
+                img.style.display = 'block';
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '200px';
+            };
+            img.onerror = () => {
+                log('❌ Image failed to load via img tag', 'error');
+            };
+            img.src = url;
+            document.getElementById('results').appendChild(img);
+        });
+
+        // Test bucket exists
+        async function testBucketExists(supabase, bucket) {
+            log('\n=== TESTING BUCKET EXISTENCE ===', 'header');
+            
+            try {
+                log(`Checking if bucket '${bucket}' exists...`);
+                
+                // Try to get bucket info
+                const { data, error } = await supabase.storage.getBucket(bucket);
+                
+                if (error) {
+                    log(`❌ Error accessing bucket: ${error.message}`, 'error');
+                    if (error.message.includes('not found')) {
+                        log('The bucket does not exist or you don\'t have permission to access it.', 'error');
+                    }
+                    return false;
+                } else {
+                    log('✅ Bucket exists and is accessible!', 'success');
+                    log(`Bucket details: ${JSON.stringify(data, null, 2)}`);
+                    return true;
+                }
+            } catch (error) {
+                log(`❌ Exception checking bucket: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test bucket permissions
+        async function testBucketPermissions(supabase, bucket) {
+            log('\n=== TESTING BUCKET PERMISSIONS ===', 'header');
+            
+            try {
+                log('Checking bucket public access settings...');
+                
+                // Try to create a temporary test file
+                const testFileName = `test_${Date.now()}.txt`;
+                const { data, error } = await supabase.storage
+                    .from(bucket)
+                    .upload(testFileName, new Blob(['test']), {
+                        cacheControl: 'no-cache',
+                        upsert: true
+                    });
+                
+                if (error) {
+                    log(`❌ Could not upload test file: ${error.message}`, 'error');
+                    log('This may indicate permission issues with the bucket.');
+                    return false;
+                } else {
+                    log('✅ Successfully uploaded test file', 'success');
+                    
+                    // Try to get public URL
+                    const { data: urlData } = supabase.storage
+                        .from(bucket)
+                        .getPublicUrl(testFileName);
+                    
+                    log(`Generated public URL: ${urlData.publicUrl}`);
+                    
+                    // Test public URL
+                    try {
+                        const response = await fetch(urlData.publicUrl, { 
+                            method: 'HEAD',
+                            cache: 'no-store'
+                        });
+                        
+                        if (response.ok) {
+                            log('✅ Public URL is accessible!', 'success');
+                        } else {
+                            log(`❌ Public URL returned status ${response.status} ${response.statusText}`, 'error');
+                        }
+                    } catch (fetchError) {
+                        log(`❌ Error fetching from public URL: ${fetchError.message}`, 'error');
+                    }
+                    
+                    // Clean up test file
+                    const { error: deleteError } = await supabase.storage
+                        .from(bucket)
+                        .remove([testFileName]);
+                    
+                    if (deleteError) {
+                        log(`Warning: Could not delete test file: ${deleteError.message}`, 'warning');
+                    } else {
+                        log('Test file deleted successfully');
+                    }
+                    
+                    return true;
+                }
+            } catch (error) {
+                log(`❌ Exception testing permissions: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test listing contents
+        async function testListContents(supabase, bucket, prefix = '') {
+            log('\n=== TESTING BUCKET CONTENTS ===', 'header');
+            
+            try {
+                log(`Listing contents of '${bucket}${prefix ? '/' + prefix : ''}'...`);
+                
+                const { data, error } = await supabase.storage
+                    .from(bucket)
+                    .list(prefix);
+                
+                if (error) {
+                    log(`❌ Error listing contents: ${error.message}`, 'error');
+                    return false;
+                } else if (!data || data.length === 0) {
+                    log('No files found in this location.', 'warning');
+                    return true;
+                } else {
+                    log(`✅ Successfully listed ${data.length} items:`, 'success');
+                    
+                    // Show folders first, then files
+                    const folders = data.filter(item => item.id === null);
+                    const files = data.filter(item => item.id !== null);
+                    
+                    if (folders.length > 0) {
+                        log('\nFolders:');
+                        folders.forEach(folder => log(`  📁 ${folder.name}/`));
+                    }
+                    
+                    if (files.length > 0) {
+                        log('\nFiles:');
+                        files.forEach(file => {
+                            const size = file.metadata?.size 
+                                ? `(${formatBytes(file.metadata.size)})` 
+                                : '';
+                            log(`  📄 ${file.name} ${size}`);
+                        });
+                        
+                        // If this is the profiles folder, check for image files
+                        if (prefix === 'profiles') {
+                            const imageFiles = files.filter(file => 
+                                file.name.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i));
+                            
+                            if (imageFiles.length > 0) {
+                                log(`\nFound ${imageFiles.length} image files in the profiles folder.`);
+                                
+                                // Test the first image file
+                                const testFile = imageFiles[0];
+                                log(`Testing accessibility of the first image: ${testFile.name}`);
+                                
+                                const { data: urlData } = supabase.storage
+                                    .from(bucket)
+                                    .getPublicUrl(`${prefix}/${testFile.name}`);
+                                
+                                log(`Generated public URL: ${urlData.publicUrl}`);
+                                
+                                try {
+                                    const response = await fetch(urlData.publicUrl, { 
+                                        method: 'HEAD',
+                                        cache: 'no-store'
+                                    });
+                                    
+                                    if (response.ok) {
+                                        log('✅ Test image is accessible via public URL!', 'success');
+                                    } else {
+                                        log(`❌ Test image returned status ${response.status} ${response.statusText}`, 'error');
+                                    }
+                                } catch (fetchError) {
+                                    log(`❌ Error fetching test image: ${fetchError.message}`, 'error');
+                                }
+                            } else {
+                                log('No image files found in the profiles folder.', 'warning');
+                            }
+                        }
+                    }
+                    
+                    return true;
+                }
+            } catch (error) {
+                log(`❌ Exception listing contents: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test URL construction
+        async function testUrlConstruction(supabase, bucket, path) {
+            log('\n=== TESTING URL CONSTRUCTION METHODS ===', 'header');
+            
+            try {
+                log(`Testing different URL construction methods for ${bucket}/${path}...`);
+                
+                // Method 1: getPublicUrl
+                log('\nMethod 1: getPublicUrl');
+                const { data: publicUrlData } = supabase.storage
+                    .from(bucket)
+                    .getPublicUrl(path);
+                
+                log(`Generated public URL: ${publicUrlData.publicUrl}`);
+                
+                // Method 2: createSignedUrl
+                log('\nMethod 2: createSignedUrl (60 seconds)');
+                const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+                    .from(bucket)
+                    .createSignedUrl(path, 60);
+                
+                if (signedUrlError) {
+                    log(`❌ Error generating signed URL: ${signedUrlError.message}`, 'error');
+                } else {
+                    log(`Generated signed URL: ${signedUrlData.signedUrl}`);
+                    
+                    // Test the signed URL
+                    try {
+                        const response = await fetch(signedUrlData.signedUrl, { 
+                            method: 'HEAD',
+                            cache: 'no-store'
+                        });
+                        
+                        if (response.ok) {
+                            log('✅ Signed URL is accessible!', 'success');
+                        } else {
+                            log(`❌ Signed URL returned status ${response.status} ${response.statusText}`, 'error');
+                        }
+                    } catch (fetchError) {
+                        log(`❌ Error fetching from signed URL: ${fetchError.message}`, 'error');
+                    }
+                }
+                
+                // Method 3: Direct URL construction
+                log('\nMethod 3: Manual URL construction');
+                const manualUrl = `${supabase.storageUrl}/object/public/${bucket}/${path}`;
+                log(`Manually constructed URL: ${manualUrl}`);
+                
+                return true;
+            } catch (error) {
+                log(`❌ Exception testing URL construction: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test CORS issues
+        function testCORS() {
+            log('\n=== TESTING BROWSER CORS SETTINGS ===', 'header');
+            
+            log('Checking browser CORS configuration...');
+            
+            // Check if running locally
+            const isLocalhost = window.location.hostname === 'localhost' || 
+                               window.location.hostname === '127.0.0.1';
+            
+            if (isLocalhost) {
+                log('⚠️ Running on localhost - this can sometimes cause CORS issues', 'warning');
+                log('Recommendation: Test on the actual deployed site');
+            } else {
+                log('✅ Not running on localhost (good for CORS testing)');
+            }
+            
+            // Check browser's security policy
+            log('\nBrowser information:');
+            log(`User Agent: ${navigator.userAgent}`);
+            
+            // Check for Content-Security-Policy header
+            const metaTags = document.querySelectorAll('meta');
+            let cspFound = false;
+            
+            metaTags.forEach(meta => {
+                if (meta.httpEquiv && meta.httpEquiv.toLowerCase() === 'content-security-policy') {
+                    cspFound = true;
+                    log(`⚠️ Content-Security-Policy found in meta tags: ${meta.content}`, 'warning');
+                    log('This might restrict connections to storage servers.');
+                }
+            });
+            
+            if (!cspFound) {
+                log('✅ No restrictive Content-Security-Policy found in meta tags');
+            }
+            
+            return true;
+        }
+
+        // Test URL format
+        function testUrlFormat(bucket, path) {
+            log('\n=== TESTING URL FORMAT ISSUES ===', 'header');
+            
+            log(`Analyzing path: ${path}`);
+            
+            // Check for special characters
+            const specialChars = /[^a-zA-Z0-9._\-\/]/g;
+            const foundSpecialChars = path.match(specialChars);
+            
+            if (foundSpecialChars) {
+                log(`⚠️ Path contains special characters: ${foundSpecialChars.join(', ')}`, 'warning');
+                log('These characters might need to be URL-encoded.');
+                
+                // Suggest encoded version
+                const encodedPath = encodeURIComponent(path).replace(/%2F/g, '/');
+                log(`Suggested encoded path: ${encodedPath}`);
+            } else {
+                log('✅ Path does not contain problematic special characters');
+            }
+            
+            // Check for path format
+            if (!path.includes('/')) {
+                log('⚠️ Path does not include a folder separator, this is unusual for profile images', 'warning');
+                log('Expected format: profiles/username_timestamp.jpg');
+            } else {
+                log('✅ Path includes folder structure, which is good');
+            }
+            
+            // Check for common path format for profiles
+            if (path.startsWith('profiles/') && path.includes('_') && /\.(jpg|jpeg|png|gif|webp)$/i.test(path)) {
+                log('✅ Path follows expected profile image format');
+            } else if (path.startsWith('profiles/')) {
+                log('⚠️ Path starts with profiles/ but doesn\'t match typical format', 'warning');
+            }
+            
+            return true;
+        }
+
+        // Verify PWA settings
+        async function verifyPWASettings() {
+            log('Checking configuration settings...');
+            
+            try {
+                // Check config.js
+                const response = await fetch('js/config.js');
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                
+                const configText = await response.text();
+                log('✅ config.js is accessible');
+                
+                // Check manifest.json
+                const manifestResponse = await fetch('manifest.json');
+                if (!manifestResponse.ok) {
+                    log('⚠️ manifest.json is not accessible, this might affect PWA functionality', 'warning');
+                } else {
+                    log('✅ manifest.json is accessible');
+                    
+                    // Parse manifest to check for start_url and scope
+                    try {
+                        const manifest = await manifestResponse.json();
+                        log(`PWA start_url: ${manifest.start_url || 'not defined'}`);
+                        log(`PWA scope: ${manifest.scope || 'not defined'}`);
+                    } catch (e) {
+                        log('⚠️ Could not parse manifest.json', 'warning');
+                    }
+                }
+                
+                // Check service-worker.js
+                const swResponse = await fetch('service-worker.js');
+                if (!swResponse.ok) {
+                    log('⚠️ service-worker.js is not accessible, this might affect caching behavior', 'warning');
+                } else {
+                    log('✅ service-worker.js is accessible');
+                }
+            } catch (error) {
+                log(`❌ Error verifying PWA settings: ${error.message}`, 'error');
+            }
+        }
+
+        // Helper functions
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            
+            // Apply formatting based on message type
+            let formattedMessage = message;
+            
+            switch (type) {
+                case 'header':
+                    formattedMessage = `\n\x1b[1;36m${message}\x1b[0m\n`;
+                    break;
+                case 'success':
+                    formattedMessage = `\x1b[1;32m${message}\x1b[0m`;
+                    break;
+                case 'error':
+                    formattedMessage = `\x1b[1;31m${message}\x1b[0m`;
+                    break;
+                case 'warning':
+                    formattedMessage = `\x1b[1;33m${message}\x1b[0m`;
+                    break;
+                case 'info':
+                default:
+                    break;
+            }
+            
+            // Add to results
+            results.innerHTML += formattedMessage + '\n';
+            results.scrollTop = results.scrollHeight;
+            
+            // Also log to console for debugging
+            console.log(message);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

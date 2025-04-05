@@ -415,13 +415,34 @@ async function completeProfileSave(data) {
                 
                 console.log('Profile image uploaded successfully:', uploadData);
                 
-                // Get public URL
-                const { data: urlData } = supabase.storage
-                    .from('prayer-diary')
-                    .getPublicUrl(filePath);
+                // Get public URL - try using createSignedUrl instead since we're having issues with getPublicUrl
+                try {
+                    // Try signed URL first as it's more reliable
+                    const { data: signedData, error: signedError } = await supabase.storage
+                        .from('prayer-diary')
+                        .createSignedUrl(filePath, 31536000); // 1 year expiry
                     
-                profileImageUrl = urlData.publicUrl;
-                console.log('Profile image URL:', profileImageUrl);
+                    if (signedError) {
+                        console.error('Error creating signed URL:', signedError);
+                        
+                        // Fall back to public URL
+                        const { data: urlData } = supabase.storage
+                            .from('prayer-diary')
+                            .getPublicUrl(filePath);
+                        
+                        profileImageUrl = urlData.publicUrl;
+                        console.log('Using public URL (fallback):', profileImageUrl);
+                    } else {
+                        profileImageUrl = signedData.signedUrl;
+                        console.log('Using signed URL (1 year validity):', profileImageUrl);
+                    }
+                } catch (urlError) {
+                    console.error('Error getting URLs:', urlError);
+                    
+                    // Last resort - manually construct URL
+                    profileImageUrl = `${supabase.storageUrl}/object/public/prayer-diary/${filePath}`;
+                    console.log('Using manually constructed URL (last resort):', profileImageUrl);
+                }
                 
                 // Test the URL before using it
                 try {
