@@ -78,6 +78,8 @@ function openAuthModal(mode) {
     const submitBtn = document.getElementById('auth-submit');
     const switchText = document.getElementById('auth-switch-text');
     const signupField = document.querySelector('.signup-field');
+    const signupNameInput = document.getElementById('signup-name');
+    const signupHelpText = document.querySelector('.signup-field .form-text');
     
     // Reset form
     document.getElementById('auth-form').reset();
@@ -88,11 +90,19 @@ function openAuthModal(mode) {
         submitBtn.textContent = 'Log In';
         switchText.innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
         signupField.classList.add('d-none');
+        
+        // CRITICAL: Remove required attribute from hidden fields in login mode
+        signupNameInput.removeAttribute('required');
+        if (signupHelpText) signupHelpText.classList.add('d-none');
     } else {
         title.textContent = 'Sign Up';
         submitBtn.textContent = 'Sign Up';
         switchText.innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
         signupField.classList.remove('d-none');
+        
+        // Add required attribute back for signup mode
+        signupNameInput.setAttribute('required', '');
+        if (signupHelpText) signupHelpText.classList.remove('d-none');
         
         // Initially disable the signup button until all fields are filled
         submitBtn.disabled = true;
@@ -117,12 +127,37 @@ function openAuthModal(mode) {
 function toggleAuthMode() {
     const title = document.getElementById('auth-modal-title');
     const isLogin = title.textContent === 'Log In';
+    const signupNameInput = document.getElementById('signup-name');
+    const signupField = document.querySelector('.signup-field');
+    const signupHelpText = document.querySelector('.signup-field .form-text');
     
     if (isLogin) {
-        openAuthModal('signup');
+        // Switching to signup
+        title.textContent = 'Sign Up';
+        document.getElementById('auth-submit').textContent = 'Sign Up';
+        document.getElementById('auth-switch-text').innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
+        
+        // Show signup fields and make them required
+        signupField.classList.remove('d-none');
+        signupNameInput.setAttribute('required', '');
+        if (signupHelpText) signupHelpText.classList.remove('d-none');
     } else {
-        openAuthModal('login');
+        // Switching to login
+        title.textContent = 'Log In';
+        document.getElementById('auth-submit').textContent = 'Log In';
+        document.getElementById('auth-switch-text').innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
+        
+        // Hide signup fields and remove required attribute
+        signupField.classList.add('d-none');
+        signupNameInput.removeAttribute('required');
+        if (signupHelpText) signupHelpText.classList.add('d-none');
     }
+    
+    // Re-attach event listener for switch link
+    document.getElementById('auth-switch').addEventListener('click', toggleAuthMode);
+    
+    // Re-validate the form
+    validateAuthForm();
 }
 
 // Validate the auth form
