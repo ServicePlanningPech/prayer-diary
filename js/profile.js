@@ -22,11 +22,32 @@ async function loadUserProfile() {
         }
         
         // Debug what values we have available
-        console.log("Profile data available for name:", {
+        console.log("Profile data available for user:", {
             "profile.full_name": userProfile.full_name,
             "user_metadata": currentUser.user_metadata,
-            "email": currentUser.email
+            "email": currentUser.email,
+            "profile_image_url": userProfile.profile_image_url
         });
+        
+        // Initialize profile image properly
+        if (userProfile.profile_image_url) {
+            // Clean the URL by removing any query parameters
+            let cleanImageUrl = userProfile.profile_image_url;
+            if (cleanImageUrl.includes('?')) {
+                cleanImageUrl = cleanImageUrl.split('?')[0];
+            }
+            
+            console.log("Setting preview image to:", cleanImageUrl);
+            
+            // Set the preview card image directly
+            const previewImage = document.getElementById('preview-profile-image');
+            if (previewImage) {
+                previewImage.src = cleanImageUrl;
+                // Force a reload if needed
+                previewImage.setAttribute('data-src', cleanImageUrl);
+                setTimeout(() => previewImage.src = cleanImageUrl, 100);
+            }
+        }
         
         // Get the name from the most reliable source
         const userName = userProfile.full_name || 
@@ -87,35 +108,51 @@ async function loadUserProfile() {
             // Log profile image URL for debugging
             console.log('Profile image URL:', userProfile.profile_image_url);
             
-            // Test direct image access with GET instead of HEAD
+            // Better approach - use an Image object to test loading directly
             if (userProfile.profile_image_url) {
-                // DO NOT use HEAD requests - they often fail with Supabase storage
-                // Instead use a GET with proper credentials and no-cors mode
-                fetch(userProfile.profile_image_url, { 
-                    method: 'GET',
-                    mode: 'no-cors', // This is crucial for avoiding CORS issues
-                    cache: 'no-store',
-                    credentials: 'omit'
-                })
-                .then(response => {
-                    console.log('Image fetch seems successful (no-cors mode)');
-                    // Note: With no-cors mode, we can't check status, but if it didn't throw, it's likely OK
-                })
-                .catch(error => {
-                    console.error('Error testing image URL:', error);
+                console.log('Testing image loading with Image object');
+                
+                // First, clean the URL
+                let testImageUrl = userProfile.profile_image_url;
+                if (testImageUrl.includes('?')) {
+                    testImageUrl = testImageUrl.split('?')[0];
+                }
+                
+                // Use the Image constructor to test loading
+                const testImg = new Image();
+                testImg.onload = function() {
+                    console.log('✅ Image loaded successfully using Image constructor');
+                    // Update all instances of the profile image in the UI
+                    updateAllProfileImages(testImageUrl);
+                };
+                
+                testImg.onerror = function() {
+                    console.error('❌ Image failed to load using constructor:', testImageUrl);
                     
-                    // If original URL fails, try without query parameters
-                    if (userProfile.profile_image_url.includes('?')) {
-                        const cleanUrl = userProfile.profile_image_url.split('?')[0];
-                        console.log('Trying clean URL without parameters:', cleanUrl);
+                    // Try a different URL format as fallback
+                    if (testImageUrl.includes('/storage/v1/object/')) {
+                        // Try alternative URL format
+                        const altUrl = testImageUrl.replace('/storage/v1/object/', '/storage/v1/render/');
+                        console.log('Trying alternative URL format:', altUrl);
                         
-                        // Update the user's profile image in the UI with this cleaned URL
-                        const previewImage = document.getElementById('preview-profile-image');
-                        if (previewImage) {
-                            previewImage.src = cleanUrl;
-                        }
+                        const altImg = new Image();
+                        altImg.onload = function() {
+                            console.log('✅ Alternative URL format worked!');
+                            updateAllProfileImages(altUrl);
+                        };
+                        altImg.onerror = function() {
+                            console.error('❌ Alternative URL also failed, falling back to placeholder');
+                            updateAllProfileImages('img/placeholder-profile.png');
+                        };
+                        altImg.src = altUrl;
+                    } else {
+                        // Default to placeholder
+                        updateAllProfileImages('img/placeholder-profile.png');
                     }
-                });
+                };
+                
+                // Start loading test
+                testImg.src = testImageUrl;
             }
         }, 100);
         
@@ -207,9 +244,40 @@ function addImageDebugHandlers() {
             
             img.addEventListener('load', function() {
                 console.log('Image loaded successfully:', this.src);
+                // Clear any error indicators
+                this.style.border = '';
             });
         }
     });
+}
+
+// Helper function to update all profile images in the UI
+function updateAllProfileImages(imageUrl) {
+    console.log('Updating all profile images to:', imageUrl);
+    
+    // List of all elements that should show the profile image
+    const imageElements = [
+        document.getElementById('preview-profile-image'),       // Prayer card preview
+        document.getElementById('profile-image-preview')        // Upload preview
+    ];
+    
+    // Update each element if it exists
+    imageElements.forEach(img => {
+        if (img) {
+            console.log('Updating image element:', img.id);
+            img.src = imageUrl;
+            img.style.border = ''; // Clear any error borders
+            
+            // Force browser to reload the image
+            img.setAttribute('data-timestamp', Date.now());
+        }
+    });
+    
+    // Also store this URL for future use
+    if (userProfile && imageUrl !== 'img/placeholder-profile.png') {
+        // Update the working URL in memory
+        userProfile._workingImageUrl = imageUrl;
+    }
 }
 
 // Update the profile preview card
@@ -449,6 +517,24 @@ async function completeProfileSave(data) {
                         profileImageUrl = signedData.signedUrl;
                         console.log('Using signed URL (1 year validity):', profileImageUrl);
                     }
+                    
+                    // Immediately test if this URL works
+                    const testImg = new Image();
+                    testImg.onload = function() {
+                        console.log('✅ Upload image URL works immediately:', profileImageUrl);
+                        // Immediately update all profile images in the UI with working URL
+                        updateAllProfileImages(profileImageUrl);
+                    };
+                    testImg.onerror = function() {
+                        console.log('❌ Upload image URL failed immediate test, trying cleaned version');
+                        // Try without query parameters
+                        if (profileImageUrl.includes('?')) {
+                            const cleanUrl = profileImageUrl.split('?')[0];
+                            updateAllProfileImages(cleanUrl);
+                        }
+                    };
+                    testImg.src = profileImageUrl;
+                    
                 } catch (urlError) {
                     console.error('Error getting URLs:', urlError);
                     
