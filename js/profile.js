@@ -29,23 +29,63 @@ async function loadUserProfile() {
             "profile_image_url": userProfile.profile_image_url
         });
         
-        // Initialize profile image properly
+        // Initialize profile image properly with a signed URL
         if (userProfile.profile_image_url) {
-            // Clean the URL by removing any query parameters
-            let cleanImageUrl = userProfile.profile_image_url;
-            if (cleanImageUrl.includes('?')) {
-                cleanImageUrl = cleanImageUrl.split('?')[0];
-            }
-            
-            console.log("Setting preview image to:", cleanImageUrl);
-            
-            // Set the preview card image directly
+            // Start with placeholder while we generate the signed URL
             const previewImage = document.getElementById('preview-profile-image');
             if (previewImage) {
-                previewImage.src = cleanImageUrl;
-                // Force a reload if needed
-                previewImage.setAttribute('data-src', cleanImageUrl);
-                setTimeout(() => previewImage.src = cleanImageUrl, 100);
+                previewImage.src = 'img/placeholder-profile.png';
+            }
+            
+            // Extract the path from the stored profile_image_url
+            let imagePath = '';
+            const originalUrl = userProfile.profile_image_url;
+            
+            if (originalUrl.includes('/storage/v1/object/public/')) {
+                // It's a public URL format - extract the path
+                const pathStart = originalUrl.indexOf('/prayer-diary/');
+                if (pathStart > -1) {
+                    imagePath = originalUrl.substring(pathStart + '/prayer-diary/'.length);
+                    // Remove any query params
+                    if (imagePath.includes('?')) {
+                        imagePath = imagePath.split('?')[0];
+                    }
+                }
+            } else if (originalUrl.includes('/storage/v1/object/sign/')) {
+                // It's already a signed URL - extract the path
+                const match = originalUrl.match(/\/prayer-diary\/([^?]+)/);
+                if (match && match[1]) {
+                    imagePath = match[1];
+                }
+            } else {
+                // Try to extract from any URL format
+                const match = originalUrl.match(/\/prayer-diary\/([^?]+)/);
+                if (match && match[1]) {
+                    imagePath = match[1];
+                }
+            }
+            
+            console.log("Extracted image path:", imagePath);
+            
+            if (imagePath) {
+                try {
+                    const { data, error } = await supabase.storage
+                        .from('prayer-diary')
+                        .createSignedUrl(imagePath, 3600); // 1 hour validity
+                    
+                    if (error) {
+                        console.error('Error creating signed URL for profile image:', error);
+                    } else {
+                        console.log("Setting profile image to signed URL:", data.signedUrl);
+                        
+                        // Update all profile images with the signed URL
+                        updateAllProfileImages(data.signedUrl);
+                    }
+                } catch (e) {
+                    console.error('Exception generating signed URL:', e);
+                }
+            } else {
+                console.warn('Could not extract image path from profile URL:', originalUrl);
             }
         }
         
@@ -498,25 +538,19 @@ async function completeProfileSave(data) {
                 
                 // Get public URL - try using createSignedUrl instead since we're having issues with getPublicUrl
                 try {
-                    // Try signed URL first as it's more reliable
+                    // Only use signed URLs for authenticated-only access
+                    // This ensures the images are only accessible to logged-in users
                     const { data: signedData, error: signedError } = await supabase.storage
                         .from('prayer-diary')
-                        .createSignedUrl(filePath, 31536000); // 1 year expiry
+                        .createSignedUrl(filePath, 86400); // 24-hour expiry - balance between security and convenience
                     
                     if (signedError) {
                         console.error('Error creating signed URL:', signedError);
-                        
-                        // Fall back to public URL
-                        const { data: urlData } = supabase.storage
-                            .from('prayer-diary')
-                            .getPublicUrl(filePath);
-                        
-                        profileImageUrl = urlData.publicUrl;
-                        console.log('Using public URL (fallback):', profileImageUrl);
-                    } else {
-                        profileImageUrl = signedData.signedUrl;
-                        console.log('Using signed URL (1 year validity):', profileImageUrl);
+                        throw signedError;
                     }
+                    
+                    profileImageUrl = signedData.signedUrl;
+                    console.log('Using signed URL (24-hour validity):', profileImageUrl);
                     
                     // Immediately test if this URL works
                     const testImg = new Image();

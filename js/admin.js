@@ -1,5 +1,39 @@
 // Admin Module
 
+// Helper function to generate signed URLs for profile images
+async function getSignedProfileImageUrl(imagePath, expirySeconds = 3600) {
+    if (!imagePath) return null;
+    
+    // Extract just the path part if it's a full URL
+    let path = imagePath;
+    
+    if (imagePath.includes('/storage/v1/object/')) {
+        const match = imagePath.match(/\/prayer-diary\/([^?]+)/);
+        if (match && match[1]) {
+            path = match[1];
+        } else {
+            console.warn('Could not extract path from URL:', imagePath);
+            return null;
+        }
+    }
+    
+    try {
+        const { data, error } = await supabase.storage
+            .from('prayer-diary')
+            .createSignedUrl(path, expirySeconds);
+        
+        if (error) {
+            console.error('Error creating signed URL:', error);
+            return null;
+        }
+        
+        return data.signedUrl;
+    } catch (e) {
+        console.error('Exception generating signed URL:', e);
+        return null;
+    }
+}
+
 // Load users for admin view
 async function loadUsers() {
     if (!isAdmin()) {
@@ -58,6 +92,10 @@ async function loadUsers() {
         } else {
             let pendingHtml = '';
             pendingUsers.forEach(user => {
+                // Generate signed URLs for profile images
+                if (user.profile_image_url) {
+                    user.signed_image_url = await getSignedProfileImageUrl(user.profile_image_url);
+                }
                 pendingHtml += createUserCard(user, true);
             });
             pendingContainer.innerHTML = pendingHtml;
@@ -88,6 +126,10 @@ async function loadUsers() {
         } else {
             let approvedHtml = '';
             approvedUsers.forEach(user => {
+                // Generate signed URLs for profile images
+                if (user.profile_image_url) {
+                    user.signed_image_url = await getSignedProfileImageUrl(user.profile_image_url);
+                }
                 approvedHtml += createUserCard(user, false);
             });
             approvedContainer.innerHTML = approvedHtml;
