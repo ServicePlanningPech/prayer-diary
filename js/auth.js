@@ -148,103 +148,56 @@ async function handleAuth(e) {
             // Add debug log to see what we're sending
             console.log('Attempting to sign up user:', email);
             
-            // DIAGNOSTIC MODE - Bypass normal signup flow to isolate the issue
+            // Simplified signup flow - direct and linear process
             let data, error;
             
             try {
-                // Try to create a simple authentication account without any metadata
-                // This helps us narrow down if it's an issue with the basic auth or with our metadata
+                // Step 1: Create the authentication account
                 const simpleSignup = await supabase.auth.signUp({
                     email,
-                    password,
-                    options: {
-                        // No metadata or redirects to minimize potential issues
-                    }
+                    password
                 });
                 
                 data = simpleSignup.data;
                 error = simpleSignup.error;
                 
-                console.log('Simple signup response:', {
+                console.log('Signup response:', {
                     error: error ? {
                         message: error.message,
                         code: error.code,
-                        status: error.status,
-                        details: error.details
+                        status: error.status
                     } : null,
                     userId: data?.user?.id
                 });
                 
-                // If the basic signup works, manually set the metadata
+                // Step 2: If auth account created successfully, immediately create the profile
                 if (!error && data?.user?.id) {
-                    console.log('User created, now setting metadata manually');
+                    console.log('User created, now creating profile directly');
                     
-                    // We'll manually create the profile later
+                    // Create the profile directly - no waiting for triggers
+                    const { error: insertError } = await supabase
+                        .from('profiles')
+                        .insert({ 
+                            id: data.user.id,
+                            full_name: fullName,
+                            user_role: 'User',
+                            approval_state: 'Pending',
+                            profile_set: false,
+                            prayer_update_notification_method: 'email',
+                            urgent_prayer_notification_method: 'email',
+                            gdpr_accepted: false
+                        });
+                        
+                    if (insertError) {
+                        console.error('Error creating profile:', insertError);
+                        throw insertError;
+                    } else {
+                        console.log('Successfully created profile');
+                    }
                 }
             } catch (signupError) {
-                console.error('Error during simplified signup attempt:', signupError);
+                console.error('Error during signup process:', signupError);
                 error = signupError;
-            }
-            
-            // Handle profile creation/update with better error checking and recovery
-            if (data && data.user) {
-                // Wait longer for the profile to be created by the trigger
-                setTimeout(async () => {
-                    try {
-                        // First check if profile exists
-                        const { data: existingProfile, error: checkError } = await supabase
-                            .from('profiles')
-                            .select('id')
-                            .eq('id', data.user.id);
-                            
-                        if (checkError) {
-                            console.error('Error checking for profile:', checkError);
-                        }
-                        
-                        // If no profile exists or error occurred, create one manually
-                        if (!existingProfile || existingProfile.length === 0 || checkError) {
-                            console.log('Profile not found, creating it manually');
-                            
-                            // Create a new profile with all required fields
-                            const { error: insertError } = await supabase
-                                .from('profiles')
-                                .insert({ 
-                                    id: data.user.id,
-                                    full_name: fullName,
-                                    user_role: 'User',
-                                    approval_state: 'Pending',
-                                    profile_set: false,
-                                    prayer_update_notification_method: 'email',
-                                    urgent_prayer_notification_method: 'email',
-                                    gdpr_accepted: false
-                                });
-                                
-                            if (insertError) {
-                                console.error('Error creating profile manually:', insertError);
-                            } else {
-                                console.log('Successfully created profile manually');
-                            }
-                        } else {
-                            // Profile exists, just update it
-                            console.log('Profile exists, updating it');
-                            
-                            const { error: updateError } = await supabase
-                                .from('profiles')
-                                .update({ 
-                                    full_name: fullName
-                                })
-                                .eq('id', data.user.id);
-                                
-                            if (updateError) {
-                                console.error('Error updating profile during signup:', updateError);
-                            } else {
-                                console.log('Successfully updated profile during signup');
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Exception managing profile during signup:', e);
-                    }
-                }, 3000); // Increased to 3 seconds to give the trigger more time
             }
             
             if (error) throw error;
@@ -256,11 +209,8 @@ async function handleAuth(e) {
             // Notify admins about the new user registration
             await notifyAdminsAboutNewUser(fullName, email);
             
-            // Show welcome message
-            showNotification(
-                'Account Created',
-                `Welcome to Prayer Diary! Your account has been created and is pending approval by an administrator. You'll receive an email when your account is approved.`
-            );
+            // Show registration complete screen
+            showRegistrationCompleteScreen();
         }
     } catch (error) {
         // Enhanced error logging for debugging
@@ -306,73 +256,47 @@ async function logout() {
         userProfile = null;
         showLoggedOutState();
         
+        // Clear any local data or state
+        clearLocalAppState();
+        
     } catch (error) {
         console.error('Logout error:', error);
         showNotification('Logout Error', `There was a problem logging out: ${error.message}`);
     }
 }
 
-// Fetch current user's profile with retry mechanism
+// Helper function to clear any local state
+function clearLocalAppState() {
+    // Clear any cached data
+    if (window.sessionStorage) {
+        // Clear specific session storage items related to the app
+        // Don't clear everything as it might affect other apps
+        sessionStorage.removeItem('prayerDiaryLastView');
+        sessionStorage.removeItem('prayerDiaryLastUpdate');
+        // Add any other items that should be cleared
+    }
+    
+    // Reset any global app state variables (if any)
+    // Example: currentView = null;
+}
+
+// Fetch current user's profile - simplified version without fallback profile creation
 async function fetchUserProfile() {
     try {
         if (!currentUser) return null;
         
-        // First attempt to get the profile
-        let { data, error } = await supabase
+        // Directly fetch the profile
+        const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', currentUser.id)
             .single();
             
-        // If we get a "no rows returned" error, the profile might not be created yet
-        if (error && error.code === 'PGRST116') {
-            console.log('Profile not found on first attempt, waiting and retrying...');
-            
-            // Wait a moment and try again
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Check if profile exists now
-            const { data: checkData, error: checkError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', currentUser.id)
-                .single();
-                
-            if (checkError) {
-                // Profile still doesn't exist, create it manually
-                console.log('Profile still not found, creating it manually');
-                
-                const { error: insertError } = await supabase
-                    .from('profiles')
-                    .insert({ 
-                        id: currentUser.id,
-                        full_name: currentUser.email, // Use email as fallback name
-                        user_role: 'User',
-                        approval_state: 'Pending'
-                    });
-                    
-                if (insertError) {
-                    console.error('Error creating profile manually:', insertError);
-                    throw insertError;
-                }
-                
-                // Fetch the newly created profile
-                const { data: newData, error: newError } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', currentUser.id)
-                    .single();
-                    
-                if (newError) throw newError;
-                
-                data = newData;
-            } else {
-                // Use the data from the retry
-                data = checkData;
-            }
-        } else if (error) {
-            // Handle other types of errors
-            throw error;
+        if (error) {
+            // Log any errors but don't try to create a profile - in our simplified approach,
+            // profiles are always created during signup, not login
+            console.error('Error fetching user profile:', error);
+            return null;
         }
         
         userProfile = data;
@@ -385,41 +309,27 @@ async function fetchUserProfile() {
 
 // Update user interface for logged in state
 function showLoggedInState() {
-    document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.logged-in').forEach(el => el.classList.remove('hidden'));
-    
-    // Show/hide admin links based on user role
-    if (userProfile && userProfile.user_role === 'Administrator') {
-        document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-    } else {
-        document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+    // Check if user profile exists and is approved
+    if (!userProfile) {
+        console.error("No user profile found after login");
+        showNotification('Error', 'Could not load your user profile. Please contact support.');
+        logout();
+        return;
     }
     
-    // Check approval status and show appropriate view
-    if (userProfile && userProfile.approval_state === 'Approved') {
-        document.getElementById('landing-view').classList.add('d-none');
-        document.getElementById('app-views').classList.remove('d-none');
+    // Check approval status first
+    if (userProfile.approval_state !== 'Approved') {
+        // User is logged in but not approved - show pending screen and prevent navigation
+        document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
         
-        // If profile is not set yet, take user directly to profile page
-        if (userProfile.profile_set === false) {
-            showView('profile-view');
-            showNotification('Welcome', 'Please complete your profile information before using the Prayer Diary.');
-        } else {
-            // Load initial view (prayer calendar)
-            showView('calendar-view');
-            loadPrayerCalendar();
-        }
-    } else {
-        // Show pending approval message
         document.getElementById('landing-view').classList.remove('d-none');
         document.getElementById('app-views').classList.add('d-none');
         
-        // Disable all navigation buttons except logout
-        document.querySelectorAll('.nav-link').forEach(link => {
-            if (link.id !== 'btn-logout') {
-                link.classList.add('disabled');
-                link.style.pointerEvents = 'none';
-            }
+        // Disable all navigation buttons
+        document.querySelectorAll('.nav-link, .navbar-brand').forEach(link => {
+            link.classList.add('disabled');
+            link.style.pointerEvents = 'none';
         });
         
         const statusMessage = document.getElementById('auth-status-message');
@@ -427,10 +337,10 @@ function showLoggedInState() {
             <div class="alert alert-warning">
                 <h4 class="alert-heading">Account Pending Approval</h4>
                 <p>Your account is pending approval by an administrator. You'll receive an email when your account is approved.</p>
-                <p>Please log out and check your email for the approval notification.</p>
+                <p>Please close this window and check your email for the approval notification.</p>
                 <hr>
                 <div class="text-center">
-                    <button id="pending-logout-btn" class="btn btn-primary" type="button">Log Out</button>
+                    <button id="pending-logout-btn" class="btn btn-primary" type="button">Close Session</button>
                 </div>
             </div>
         `;
@@ -439,7 +349,81 @@ function showLoggedInState() {
         document.getElementById('pending-logout-btn').addEventListener('click', () => {
             logout();
         });
+        
+        return;
     }
+    
+    // User is approved - show normal UI
+    document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.logged-in').forEach(el => el.classList.remove('hidden'));
+    
+    // Show/hide admin links based on user role
+    if (userProfile.user_role === 'Administrator') {
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+    } else {
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+    }
+    
+    // Enable all navigation buttons
+    document.querySelectorAll('.nav-link, .navbar-brand').forEach(link => {
+        link.classList.remove('disabled');
+        link.style.pointerEvents = '';
+    });
+    
+    document.getElementById('landing-view').classList.add('d-none');
+    document.getElementById('app-views').classList.remove('d-none');
+    
+    // If profile is not set yet, take user directly to profile page
+    if (userProfile.profile_set === false) {
+        showView('profile-view');
+        showNotification('Welcome', 'Please complete your profile information before using the Prayer Diary.');
+    } else {
+        // Load initial view (prayer calendar)
+        showView('calendar-view');
+        loadPrayerCalendar();
+    }
+}
+
+// Registration complete screen
+function showRegistrationCompleteScreen() {
+    document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
+    
+    document.getElementById('landing-view').classList.remove('d-none');
+    document.getElementById('app-views').classList.add('d-none');
+    
+    // Disable all navigation buttons
+    document.querySelectorAll('.nav-link, .navbar-brand').forEach(link => {
+        link.classList.add('disabled');
+        link.style.pointerEvents = 'none';
+    });
+    
+    // Show registration complete message
+    const statusMessage = document.getElementById('auth-status-message');
+    statusMessage.innerHTML = `
+        <div class="alert alert-success">
+            <h4 class="alert-heading">Registration Complete!</h4>
+            <p>Your account has been created and is pending approval by an administrator.</p>
+            <p>You'll receive an email when your account is approved.</p>
+            <hr>
+            <p class="mb-0">Please close this window and reopen the app after receiving approval.</p>
+            <div class="text-center mt-3">
+                <button id="close-session-btn" class="btn btn-primary" type="button">Close Session</button>
+            </div>
+        </div>
+    `;
+    
+    // Add close session button event listener
+    document.getElementById('close-session-btn').addEventListener('click', async () => {
+        await logout();
+        // Optional: Add a message indicating the session has been closed
+        statusMessage.innerHTML = `
+            <div class="alert alert-info">
+                <p>Your session has been closed. You may now close this window.</p>
+                <p>Please check your email for approval notification before logging in again.</p>
+            </div>
+        `;
+    });
 }
 
 // Update user interface for logged out state
@@ -450,6 +434,12 @@ function showLoggedOutState() {
     
     document.getElementById('landing-view').classList.remove('d-none');
     document.getElementById('app-views').classList.add('d-none');
+    
+    // Re-enable navigation buttons
+    document.querySelectorAll('.nav-link, .navbar-brand').forEach(link => {
+        link.classList.remove('disabled');
+        link.style.pointerEvents = '';
+    });
     
     // Update landing page message
     const statusMessage = document.getElementById('auth-status-message');
