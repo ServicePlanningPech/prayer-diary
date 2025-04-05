@@ -92,7 +92,7 @@ window.PrayerDiaryTroubleshooter = {
             // Create an array of expected columns
             const expectedColumns = [
                 'id', 'full_name', 'profile_image_url', 'prayer_points',
-                'user_role', 'approval_state', 'profile_set', 'GDPR_accepted',
+                'user_role', 'approval_state', 'profile_set', 'gdpr_accepted',
                 'prayer_update_notification_method', 'urgent_prayer_notification_method'
             ];
             
@@ -302,7 +302,7 @@ window.PrayerDiaryTroubleshooter = {
                     profile_set: false,
                     prayer_update_notification_method: 'email',
                     urgent_prayer_notification_method: 'email',
-                    GDPR_accepted: false
+                    gdpr_accepted: false
                 })
                 .select();
                 

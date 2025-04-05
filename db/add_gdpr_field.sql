@@ -1,13 +1,13 @@
 -- Add GDPR acceptance field to profiles table
 -- Run this SQL if upgrading an existing Prayer Diary installation
 
--- Add the GDPR_accepted column if it doesn't exist
+-- Add the gdpr_accepted column if it doesn't exist
 ALTER TABLE profiles 
-ADD COLUMN IF NOT EXISTS "GDPR_accepted" BOOLEAN NOT NULL DEFAULT FALSE;
+ADD COLUMN IF NOT EXISTS "gdpr_accepted" BOOLEAN NOT NULL DEFAULT FALSE;
 
--- Administrators are automatically set to GDPR_accepted = TRUE
+-- Administrators are automatically set to gdpr_accepted = TRUE
 UPDATE profiles 
-SET GDPR_accepted = TRUE 
+SET gdpr_accepted = TRUE 
 WHERE user_role = 'Administrator';
 
 -- Apply the same behavior to the trigger that creates new user profiles
@@ -22,7 +22,7 @@ BEGIN
     profile_set,
     prayer_update_notification_method,
     urgent_prayer_notification_method,
-    GDPR_accepted
+    gdpr_accepted
   )
   VALUES (
     NEW.id, 

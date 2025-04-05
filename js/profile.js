@@ -37,7 +37,7 @@ async function loadUserProfile() {
         }
         
         // Log GDPR acceptance status
-        console.log('GDPR accepted:', userProfile.GDPR_accepted);
+        console.log('GDPR accepted:', userProfile.gdpr_accepted);
         
         // Set profile preview
         updateProfilePreview();
@@ -149,7 +149,7 @@ async function saveProfile(e) {
         }
         
         // Check if user has accepted GDPR
-        if (!userProfile.GDPR_accepted) {
+        if (!userProfile.gdpr_accepted) {
             // Store the profile data and button for later
             profileDataToSave = {
                 fullName,
@@ -301,7 +301,7 @@ async function completeProfileSave(data) {
         }
         
         // Determine if GDPR was accepted in this save
-        const gdprAccepted = data.gdprAccepted === true ? true : userProfile.GDPR_accepted || false;
+        const gdprAccepted = data.gdprAccepted === true ? true : userProfile.gdpr_accepted || false;
         
         // Update the profile
         const { data: updateData, error } = await supabase
@@ -316,7 +316,7 @@ async function completeProfileSave(data) {
                 urgent_prayer_notification_method: data.urgentPrayerNotification,
                 notification_push: data.notifyPush,
                 profile_set: true, // Mark profile as completed
-                GDPR_accepted: gdprAccepted, // Set GDPR acceptance status
+                gdpr_accepted: gdprAccepted, // Set GDPR acceptance status
                 updated_at: new Date().toISOString()
             })
             .eq('id', getUserId());

@@ -72,7 +72,7 @@ async function emergencyHandleAuth(e) {
                             profile_set: false,
                             prayer_update_notification_method: 'email',
                             urgent_prayer_notification_method: 'email',
-                            GDPR_accepted: false
+                            gdpr_accepted: false
                         });
                         
                     if (profileError) {
