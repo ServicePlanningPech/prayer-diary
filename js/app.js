@@ -1,7 +1,15 @@
 // Main Application JavaScript
 
-// Version timestamp for cache busting
+// Version timestamp for cache busting - visible in console
 const APP_VERSION_TIMESTAMP = Date.now();
+console.log(`Prayer Diary initializing, build ${APP_VERSION_TIMESTAMP}`);
+
+// Add some debugging info to help track versions
+window.PRAYER_DIARY = {
+    version: APP_VERSION_TIMESTAMP,
+    buildTime: new Date().toISOString(),
+    devMode: window.PRAYER_DIARY_DEV_MODE || false
+};
 
 // Initialize the app when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);

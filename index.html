@@ -1084,9 +1084,10 @@
     
     <!-- App JS with dynamic version parameters - Note the order is important -->
     <script>
-        // Helper to add cache busting parameters to scripts
+        // Helper to add cache busting parameters to scripts with generation timestamp
+        const BUILD_TIMESTAMP = Date.now();
         function loadScript(src) {
-            document.write(`<script src="${src}?v=${Date.now()}"><\/script>`);
+            document.write(`<script src="${src}?v=${BUILD_TIMESTAMP}_${Math.random().toString(36).substring(2,8)}"><\/script>`);
         }
     </script>
     

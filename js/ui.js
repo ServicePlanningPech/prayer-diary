@@ -300,12 +300,23 @@ function createUrgentCard(prayer, isAdmin = false) {
 
 // Helper function to create a user card
 function createUserCard(user, isPending = true) {
+    // Get public URL for the profile image
+    let imageUrl = 'img/placeholder-profile.png';
+    
+    // Check if user has a profile image URL and if it's from Supabase storage
+    if (user.profile_image_url && user.profile_image_url.includes('storage/v1/object/public/')) {
+        // Use the URL directly as it should be a public URL
+        imageUrl = user.profile_image_url;
+        console.log(`Using profile image URL for ${user.full_name}: ${imageUrl}`);
+    }
+    
     return `
     <div class="card user-card mb-3">
         <div class="card-body">
             <div class="row align-items-center">
                 <div class="col-auto">
-                    <img class="user-avatar" src="${user.profile_image_url || 'img/placeholder-profile.png'}" alt="${user.full_name}">
+                    <img class="user-avatar" src="${imageUrl}" alt="${user.full_name}" 
+                         onerror="this.onerror=null; this.src='img/placeholder-profile.png';">
                 </div>
                 <div class="col">
                     <h5 class="card-title mb-1">${user.full_name}</h5>

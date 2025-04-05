@@ -1,6 +1,7 @@
 // Service Worker for Prayer Diary PWA
 
-const CACHE_NAME = 'prayer-diary-v1';
+// Use timestamp for more aggressive cache busting
+const CACHE_NAME = 'prayer-diary-v1-' + Date.now();
 const urlsToCache = [
   '/',
   '/index.html',

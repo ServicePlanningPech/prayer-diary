@@ -1,102 +1,74 @@
-// Development Tools for Prayer Diary
-// This file provides utilities for development and testing
+// Development Mode Tools
+// This file provides utilities for development mode
 
-// Development mode settings
-const devTools = {
-    // Settings
-    isDevelopmentMode: localStorage.getItem('prayerDiary_devMode') === 'true' || window.PRAYER_DIARY_DEV_MODE || false,
-    
-    // Initialize dev tools
-    init() {
-        // Only add dev tools in non-production environments
-        if (window.location.hostname === 'localhost' || 
-            window.location.hostname.includes('192.168.') ||
-            window.location.hostname.includes('127.0.0.1') ||
-            window.location.hostname.includes('.github.io')) {
-            
-            this.createDevPanel();
-            
-            // Apply stored settings
-            if (this.isDevelopmentMode) {
-                this.clearCaches();
+// Set development mode flag
+window.PRAYER_DIARY_DEV_MODE = true;
+
+// Force unregister service workers on page load in dev mode
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        console.log('DEV MODE: Unregistering service workers...');
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (let registration of registrations) {
+                registration.unregister();
+                console.log('DEV MODE: Service worker unregistered');
             }
-        }
-    },
-    
-    // Create development panel UI
-    createDevPanel() {
-        const panel = document.createElement('div');
-        panel.style.position = 'fixed';
-        panel.style.bottom = '0';
-        panel.style.right = '0';
-        panel.style.backgroundColor = 'rgba(0,0,0,0.8)';
-        panel.style.color = 'white';
-        panel.style.padding = '8px';
-        panel.style.borderTopLeftRadius = '8px';
-        panel.style.zIndex = '9999';
-        panel.style.fontSize = '12px';
-        panel.style.fontFamily = 'monospace';
-        
-        panel.innerHTML = `
-            <div style="display: flex; align-items: center;">
-                <input type="checkbox" id="dev-mode-toggle" ${this.isDevelopmentMode ? 'checked' : ''}>
-                <label for="dev-mode-toggle" style="margin: 0 8px 0 4px;">Dev Mode</label>
-                <button id="clear-cache-btn" style="margin-right: 4px; padding: 2px 4px;">Clear Cache</button>
-                <button id="reload-btn" style="padding: 2px 4px;">Reload</button>
-            </div>
-        `;
-        
-        document.body.appendChild(panel);
-        
-        // Set up event listeners
-        document.getElementById('dev-mode-toggle').addEventListener('change', (e) => {
-            this.isDevelopmentMode = e.target.checked;
-            localStorage.setItem('prayerDiary_devMode', e.target.checked);
-            location.reload();
         });
-        
-        document.getElementById('clear-cache-btn').addEventListener('click', () => {
-            this.clearCaches();
-            alert('Caches cleared!');
-        });
-        
-        document.getElementById('reload-btn').addEventListener('click', () => {
-            location.reload(true);
-        });
-    },
-    
-    // Clear all caches
-    clearCaches() {
-        // Clear service worker cache
-        if ('caches' in window) {
-            caches.keys().then((keyList) => {
-                return Promise.all(keyList.map((key) => {
-                    console.log('Deleting cache', key);
-                    return caches.delete(key);
-                }));
-            });
-        }
-        
-        // Unregister service workers
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then((registrations) => {
-                for (let registration of registrations) {
-                    registration.unregister();
-                    console.log('Service Worker unregistered');
-                }
-            });
-        }
-        
-        // Add random parameters to stylesheets to force reload
-        document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
-            const url = new URL(link.href);
-            url.searchParams.set('_', Date.now());
-            link.href = url.toString();
-        });
-    }
-};
+    });
+}
 
-// Initialize dev tools after page load
-document.addEventListener('DOMContentLoaded', () => {
-    devTools.init();
+// Add development mode indicator
+window.addEventListener('DOMContentLoaded', function() {
+    const devIndicator = document.createElement('div');
+    devIndicator.style.position = 'fixed';
+    devIndicator.style.bottom = '0';
+    devIndicator.style.right = '0';
+    devIndicator.style.backgroundColor = 'red';
+    devIndicator.style.color = 'white';
+    devIndicator.style.padding = '5px 10px';
+    devIndicator.style.fontSize = '12px';
+    devIndicator.style.fontWeight = 'bold';
+    devIndicator.style.zIndex = '9999';
+    devIndicator.textContent = `DEV MODE v${Date.now()}`;
+    document.body.appendChild(devIndicator);
+    
+    // Add refresh button
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = '↻';
+    refreshButton.style.marginLeft = '5px';
+    refreshButton.style.backgroundColor = 'white';
+    refreshButton.style.color = 'red';
+    refreshButton.style.border = 'none';
+    refreshButton.style.borderRadius = '3px';
+    refreshButton.style.fontWeight = 'bold';
+    refreshButton.onclick = function() {
+        // Force hard reload
+        window.location.reload(true);
+    };
+    devIndicator.appendChild(refreshButton);
+    
+    console.log(`DEV MODE: Running build ${Date.now()}`);
 });
+
+// Disable caching for all fetch requests in dev mode
+let originalFetch = window.fetch;
+window.fetch = function() {
+    let url = arguments[0];
+    let options = arguments[1] || {};
+    
+    // Only add cache busting for non-Supabase requests
+    if (typeof url === 'string' && !url.includes('supabase.co')) {
+        const separator = url.includes('?') ? '&' : '?';
+        url = `${url}${separator}_=${Date.now()}`;
+    }
+    
+    // Add cache control headers for non-Supabase requests
+    if (typeof url === 'string' && !url.includes('supabase.co')) {
+        options.headers = options.headers || {};
+        options.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+        options.headers['Pragma'] = 'no-cache';
+        options.headers['Expires'] = '0';
+    }
+    
+    return originalFetch.call(this, url, options);
+};
