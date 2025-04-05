@@ -93,10 +93,22 @@ function openAuthModal(mode) {
         submitBtn.textContent = 'Sign Up';
         switchText.innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
         signupField.classList.remove('d-none');
+        
+        // Initially disable the signup button until all fields are filled
+        submitBtn.disabled = true;
     }
     
     // Re-attach event listener for switch link
     document.getElementById('auth-switch').addEventListener('click', toggleAuthMode);
+    
+    // Add input validation event listeners
+    const formInputs = document.querySelectorAll('#auth-form input');
+    formInputs.forEach(input => {
+        input.addEventListener('input', validateAuthForm);
+    });
+    
+    // Initial validation
+    validateAuthForm();
     
     modal.show();
 }
@@ -110,6 +122,24 @@ function toggleAuthMode() {
         openAuthModal('signup');
     } else {
         openAuthModal('login');
+    }
+}
+
+// Validate the auth form
+function validateAuthForm() {
+    const submitBtn = document.getElementById('auth-submit');
+    const isLogin = document.getElementById('auth-modal-title').textContent === 'Log In';
+    
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    
+    if (isLogin) {
+        // Login requires only email and password
+        submitBtn.disabled = !(email && password);
+    } else {
+        // Signup requires name, email, and password
+        const fullName = document.getElementById('signup-name').value.trim();
+        submitBtn.disabled = !(fullName && email && password);
     }
 }
 

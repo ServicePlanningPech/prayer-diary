@@ -758,16 +758,18 @@
                     </div>
                     <form id="auth-form">
                         <div class="mb-3 signup-field d-none">
-                            <label for="signup-name" class="form-label">Full Name</label>
-                            <input type="text" class="form-control" id="signup-name" placeholder="Your full name">
+                            <label for="signup-name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="signup-name" placeholder="Your full name" required>
+                            <div class="form-text">Please enter your full name as you wish it to appear in the app.</div>
                         </div>
                         <div class="mb-3">
-                            <label for="auth-email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="auth-email" placeholder="Your email">
+                            <label for="auth-email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="auth-email" placeholder="Your email" required>
                         </div>
                         <div class="mb-4">
-                            <label for="auth-password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="auth-password" placeholder="Your password">
+                            <label for="auth-password" class="form-label">Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="auth-password" placeholder="Your password" required>
+                            <div class="form-text signup-field d-none">Must be at least 6 characters long.</div>
                         </div>
                         <div class="d-grid">
                             <button class="btn btn-primary" type="submit" id="auth-submit">Log In</button>
