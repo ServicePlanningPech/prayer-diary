@@ -80,6 +80,30 @@ async function loadUserProfile() {
             
             // Now update the preview
             updateProfilePreview();
+            
+            // Add debugging for images
+            addImageDebugHandlers();
+            
+            // Log profile image URL for debugging
+            console.log('Profile image URL:', userProfile.profile_image_url);
+            
+            // Test direct image access
+            if (userProfile.profile_image_url) {
+                // Try to fetch the image directly to see if it's accessible
+                fetch(userProfile.profile_image_url, { 
+                    method: 'HEAD',
+                    cache: 'no-store'
+                })
+                .then(response => {
+                    console.log('Image fetch status:', response.status, response.statusText);
+                    if (!response.ok) {
+                        console.error('Cannot access profile image directly:', userProfile.profile_image_url);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error testing image URL:', error);
+                });
+            }
         }, 100);
         
         // Update approval status message
@@ -126,6 +150,7 @@ function handleProfileImageChange() {
         reader.onload = function(e) {
             previewImage.src = e.target.result;
             previewImage.classList.remove('is-hidden');
+            previewImage.classList.remove('d-none');
             
             // Also update the card preview
             document.getElementById('preview-profile-image').src = e.target.result;
@@ -135,8 +160,43 @@ function handleProfileImageChange() {
         previewName.textContent = fileInput.files[0].name;
     } else {
         previewImage.classList.add('is-hidden');
+        previewImage.classList.add('d-none');
         previewName.textContent = 'No file selected';
     }
+}
+
+// Add debugging for profile image loading issues
+function addImageDebugHandlers() {
+    // Find all image elements that might be loading profile images
+    const profileImages = [
+        document.getElementById('profile-image-preview'),
+        document.getElementById('preview-profile-image')
+    ];
+    
+    profileImages.forEach(img => {
+        if (img) {
+            img.addEventListener('error', function(e) {
+                console.error('Image load error:', e);
+                console.log('Failed to load image:', this.src);
+                
+                // Add visual error indicator
+                this.style.border = '2px dashed red';
+                
+                // Try to load with cache busting to see if it's a caching issue
+                const originalSrc = this.src;
+                if (!originalSrc.includes('?nocache=')) {
+                    setTimeout(() => {
+                        this.src = originalSrc + '?nocache=' + Date.now();
+                        console.log('Retrying with cache busting:', this.src);
+                    }, 1000);
+                }
+            });
+            
+            img.addEventListener('load', function() {
+                console.log('Image loaded successfully:', this.src);
+            });
+        }
+    });
 }
 
 // Update the profile preview card
@@ -306,12 +366,44 @@ async function completeProfileSave(data) {
                 const fileName = `${getUserId()}_${Date.now()}.${fileExt}`;
                 const filePath = `profiles/${fileName}`;
                 
+                console.log('Storage upload parameters:', {
+                    userId: getUserId(),
+                    fileName: fileName,
+                    filePath: filePath,
+                    fileSize: profileImage.size,
+                    fileType: profileImage.type
+                });
+                
+                // Detailed logging for debugging
+                console.log('Current user:', currentUser);
+                console.log('Auth JWT:', await supabase.auth.getSession().then(d => d.data.session?.access_token?.substring(0, 20) + '...'));
+                
+                // First check if bucket exists and is accessible
+                try {
+                    const { data: bucketData, error: bucketError } = await supabase.storage
+                        .getBucket('prayer-diary');
+                    
+                    console.log('Bucket check result:', bucketError ? 'Error' : 'Success', 
+                        bucketError ? bucketError : bucketData);
+                } catch (bucketCheckError) {
+                    console.error('Error checking bucket:', bucketCheckError);
+                }
+                
+                // Attempt upload with detailed error handling
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('prayer-diary')
-                    .upload(filePath, profileImage);
+                    .upload(filePath, profileImage, {
+                        cacheControl: 'no-cache',
+                        upsert: true
+                    });
                     
                 if (uploadError) {
                     console.error('Profile image upload error:', uploadError);
+                    console.error('Error details:', {
+                        message: uploadError.message,
+                        statusCode: uploadError.statusCode,
+                        error: uploadError.error
+                    });
                     
                     // Provide a user-friendly error message based on the error type
                     if (uploadError.statusCode === 403) {
@@ -321,15 +413,23 @@ async function completeProfileSave(data) {
                     }
                 }
                 
-                console.log('Profile image uploaded successfully');
+                console.log('Profile image uploaded successfully:', uploadData);
                 
                 // Get public URL
-                const { data: { publicUrl } } = supabase.storage
+                const { data: urlData } = supabase.storage
                     .from('prayer-diary')
                     .getPublicUrl(filePath);
                     
-                profileImageUrl = publicUrl;
+                profileImageUrl = urlData.publicUrl;
                 console.log('Profile image URL:', profileImageUrl);
+                
+                // Test the URL before using it
+                try {
+                    const testResult = await fetch(profileImageUrl, { method: 'HEAD' });
+                    console.log('URL test result:', testResult.status, testResult.ok);
+                } catch (urlTestError) {
+                    console.error('Error testing URL:', urlTestError);
+                }
             } catch (uploadErr) {
                 console.error('Error in image upload process:', uploadErr);
                 // Continue with profile update even if image upload fails

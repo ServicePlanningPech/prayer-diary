@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Storage Diagnostic Tool</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Supabase Storage Diagnostic Tool</h1>
+        <div class="alert alert-warning">
+            This tool is for diagnosing storage access issues. Do not use in production.
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title">Storage Access Test</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="supabaseUrl" class="form-label">Supabase URL</label>
+                    <input type="text" id="supabaseUrl" class="form-control" placeholder="https://your-project.supabase.co">
+                </div>
+                <div class="mb-3">
+                    <label for="supabaseKey" class="form-label">Supabase Anon Key</label>
+                    <input type="text" id="supabaseKey" class="form-control" placeholder="your-anon-key">
+                </div>
+                <div class="mb-3">
+                    <button id="loadConfig" class="btn btn-secondary">Load from config.js</button>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <label for="bucketName" class="form-label">Bucket Name</label>
+                    <input type="text" id="bucketName" class="form-control" value="prayer-diary">
+                </div>
+                <div class="mb-3">
+                    <label for="imagePath" class="form-label">Image Path</label>
+                    <input type="text" id="imagePath" class="form-control" placeholder="profiles/user_image.jpg">
+                </div>
+                <div class="mb-3">
+                    <button id="testAccess" class="btn btn-primary">Test Access</button>
+                    <button id="testPublicUrl" class="btn btn-success">Test Public URL</button>
+                    <button id="listBucket" class="btn btn-info">List Bucket Contents</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title">Upload Test</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="uploadPath" class="form-label">Upload Path</label>
+                    <input type="text" id="uploadPath" class="form-control" value="profiles/test_upload.jpg">
+                </div>
+                <div class="mb-3">
+                    <label for="uploadFile" class="form-label">Select File</label>
+                    <input type="file" id="uploadFile" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <button id="uploadTest" class="btn btn-warning">Test Upload</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h3 class="card-title">Results</h3>
+            </div>
+            <div class="card-body">
+                <div id="results" class="bg-dark text-light p-3 rounded" style="min-height: 200px; max-height: 500px; overflow-y: auto;">
+                    <p>Results will appear here...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h3>Image Preview</h3>
+            <div id="imagePreview" class="border p-3">
+                <p>Image will appear here...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load config from config.js if available
+        document.getElementById('loadConfig').addEventListener('click', async () => {
+            try {
+                const response = await fetch('js/config.js');
+                const configText = await response.text();
+                
+                // Extract Supabase URL and key using regex
+                const urlMatch = configText.match(/SUPABASE_URL\s*=\s*['"]([^'"]+)['"]/);
+                const keyMatch = configText.match(/SUPABASE_ANON_KEY\s*=\s*['"]([^'"]+)['"]/);
+                
+                if (urlMatch && urlMatch[1]) {
+                    document.getElementById('supabaseUrl').value = urlMatch[1];
+                }
+                
+                if (keyMatch && keyMatch[1]) {
+                    document.getElementById('supabaseKey').value = keyMatch[1];
+                }
+                
+                log('Loaded configuration from config.js');
+            } catch (error) {
+                log('Error loading config: ' + error.message, 'error');
+            }
+        });
+
+        // Initialize Supabase client
+        function getSupabaseClient() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            
+            if (!url || !key) {
+                log('Please enter Supabase URL and Anon Key', 'error');
+                return null;
+            }
+            
+            return supabase.createClient(url, key);
+        }
+
+        // Test access to an image
+        document.getElementById('testAccess').addEventListener('click', async () => {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+            
+            const bucket = document.getElementById('bucketName').value;
+            const path = document.getElementById('imagePath').value;
+            
+            if (!bucket || !path) {
+                log('Please enter bucket name and image path', 'error');
+                return;
+            }
+            
+            log(`Testing access to ${bucket}/${path}...`);
+            
+            try {
+                // Try to get file metadata
+                const { data, error } = await supabase
+                    .storage
+                    .from(bucket)
+                    .createSignedUrl(path, 60);
+                
+                if (error) {
+                    log(`Error accessing file: ${error.message}`, 'error');
+                    console.error(error);
+                } else {
+                    log(`Successfully generated signed URL: ${data.signedUrl}`, 'success');
+                    displayImage(data.signedUrl);
+                }
+            } catch (error) {
+                log(`Exception: ${error.message}`, 'error');
+                console.error(error);
+            }
+        });
+
+        // Test public URL
+        document.getElementById('testPublicUrl').addEventListener('click', async () => {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+            
+            const bucket = document.getElementById('bucketName').value;
+            const path = document.getElementById('imagePath').value;
+            
+            if (!bucket || !path) {
+                log('Please enter bucket name and image path', 'error');
+                return;
+            }
+            
+            log(`Getting public URL for ${bucket}/${path}...`);
+            
+            try {
+                const { data } = supabase
+                    .storage
+                    .from(bucket)
+                    .getPublicUrl(path);
+                
+                log(`Public URL: ${data.publicUrl}`, 'info');
+                
+                // Test if the URL is accessible
+                try {
+                    const response = await fetch(data.publicUrl, {
+                        method: 'HEAD',
+                        cache: 'no-store'
+                    });
+                    
+                    if (response.ok) {
+                        log(`Public URL is accessible (Status ${response.status})`, 'success');
+                        displayImage(data.publicUrl);
+                    } else {
+                        log(`Public URL returned status ${response.status} ${response.statusText}`, 'error');
+                    }
+                } catch (fetchError) {
+                    log(`Error fetching from public URL: ${fetchError.message}`, 'error');
+                }
+            } catch (error) {
+                log(`Exception: ${error.message}`, 'error');
+                console.error(error);
+            }
+        });
+
+        // List bucket contents
+        document.getElementById('listBucket').addEventListener('click', async () => {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+            
+            const bucket = document.getElementById('bucketName').value;
+            const path = 'profiles/';
+            
+            log(`Listing contents of ${bucket}/${path}...`);
+            
+            try {
+                const { data, error } = await supabase
+                    .storage
+                    .from(bucket)
+                    .list(path);
+                
+                if (error) {
+                    log(`Error listing files: ${error.message}`, 'error');
+                    console.error(error);
+                } else {
+                    log(`Found ${data.length} files:`, 'success');
+                    data.forEach(file => {
+                        log(`- ${file.name} (${file.metadata.size} bytes)`, 'info');
+                    });
+                }
+            } catch (error) {
+                log(`Exception: ${error.message}`, 'error');
+                console.error(error);
+            }
+        });
+
+        // Test upload
+        document.getElementById('uploadTest').addEventListener('click', async () => {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+            
+            const bucket = document.getElementById('bucketName').value;
+            const path = document.getElementById('uploadPath').value;
+            const fileInput = document.getElementById('uploadFile');
+            
+            if (!bucket || !path) {
+                log('Please enter bucket name and upload path', 'error');
+                return;
+            }
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                log('Please select a file to upload', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            log(`Uploading ${file.name} (${file.size} bytes) to ${bucket}/${path}...`);
+            
+            try {
+                const { data, error } = await supabase
+                    .storage
+                    .from(bucket)
+                    .upload(path, file, {
+                        cacheControl: 'no-cache',
+                        upsert: true
+                    });
+                
+                if (error) {
+                    log(`Upload error: ${error.message}`, 'error');
+                    console.error(error);
+                } else {
+                    log(`Upload successful: ${data.path}`, 'success');
+                    
+                    // Get and test the public URL
+                    const { data: urlData } = supabase
+                        .storage
+                        .from(bucket)
+                        .getPublicUrl(path);
+                    
+                    log(`Public URL: ${urlData.publicUrl}`, 'info');
+                    displayImage(urlData.publicUrl);
+                }
+            } catch (error) {
+                log(`Exception: ${error.message}`, 'error');
+                console.error(error);
+            }
+        });
+
+        // Helper functions
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const classMap = {
+                info: 'text-info',
+                success: 'text-success',
+                error: 'text-danger',
+                warning: 'text-warning'
+            };
+            
+            const entry = document.createElement('div');
+            entry.className = classMap[type] || 'text-light';
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            
+            results.appendChild(entry);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function displayImage(url) {
+            const imagePreview = document.getElementById('imagePreview');
+            imagePreview.innerHTML = `
+                <img src="${url}" class="img-fluid" style="max-height: 300px;" />
+                <p class="mt-2"><a href="${url}" target="_blank" class="btn btn-sm btn-outline-primary">Open in new tab</a></p>
+            `;
+        }
+    </script>
+</body>
+</html>
