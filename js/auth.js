@@ -466,6 +466,8 @@ function showLoggedInState() {
     // If profile is not set yet, take user directly to profile page
     if (userProfile.profile_set === false) {
         showView('profile-view');
+        // Explicitly call loadUserProfile to populate the form fields
+        loadUserProfile();
         showNotification('Welcome', 'Please complete your profile information before using the Prayer Diary.');
     } else {
         // Load initial view (prayer calendar)

@@ -30,7 +30,10 @@ function setupNavigation() {
     
     document.getElementById('nav-profile').addEventListener('click', () => {
         showView('profile-view');
-        loadUserProfile();
+        // Load profile with a slight delay to ensure DOM is ready
+        setTimeout(() => {
+            loadUserProfile();
+        }, 50);
     });
     
     // Admin navigation

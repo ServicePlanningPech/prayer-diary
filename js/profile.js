@@ -21,8 +21,27 @@ async function loadUserProfile() {
             console.log("Refreshed user data for profile:", currentUser.email);
         }
         
-        // Populate form fields - full_name comes from auth user metadata and is read-only
-        document.getElementById('profile-name').value = userProfile.full_name || currentUser.user_metadata?.full_name || currentUser.email || '';
+        // Debug what values we have available
+        console.log("Profile data available for name:", {
+            "profile.full_name": userProfile.full_name,
+            "user_metadata": currentUser.user_metadata,
+            "email": currentUser.email
+        });
+        
+        // Get the name from the most reliable source
+        const userName = userProfile.full_name || 
+                        (currentUser.user_metadata ? currentUser.user_metadata.full_name : null) || 
+                        currentUser.email || 
+                        "Unknown User";
+                        
+        console.log("Setting profile name field to:", userName);
+        
+        // Explicitly set the value
+        const nameField = document.getElementById('profile-name');
+        nameField.value = userName;
+        
+        // Force the field to update (sometimes needed for read-only fields)
+        nameField.defaultValue = userName;
         document.getElementById('profile-prayer-points').value = userProfile.prayer_points || '';
         document.getElementById('profile-phone').value = userProfile.phone_number || '';
         document.getElementById('profile-whatsapp').value = userProfile.whatsapp_number || '';
@@ -47,8 +66,21 @@ async function loadUserProfile() {
         // Log GDPR acceptance status
         console.log('GDPR accepted:', userProfile.gdpr_accepted);
         
-        // Set profile preview
-        updateProfilePreview();
+        // Ensure name is visible in the form before updating preview
+        setTimeout(() => {
+            // Double-check name field is populated
+            const nameField = document.getElementById('profile-name');
+            if (!nameField.value || nameField.value.trim() === '') {
+                // One last attempt to set it
+                nameField.value = userProfile.full_name || 
+                                 (currentUser.user_metadata ? currentUser.user_metadata.full_name : null) || 
+                                 currentUser.email || 
+                                 "Unknown User";
+            }
+            
+            // Now update the preview
+            updateProfilePreview();
+        }, 100);
         
         // Update approval status message
         const profileStatus = document.getElementById('profile-status');
