@@ -91,13 +91,14 @@ async function loadUsers() {
             `;
         } else {
             let pendingHtml = '';
-            pendingUsers.forEach(user => {
+            // Need to process users sequentially due to async operations
+            for (const user of pendingUsers) {
                 // Generate signed URLs for profile images
                 if (user.profile_image_url) {
                     user.signed_image_url = await getSignedProfileImageUrl(user.profile_image_url);
                 }
                 pendingHtml += createUserCard(user, true);
-            });
+            }
             pendingContainer.innerHTML = pendingHtml;
             
             // Add approval/rejection event listeners
@@ -125,13 +126,14 @@ async function loadUsers() {
             `;
         } else {
             let approvedHtml = '';
-            approvedUsers.forEach(user => {
+            // Need to process users sequentially due to async operations
+            for (const user of approvedUsers) {
                 // Generate signed URLs for profile images
                 if (user.profile_image_url) {
                     user.signed_image_url = await getSignedProfileImageUrl(user.profile_image_url);
                 }
                 approvedHtml += createUserCard(user, false);
-            });
+            }
             approvedContainer.innerHTML = approvedHtml;
             
             // Add edit permissions event listeners
