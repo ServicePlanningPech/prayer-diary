@@ -13,6 +13,14 @@ async function loadUserProfile() {
             return;
         }
         
+        // Ensure we have the latest user metadata
+        const { data, error } = await supabase.auth.getUser();
+        if (!error && data.user) {
+            // Update the currentUser variable with the latest data
+            currentUser = data.user;
+            console.log("Refreshed user data for profile:", currentUser.email);
+        }
+        
         // Populate form fields - full_name comes from auth user metadata and is read-only
         document.getElementById('profile-name').value = userProfile.full_name || currentUser.user_metadata?.full_name || currentUser.email || '';
         document.getElementById('profile-prayer-points').value = userProfile.prayer_points || '';
