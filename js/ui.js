@@ -303,11 +303,22 @@ function createUserCard(user, isPending = true) {
     // Get public URL for the profile image
     let imageUrl = 'img/placeholder-profile.png';
     
-    // Check if user has a profile image URL and if it's from Supabase storage
-    if (user.profile_image_url && user.profile_image_url.includes('storage/v1/object/public/')) {
-        // Use the URL directly as it should be a public URL
-        imageUrl = user.profile_image_url;
-        console.log(`Using profile image URL for ${user.full_name}: ${imageUrl}`);
+    // Check if user has a profile image URL and ensure it works
+    if (user.profile_image_url) {
+        // Fix for Supabase storage URL issues:
+        // 1. Remove any query parameters that cause errors
+        if (user.profile_image_url.includes('?')) {
+            imageUrl = user.profile_image_url.split('?')[0];
+            console.log(`Using cleaned URL for ${user.full_name}: ${imageUrl}`);
+        } else {
+            imageUrl = user.profile_image_url;
+            console.log(`Using original URL for ${user.full_name}: ${imageUrl}`);
+        }
+        
+        // 2. Add cache-busting for development mode
+        if (window.PRAYER_DIARY_DEV_MODE) {
+            imageUrl = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+        }
     }
     
     return `
@@ -316,7 +327,8 @@ function createUserCard(user, isPending = true) {
             <div class="row align-items-center">
                 <div class="col-auto">
                     <img class="user-avatar" src="${imageUrl}" alt="${user.full_name}" 
-                         onerror="this.onerror=null; this.src='img/placeholder-profile.png';">
+                         onerror="this.onerror=null; this.src='img/placeholder-profile.png'; console.log('Failed to load image for ${user.full_name}, using placeholder');"
+                         crossorigin="anonymous">
                 </div>
                 <div class="col">
                     <h5 class="card-title mb-1">${user.full_name}</h5>

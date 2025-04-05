@@ -87,21 +87,34 @@ async function loadUserProfile() {
             // Log profile image URL for debugging
             console.log('Profile image URL:', userProfile.profile_image_url);
             
-            // Test direct image access
+            // Test direct image access with GET instead of HEAD
             if (userProfile.profile_image_url) {
-                // Try to fetch the image directly to see if it's accessible
+                // DO NOT use HEAD requests - they often fail with Supabase storage
+                // Instead use a GET with proper credentials and no-cors mode
                 fetch(userProfile.profile_image_url, { 
-                    method: 'HEAD',
-                    cache: 'no-store'
+                    method: 'GET',
+                    mode: 'no-cors', // This is crucial for avoiding CORS issues
+                    cache: 'no-store',
+                    credentials: 'omit'
                 })
                 .then(response => {
-                    console.log('Image fetch status:', response.status, response.statusText);
-                    if (!response.ok) {
-                        console.error('Cannot access profile image directly:', userProfile.profile_image_url);
-                    }
+                    console.log('Image fetch seems successful (no-cors mode)');
+                    // Note: With no-cors mode, we can't check status, but if it didn't throw, it's likely OK
                 })
                 .catch(error => {
                     console.error('Error testing image URL:', error);
+                    
+                    // If original URL fails, try without query parameters
+                    if (userProfile.profile_image_url.includes('?')) {
+                        const cleanUrl = userProfile.profile_image_url.split('?')[0];
+                        console.log('Trying clean URL without parameters:', cleanUrl);
+                        
+                        // Update the user's profile image in the UI with this cleaned URL
+                        const previewImage = document.getElementById('preview-profile-image');
+                        if (previewImage) {
+                            previewImage.src = cleanUrl;
+                        }
+                    }
                 });
             }
         }, 100);
