@@ -152,10 +152,15 @@ async function handleAuth(e) {
             let data, error;
             
             try {
-                // Step 1: Create the authentication account
+                // Step 1: Create the authentication account with metadata
                 const simpleSignup = await supabase.auth.signUp({
                     email,
-                    password
+                    password,
+                    options: {
+                        data: {
+                            full_name: fullName
+                        }
+                    }
                 });
                 
                 data = simpleSignup.data;
@@ -174,25 +179,25 @@ async function handleAuth(e) {
                 if (!error && data?.user?.id) {
                     console.log('User created, now creating profile directly');
                     
-                    // Create the profile directly - no waiting for triggers
-                    const { error: insertError } = await supabase
+                    // We'll rely on the database trigger to create the profile
+                    // But we'll check to make sure it worked
+                    console.log('User created, verifying profile creation...');
+                    
+                    // Wait a moment for the trigger to execute
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Verify profile was created by the trigger
+                    const { data: checkData, error: checkError } = await supabase
                         .from('profiles')
-                        .insert({ 
-                            id: data.user.id,
-                            full_name: fullName,
-                            user_role: 'User',
-                            approval_state: 'Pending',
-                            profile_set: false,
-                            prayer_update_notification_method: 'email',
-                            urgent_prayer_notification_method: 'email',
-                            gdpr_accepted: false
-                        });
+                        .select('id')
+                        .eq('id', data.user.id)
+                        .single();
                         
-                    if (insertError) {
-                        console.error('Error creating profile:', insertError);
-                        throw insertError;
+                    if (checkError || !checkData) {
+                        console.error('Profile not created by trigger:', checkError);
+                        throw new Error('Profile creation failed. Please contact support.');
                     } else {
-                        console.log('Successfully created profile');
+                        console.log('Successfully verified profile creation');
                     }
                 }
             } catch (signupError) {
@@ -280,22 +285,42 @@ function clearLocalAppState() {
     // Example: currentView = null;
 }
 
-// Fetch current user's profile - simplified version without fallback profile creation
+// Fetch current user's profile with retry mechanism
 async function fetchUserProfile() {
     try {
         if (!currentUser) return null;
         
-        // Directly fetch the profile
-        const { data, error } = await supabase
+        // First attempt to get the profile
+        let { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', currentUser.id)
             .single();
             
-        if (error) {
-            // Log any errors but don't try to create a profile - in our simplified approach,
-            // profiles are always created during signup, not login
-            console.error('Error fetching user profile:', error);
+        // If we get a "no rows returned" error, the profile might not be created yet
+        if (error && error.code === 'PGRST116') {
+            console.log('Profile not found on first attempt, waiting and retrying...');
+            
+            // Wait a moment and try again
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Check if profile exists now
+            const { data: checkData, error: checkError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', currentUser.id)
+                .single();
+                
+            if (checkError) {
+                console.error('Profile still not found after retry:', checkError);
+                return null;
+            } else {
+                // Use the data from the retry
+                data = checkData;
+            }
+        } else if (error) {
+            // Handle other types of errors
+            console.error('Error fetching profile:', error);
             return null;
         }
         
