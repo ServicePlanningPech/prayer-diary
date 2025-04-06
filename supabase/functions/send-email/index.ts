@@ -2,11 +2,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 // Import NodeMailer using Deno compatibility layer
 import nodemailer from 'npm:nodemailer@6.9.3';
-// Improved CORS handling
+// Improved CORS handling with all possible headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey, cache-control, pragma, expires',
   'Access-Control-Max-Age': '86400'
 };
 serve(async (req)=>{
@@ -49,18 +49,60 @@ serve(async (req)=>{
       });
     }
     // Parse request body
-    const requestData = await req.json();
-    console.log('Request received:', {
-      to: requestData.to ? '[REDACTED]' : undefined,
-      subject: requestData.subject,
-      testConnection: requestData.testConnection
-    });
+    let requestData;
+    try {
+      requestData = await req.json();
+      console.log('Request received:', {
+        to: requestData.to ? '[REDACTED]' : undefined,
+        subject: requestData.subject,
+        testConnection: requestData.testConnection,
+        checkEnvironment: requestData.checkEnvironment
+      });
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      return new Response(JSON.stringify({
+        error: 'Invalid JSON in request body',
+        details: parseError.message
+      }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
     // Handle test connection request
     if (requestData.testConnection === true) {
       console.log('Handling test connection request via POST');
       return new Response(JSON.stringify({
         status: 'ok',
         message: 'Email function is deployed and reachable',
+        timestamp: new Date().toISOString()
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    // Handle environment check request
+    if (requestData.checkEnvironment === true) {
+      // Get environment variables (sanitized)
+      const SMTP_HOSTNAME = Deno.env.get('SMTP_HOSTNAME') || 'smtp.gmail.com';
+      const SMTP_PORT = parseInt(Deno.env.get('SMTP_PORT') || '465');
+      const SMTP_USERNAME = Deno.env.get('SMTP_USERNAME') ? 'PROVIDED' : 'MISSING';
+      const SMTP_PASSWORD = Deno.env.get('SMTP_PASSWORD') ? 'PROVIDED' : 'MISSING';
+      const DEFAULT_FROM = Deno.env.get('DEFAULT_FROM') || 'Prayer Diary <prayerdiary@pech.co.uk>';
+      return new Response(JSON.stringify({
+        status: 'ok',
+        environment: {
+          SMTP_HOSTNAME,
+          SMTP_PORT,
+          SMTP_USERNAME_SET: SMTP_USERNAME,
+          SMTP_PASSWORD_SET: SMTP_PASSWORD,
+          DEFAULT_FROM
+        },
         timestamp: new Date().toISOString()
       }), {
         status: 200,
@@ -129,8 +171,28 @@ serve(async (req)=>{
       });
       console.log('Transport created, verifying connection...');
       // Verify connection configuration
-      await transport.verify();
-      console.log('Connection verified successfully');
+      try {
+        await transport.verify();
+        console.log('Connection verified successfully');
+      } catch (verifyError) {
+        console.error('Transport verification failed:', verifyError);
+        return new Response(JSON.stringify({
+          error: 'SMTP connection verification failed',
+          message: verifyError.message || 'Unknown error during SMTP verification',
+          details: verifyError.toString(),
+          config: {
+            hostname: SMTP_HOSTNAME,
+            port: SMTP_PORT,
+            username: SMTP_USERNAME ? 'PROVIDED' : 'MISSING'
+          }
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
       // Prepare email
       const mailOptions = {
         from: requestData.from || DEFAULT_FROM,
