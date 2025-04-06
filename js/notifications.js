@@ -308,7 +308,6 @@ async function sendEmail(options) {
         bcc = null,            // BCC recipients (optional)
         replyTo = null,        // Reply-To address (optional)
         from = null            // Sender address override (optional) - if not provided, will use default in Edge function
-        // userId and contentType parameters removed to avoid notification logging
     } = options;
 
     // Validate required fields
@@ -324,23 +323,25 @@ async function sendEmail(options) {
     }
     
     try {
-        // Call the Supabase Edge Function for sending email through Google SMTP
-        // Remove any custom headers that might trigger CORS issues
+        // Debug the request body before sending
+        const requestBody = {
+            to: to,
+            subject: subject,
+            html: html,
+            text: text || html.replace(/<[^>]*>/g, ''), // Fallback plain text
+        };
+        
+        // Only add optional parameters if they exist - prevents sending null values
+        if (cc) requestBody.cc = cc;
+        if (bcc) requestBody.bcc = bcc;
+        if (replyTo) requestBody.replyTo = replyTo;
+        if (from) requestBody.from = from;
+        
+        console.log("Sending email with body:", JSON.stringify(requestBody).substring(0, 100) + '...');
+        
+        // Call the Supabase Edge Function with the properly structured request
         const { data, error } = await supabase.functions.invoke('send-email', {
-            body: {
-                to: to,
-                subject: subject,
-                html: html,
-                text: text || html.replace(/<[^>]*>/g, ''), // Fallback plain text
-                cc: cc,
-                bcc: bcc,
-                replyTo: replyTo,
-                from: from
-            },
-            // Don't send cache-control headers which cause CORS issues
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            body: requestBody
         });
         
         if (error) {
