@@ -39,33 +39,49 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Opened cache');
-        // Use a more resilient caching strategy that won't fail if a single file is missing
-        return Promise.all(
+        // Use a simpler caching approach - add what we can, ignore failures
+        return Promise.allSettled(
           urlsToCache.map(url => {
-            return cache.add(url).catch(error => {
-              console.warn('Could not cache asset:', url, error.message);
-              // Continue despite the error
-              return Promise.resolve();
-            });
+            // Attempt to cache each asset, but don't let failures stop the service worker from installing
+            return fetch(url, { mode: 'no-cors' })
+              .then(response => {
+                if (response.status === 200 || response.type === 'opaque') {
+                  return cache.put(url, response);
+                }
+              })
+              .catch(error => {
+                console.warn('Could not cache asset:', url, error.message);
+                // Continue despite the error
+                return Promise.resolve();
+              });
           })
         );
       })
   );
+  
+  // Force the waiting service worker to become the active service worker
+  self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and take control
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    Promise.all([
+      // Clean up old caches
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheWhitelist.indexOf(cacheName) === -1) {
+              console.log('Deleting old cache:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      }),
+      // Take control of all clients immediately
+      self.clients.claim()
+    ])
   );
 });
 
