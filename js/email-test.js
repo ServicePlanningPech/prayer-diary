@@ -15,6 +15,12 @@ function initEmailTestView() {
     // Set up database test button
     document.getElementById('test-database-btn').addEventListener('click', testDatabaseConnection);
     
+    // Add Edge Function diagnostic button
+    document.getElementById('test-database-btn').insertAdjacentHTML('afterend', 
+      '<button id="diagnose-edge-function-btn" class="btn btn-info ms-2">' +
+      '<i class="bi bi-wrench"></i> Diagnose Edge Function</button>');
+    document.getElementById('diagnose-edge-function-btn').addEventListener('click', diagnoseEdgeFunction);
+    
     // Check email configuration status
     checkEmailConfig();
     
@@ -177,7 +183,131 @@ function updateTestResults(to, subject, result) {
     }
 }
 
-// Add new diagnostic test function
+// Edge Function Diagnostic Tool
+async function diagnoseEdgeFunction() {
+  // Create a results container in the UI
+  const container = document.getElementById('test-results-container');
+  container.innerHTML = '<div class="alert alert-info">Running Edge Function diagnostics...</div>';
+  
+  try {
+    // Test 1: Simple GET request to test connection
+    container.innerHTML += '<div class="mb-2">Test 1: GET request to Edge Function...</div>';
+    
+    try {
+      const { data: getResult, error: getError } = await supabase.functions.invoke('send-email', {
+        method: 'GET'
+      });
+      
+      if (getError) {
+        container.innerHTML += `<div class="alert alert-danger mb-3">
+          GET request failed: ${getError.message || JSON.stringify(getError)}
+        </div>`;
+      } else {
+        container.innerHTML += `<div class="alert alert-success mb-3">
+          GET request successful! Response: ${JSON.stringify(getResult)}
+        </div>`;
+      }
+    } catch (error) {
+      container.innerHTML += `<div class="alert alert-danger mb-3">
+        GET request exception: ${error.message || JSON.stringify(error)}
+      </div>`;
+    }
+    
+    // Test 2: Simple test connection POST
+    container.innerHTML += '<div class="mb-2">Test 2: POST testConnection request...</div>';
+    
+    try {
+      const { data: testResult, error: testError } = await supabase.functions.invoke('send-email', {
+        method: 'POST',
+        body: { testConnection: true }
+      });
+      
+      if (testError) {
+        container.innerHTML += `<div class="alert alert-danger mb-3">
+          Test connection failed: ${testError.message || JSON.stringify(testError)}
+        </div>`;
+      } else {
+        container.innerHTML += `<div class="alert alert-success mb-3">
+          Test connection successful! Response: ${JSON.stringify(testResult)}
+        </div>`;
+      }
+    } catch (error) {
+      container.innerHTML += `<div class="alert alert-danger mb-3">
+        Test connection exception: ${error.message || JSON.stringify(error)}
+      </div>`;
+    }
+    
+    // Test 3: Verify Edge Function environment variables 
+    container.innerHTML += '<div class="mb-2">Test 3: Checking Edge Function environment...</div>';
+    
+    try {
+      const { data: envResult, error: envError } = await supabase.functions.invoke('send-email', {
+        method: 'POST',
+        body: { 
+          checkEnvironment: true,
+          to: 'test@example.com',  // Add required params to avoid validation errors
+          subject: 'Test Subject',
+          html: '<p>Test content</p>'
+        }
+      });
+      
+      if (envError) {
+        container.innerHTML += `<div class="alert alert-danger mb-3">
+          Environment check failed: ${envError.message || JSON.stringify(envError)}
+        </div>`;
+      } else {
+        container.innerHTML += `<div class="alert alert-success mb-3">
+          Environment check response: ${JSON.stringify(envResult)}
+        </div>`;
+      }
+    } catch (error) {
+      container.innerHTML += `<div class="alert alert-danger mb-3">
+        Environment check exception: ${error.message || JSON.stringify(error)}
+      </div>`;
+    }
+    
+    // Test 4: Minimal email test with only required fields
+    container.innerHTML += '<div class="mb-2">Test 4: Minimal email test...</div>';
+    
+    try {
+      const { data: minResult, error: minError } = await supabase.functions.invoke('send-email', {
+        method: 'POST',
+        body: { 
+          to: 'test@example.com',
+          subject: 'Test Subject',
+          html: '<p>Test content</p>'
+        },
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (minError) {
+        container.innerHTML += `<div class="alert alert-danger mb-3">
+          Minimal email test failed: ${minError.message || JSON.stringify(minError)}
+        </div>`;
+      } else {
+        container.innerHTML += `<div class="alert alert-success mb-3">
+          Minimal email test response: ${JSON.stringify(minResult)}
+        </div>`;
+      }
+    } catch (error) {
+      container.innerHTML += `<div class="alert alert-danger mb-3">
+        Minimal email test exception: ${error.message || JSON.stringify(error)}
+      </div>`;
+    }
+    
+    // Add final conclusion
+    container.innerHTML += '<div class="alert alert-info mt-3">Diagnostics completed. Check the results above.</div>';
+    
+  } catch (error) {
+    container.innerHTML += `<div class="alert alert-danger">
+      Diagnostic error: ${error.message || JSON.stringify(error)}
+    </div>`;
+  }
+}
+
+// Add new database diagnostic test function
 async function testDatabaseConnection() {
     try {
         const container = document.getElementById('test-results-container');
