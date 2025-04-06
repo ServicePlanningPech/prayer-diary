@@ -325,6 +325,7 @@ async function sendEmail(options) {
     
     try {
         // Call the Supabase Edge Function for sending email through Google SMTP
+        // Remove any custom headers that might trigger CORS issues
         const { data, error } = await supabase.functions.invoke('send-email', {
             body: {
                 to: to,
@@ -335,10 +336,17 @@ async function sendEmail(options) {
                 bcc: bcc,
                 replyTo: replyTo,
                 from: from
+            },
+            // Don't send cache-control headers which cause CORS issues
+            headers: {
+                'Content-Type': 'application/json'
             }
         });
         
-        if (error) throw error;
+        if (error) {
+            console.error('Edge function error details:', error);
+            throw error;
+        }
         
         // Log successful email delivery
         console.log('Email sent successfully to:', to);

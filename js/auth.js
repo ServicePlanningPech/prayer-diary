@@ -315,23 +315,57 @@ async function handleAuth(e) {
     }
 }
 
-// Logout function
+// Logout function with enhanced error handling and force-logout capability
 async function logout() {
+    console.log("Attempting to logout user...");
+    
     try {
+        // First attempt - standard Supabase signOut
+        console.log("Trying standard signOut method...");
         const { error } = await supabase.auth.signOut();
-        if (error) throw error;
         
-        // Immediately update UI state without waiting for the event
+        if (error) {
+            console.warn("Standard signOut had an error:", error.message);
+            throw error;
+        }
+        
+        console.log("Standard signOut successful");
+    } catch (error) {
+        console.error("Error during standard logout:", error);
+        
+        try {
+            // Second attempt - alternative signOut with options
+            console.log("Trying alternative signOut method...");
+            await supabase.auth.signOut({ scope: 'global' });
+            console.log("Alternative signOut completed");
+        } catch (secondError) {
+            console.error("Error during alternative logout:", secondError);
+            
+            // Force client-side logout regardless of server response
+            console.log("Forcing client-side logout...");
+        }
+    } finally {
+        // Always reset the local state regardless of API success
+        console.log("Resetting local state...");
         currentUser = null;
         userProfile = null;
+        
+        // Clear any stored tokens from localStorage (if they exist)
+        try {
+            localStorage.removeItem('supabase.auth.token');
+            localStorage.removeItem('supabase.auth.expires_at');
+            sessionStorage.removeItem('supabase.auth.token');
+        } catch (storageError) {
+            console.warn("Error clearing auth storage:", storageError);
+        }
+        
+        // Update UI to logged out state
         showLoggedOutState();
         
-        // Clear any local data or state
+        // Clear any app-specific state
         clearLocalAppState();
         
-    } catch (error) {
-        console.error('Logout error:', error);
-        showNotification('Logout Error', `There was a problem logging out: ${error.message}`);
+        console.log("Logout procedure completed");
     }
 }
 
@@ -505,17 +539,35 @@ function showRegistrationCompleteScreen() {
         </div>
     `;
     
-    // Add close session button event listener
-    document.getElementById('close-session-btn').addEventListener('click', async () => {
-        await logout();
-        // Optional: Add a message indicating the session has been closed
-        statusMessage.innerHTML = `
-            <div class="alert alert-info">
-                <p>Your session has been closed. You may now close this window.</p>
-                <p>Please check your email for approval notification before logging in again.</p>
-            </div>
-        `;
-    });
+    // Add close session button event listener with improved handling
+    // Wait for DOM to be ready
+    setTimeout(() => {
+        const closeBtn = document.getElementById('close-session-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', async () => {
+                // Disable button to prevent multiple clicks
+                closeBtn.disabled = true;
+                closeBtn.textContent = 'Closing session...';
+                
+                // Call logout
+                await logout();
+                
+                // Show success message
+                statusMessage.innerHTML = `
+                    <div class="alert alert-info">
+                        <p>Your session has been closed. You may now close this window.</p>
+                        <p>Please check your email for approval notification before logging in again.</p>
+                        <div class="text-center mt-3">
+                            <button onclick="window.location.reload()" class="btn btn-secondary">Refresh Page</button>
+                        </div>
+                    </div>
+                `;
+            });
+            console.log("Close session button event listener attached");
+        } else {
+            console.error("Could not find close-session-btn element");
+        }
+    }, 100);
 }
 
 // Update user interface for logged out state
