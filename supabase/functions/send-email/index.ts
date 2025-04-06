@@ -2,18 +2,15 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 // Import NodeMailer using Deno compatibility layer
 import nodemailer from 'npm:nodemailer@6.9.3';
-
-// Updated CORS headers to include cache-control, pragma, expires
+// Improved CORS handling
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey, cache-control, pragma, expires',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
   'Access-Control-Max-Age': '86400'
 };
-
 serve(async (req)=>{
   console.log(`[${new Date().toISOString()}] ${req.method} request received`);
-  
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     console.log('Handling OPTIONS (preflight) request');
@@ -22,7 +19,6 @@ serve(async (req)=>{
       headers: corsHeaders
     });
   }
-  
   // Test connection endpoint
   if (req.method === 'GET') {
     console.log('Handling GET test connection request');
@@ -38,7 +34,6 @@ serve(async (req)=>{
       }
     });
   }
-  
   try {
     // Only allow POST for sending emails
     if (req.method !== 'POST') {
@@ -53,7 +48,6 @@ serve(async (req)=>{
         }
       });
     }
-    
     // Parse request body
     const requestData = await req.json();
     console.log('Request received:', {
@@ -61,7 +55,6 @@ serve(async (req)=>{
       subject: requestData.subject,
       testConnection: requestData.testConnection
     });
-    
     // Handle test connection request
     if (requestData.testConnection === true) {
       console.log('Handling test connection request via POST');
@@ -77,7 +70,6 @@ serve(async (req)=>{
         }
       });
     }
-    
     // Validate required fields
     if (!requestData.to || !requestData.subject || !requestData.html) {
       console.log('Missing required email parameters');
@@ -97,14 +89,12 @@ serve(async (req)=>{
         }
       });
     }
-    
     // Environment variables
     const SMTP_HOSTNAME = Deno.env.get('SMTP_HOSTNAME') || 'smtp.gmail.com';
     const SMTP_PORT = parseInt(Deno.env.get('SMTP_PORT') || '465');
     const SMTP_USERNAME = Deno.env.get('SMTP_USERNAME');
     const SMTP_PASSWORD = Deno.env.get('SMTP_PASSWORD');
     const DEFAULT_FROM = Deno.env.get('DEFAULT_FROM') || 'Prayer Diary <prayerdiary@pech.co.uk>';
-    
     // Validate SMTP credentials
     if (!SMTP_USERNAME || !SMTP_PASSWORD) {
       console.error('Missing SMTP credentials');
@@ -125,9 +115,7 @@ serve(async (req)=>{
         }
       });
     }
-    
     console.log(`Creating transport with ${SMTP_HOSTNAME}:${SMTP_PORT}`);
-    
     try {
       // Create NodeMailer transport
       const transport = nodemailer.createTransport({
@@ -139,13 +127,10 @@ serve(async (req)=>{
           pass: SMTP_PASSWORD
         }
       });
-      
       console.log('Transport created, verifying connection...');
-      
       // Verify connection configuration
       await transport.verify();
       console.log('Connection verified successfully');
-      
       // Prepare email
       const mailOptions = {
         from: requestData.from || DEFAULT_FROM,
@@ -157,13 +142,10 @@ serve(async (req)=>{
         bcc: requestData.bcc,
         replyTo: requestData.replyTo
       };
-      
       console.log('Sending email...');
-      
       // Send mail
       const info = await transport.sendMail(mailOptions);
       console.log('Email sent successfully:', info.messageId);
-      
       // Return success response
       return new Response(JSON.stringify({
         success: true,

@@ -1110,33 +1110,23 @@
         loadScript("js/app.js");
     </script>
     
-    <!-- Development Mode Global Flag -->
+    <!-- Production Mode - DEV_MODE disabled -->
     <script>
-        // Global development mode flag
-        window.PRAYER_DIARY_DEV_MODE = true;
+        // Global development mode flag - disabled for production
+        window.PRAYER_DIARY_DEV_MODE = false;
     </script>
     
-    <!-- Service Worker Registration -->
+    <!-- Service Worker Registration - Production Mode -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                if (window.PRAYER_DIARY_DEV_MODE) {
-                    // Unregister existing service workers during development
-                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                        for (let registration of registrations) {
-                            registration.unregister();
-                            console.log('ServiceWorker unregistered for development mode');
-                        }
+                // Normal registration for production
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
                     });
-                } else {
-                    // Normal registration in production
-                    navigator.serviceWorker.register('service-worker.js')
-                        .then(function(registration) {
-                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                        }, function(err) {
-                            console.log('ServiceWorker registration failed: ', err);
-                        });
-                }
             });
         }
     </script>
