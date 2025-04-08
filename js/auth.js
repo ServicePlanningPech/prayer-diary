@@ -130,55 +130,94 @@ function setupAuthListeners() {
 
 // Open auth modal for login or signup
 function openAuthModal(mode) {
-    const modal = new bootstrap.Modal(document.getElementById('auth-modal'));
-    const title = document.getElementById('auth-modal-title');
-    const submitBtn = document.getElementById('auth-submit');
-    const switchText = document.getElementById('auth-switch-text');
-    const signupFields = document.querySelectorAll('.signup-field');
-    const loginFields = document.querySelectorAll('.login-field');
-    const signupNameInput = document.getElementById('signup-name');
-    const confirmPasswordInput = document.getElementById('auth-confirm-password');
-    const signupHelpText = document.querySelector('.signup-field .form-text');
-    const passwordMatchMessage = document.querySelector('.password-match-message');
-    
-    // Reset form
-    document.getElementById('auth-form').reset();
-    document.getElementById('auth-error').classList.add('d-none');
-    
-    // Hide password match message
-    if (passwordMatchMessage) {
-        passwordMatchMessage.classList.add('d-none');
-    }
-    
-    if (mode === 'login') {
-        title.textContent = 'Log In';
-        submitBtn.textContent = 'Log In';
-        switchText.innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
+    try {
+        // Get all necessary elements with null checks
+        const modalElement = document.getElementById('auth-modal');
+        if (!modalElement) {
+            console.error("Auth modal element not found");
+            return;
+        }
         
-        // Show login fields, hide signup fields
-        signupFields.forEach(field => field.classList.add('d-none'));
-        loginFields.forEach(field => field.classList.remove('d-none'));
+        const modal = new bootstrap.Modal(modalElement);
         
-        // CRITICAL: Remove required attribute from hidden fields in login mode
-        signupNameInput.removeAttribute('required');
-        confirmPasswordInput.removeAttribute('required');
-        if (signupHelpText) signupHelpText.classList.add('d-none');
-    } else {
-        title.textContent = 'Sign Up';
-        submitBtn.textContent = 'Sign Up';
-        switchText.innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
+        const title = document.getElementById('auth-modal-title');
+        const submitBtn = document.getElementById('auth-submit');
+        const switchText = document.getElementById('auth-switch-text');
+        const signupFields = document.querySelectorAll('.signup-field');
+        const loginFields = document.querySelectorAll('.login-field');
+        const signupNameInput = document.getElementById('signup-name');
+        const confirmPasswordInput = document.getElementById('auth-confirm-password');
+        const authForm = document.getElementById('auth-form');
+        const authError = document.getElementById('auth-error');
+        const signupHelpText = document.querySelector('.signup-field .form-text');
+        const passwordMatchMessage = document.querySelector('.password-match-message');
         
-        // Hide login fields, show signup fields
-        signupFields.forEach(field => field.classList.remove('d-none'));
-        loginFields.forEach(field => field.classList.add('d-none'));
+        // Reset form with null checks
+        if (authForm) authForm.reset();
+        if (authError) authError.classList.add('d-none');
         
-        // Add required attribute back for signup mode
-        signupNameInput.setAttribute('required', '');
-        confirmPasswordInput.setAttribute('required', '');
-        if (signupHelpText) signupHelpText.classList.remove('d-none');
+        // Hide password match message
+        if (passwordMatchMessage) {
+            passwordMatchMessage.classList.add('d-none');
+        }
         
-        // Initially disable the signup button until all fields are filled
-        submitBtn.disabled = true;
+        if (mode === 'login') {
+            if (title) title.textContent = 'Log In';
+            if (submitBtn) submitBtn.textContent = 'Log In';
+            if (switchText) switchText.innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
+            
+            // Show login fields, hide signup fields
+            signupFields.forEach(field => field.classList.add('d-none'));
+            loginFields.forEach(field => field.classList.remove('d-none'));
+            
+            // CRITICAL: Remove required attribute from hidden fields in login mode
+            if (signupNameInput) signupNameInput.removeAttribute('required');
+            if (confirmPasswordInput) confirmPasswordInput.removeAttribute('required');
+            if (signupHelpText) signupHelpText.classList.add('d-none');
+        } else {
+            if (title) title.textContent = 'Sign Up';
+            if (submitBtn) submitBtn.textContent = 'Sign Up';
+            if (switchText) switchText.innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
+            
+            // Hide login fields, show signup fields
+            signupFields.forEach(field => field.classList.remove('d-none'));
+            loginFields.forEach(field => field.classList.add('d-none'));
+            
+            // Add required attribute back for signup mode
+            if (signupNameInput) signupNameInput.setAttribute('required', '');
+            if (confirmPasswordInput) confirmPasswordInput.setAttribute('required', '');
+            if (signupHelpText) signupHelpText.classList.remove('d-none');
+            
+            // Initially disable the signup button until all fields are filled
+            if (submitBtn) submitBtn.disabled = true;
+        }
+        
+        // Re-attach event listener for switch link - with null check
+        const switchLink = document.getElementById('auth-switch');
+        if (switchLink) {
+            switchLink.addEventListener('click', toggleAuthMode);
+        }
+        
+        // Add input validation event listeners - with null check
+        const formInputs = document.querySelectorAll('#auth-form input');
+        formInputs.forEach(input => {
+            if (input) {
+                input.addEventListener('input', validateAuthForm);
+            }
+        });
+        
+        // Initial validation
+        validateAuthForm();
+        
+        // Show the modal
+        modal.show();
+    } catch (error) {
+        console.error("Error in openAuthModal:", error);
+        // Fallback for critical error - reload the page
+        showToast("Error", "There was a problem with the login form. The page will reload.", "error");
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
     }
     
     // Re-attach event listener for switch link
@@ -198,55 +237,69 @@ function openAuthModal(mode) {
 
 // Toggle between login and signup
 function toggleAuthMode() {
-    const title = document.getElementById('auth-modal-title');
-    const isLogin = title.textContent === 'Log In';
-    const signupNameInput = document.getElementById('signup-name');
-    const confirmPasswordInput = document.getElementById('auth-confirm-password');
-    const signupFields = document.querySelectorAll('.signup-field');
-    const loginFields = document.querySelectorAll('.login-field');
-    const signupHelpText = document.querySelector('.signup-field .form-text');
-    const passwordMatchMessage = document.querySelector('.password-match-message');
-    
-    if (isLogin) {
-        // Switching to signup
-        title.textContent = 'Sign Up';
-        document.getElementById('auth-submit').textContent = 'Sign Up';
-        document.getElementById('auth-switch-text').innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
-        
-        // Show signup fields, hide login fields
-        signupFields.forEach(field => field.classList.remove('d-none'));
-        loginFields.forEach(field => field.classList.add('d-none'));
-        
-        // Make signup fields required
-        signupNameInput.setAttribute('required', '');
-        confirmPasswordInput.setAttribute('required', '');
-        if (signupHelpText) signupHelpText.classList.remove('d-none');
-        
-        // Reset password match message
-        if (passwordMatchMessage) {
-            passwordMatchMessage.classList.add('d-none');
+    try {
+        const title = document.getElementById('auth-modal-title');
+        if (!title) {
+            console.error("Auth modal title element not found");
+            return;
         }
-    } else {
-        // Switching to login
-        title.textContent = 'Log In';
-        document.getElementById('auth-submit').textContent = 'Log In';
-        document.getElementById('auth-switch-text').innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
         
-        // Show login fields, hide signup fields
-        signupFields.forEach(field => field.classList.add('d-none'));
-        loginFields.forEach(field => field.classList.remove('d-none'));
+        const isLogin = title.textContent === 'Log In';
+        const signupNameInput = document.getElementById('signup-name');
+        const confirmPasswordInput = document.getElementById('auth-confirm-password');
+        const signupFields = document.querySelectorAll('.signup-field');
+        const loginFields = document.querySelectorAll('.login-field');
+        const signupHelpText = document.querySelector('.signup-field .form-text');
+        const passwordMatchMessage = document.querySelector('.password-match-message');
+        const submitBtn = document.getElementById('auth-submit');
+        const switchTextElement = document.getElementById('auth-switch-text');
         
-        // Remove required attribute from signup fields
-        signupNameInput.removeAttribute('required');
-        confirmPasswordInput.removeAttribute('required');
-        if (signupHelpText) signupHelpText.classList.add('d-none');
+        if (isLogin) {
+            // Switching to signup
+            title.textContent = 'Sign Up';
+            if (submitBtn) submitBtn.textContent = 'Sign Up';
+            if (switchTextElement) switchTextElement.innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
+            
+            // Show signup fields, hide login fields
+            signupFields.forEach(field => field.classList.remove('d-none'));
+            loginFields.forEach(field => field.classList.add('d-none'));
+            
+            // Make signup fields required
+            if (signupNameInput) signupNameInput.setAttribute('required', '');
+            if (confirmPasswordInput) confirmPasswordInput.setAttribute('required', '');
+            if (signupHelpText) signupHelpText.classList.remove('d-none');
+            
+            // Reset password match message
+            if (passwordMatchMessage) {
+                passwordMatchMessage.classList.add('d-none');
+            }
+        } else {
+            // Switching to login
+            title.textContent = 'Log In';
+            if (submitBtn) submitBtn.textContent = 'Log In';
+            if (switchTextElement) switchTextElement.innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
+            
+            // Show login fields, hide signup fields
+            signupFields.forEach(field => field.classList.add('d-none'));
+            loginFields.forEach(field => field.classList.remove('d-none'));
+            
+            // Remove required attribute from signup fields
+            if (signupNameInput) signupNameInput.removeAttribute('required');
+            if (confirmPasswordInput) confirmPasswordInput.removeAttribute('required');
+            if (signupHelpText) signupHelpText.classList.add('d-none');
+        }
+        
+        // Re-attach event listener for switch link
+        const switchLink = document.getElementById('auth-switch');
+        if (switchLink) {
+            switchLink.addEventListener('click', toggleAuthMode);
+        }
+        
+        // Re-validate the form
+        validateAuthForm();
+    } catch (error) {
+        console.error("Error in toggleAuthMode:", error);
     }
-    
-    // Re-attach event listener for switch link
-    document.getElementById('auth-switch').addEventListener('click', toggleAuthMode);
-    
-    // Re-validate the form
-    validateAuthForm();
 }
 
 // Validate the auth form
@@ -1064,17 +1117,40 @@ async function handleNewPassword(e) {
                     modal.hide();
                 }
                 
-                // Show toast first so it appears after reload
-                showToast('Success', 'Password updated successfully. Please log in with your new password.', 'success');
-                
-                // Force page reload to clear everything
-                console.log("Forcing complete page reload to clear session state");
-                setTimeout(() => {
-                    window.location.href = window.location.origin + window.location.pathname;
-                }, 1000);
+                // Show success message directly in landing view
+                const statusMessage = document.getElementById('auth-status-message');
+                if (statusMessage) {
+                    statusMessage.innerHTML = `
+                        <div class="alert alert-success">
+                            <h4 class="alert-heading">Password Updated Successfully!</h4>
+                            <p>Your password has been updated. You can now log in with your new password.</p>
+                            <div class="mt-3">
+                                <button id="post-reset-login-btn" class="btn btn-primary">Log In Now</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add click handler for the button after adding it to DOM
+                    setTimeout(() => {
+                        const loginBtn = document.getElementById('post-reset-login-btn');
+                        if (loginBtn) {
+                            loginBtn.addEventListener('click', () => {
+                                // Simple login button that just reloads the page - safer than trying to open the modal
+                                console.log("Post-reset login button clicked, reloading page...");
+                                window.location.reload();
+                            });
+                        }
+                    }, 50);
+                } else {
+                    // If we can't find the status message element, just reload the page
+                    console.log("Status message element not found, reloading page directly");
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                }
             } catch (signOutError) {
                 console.error('Error signing out after password reset:', signOutError);
-                // If sign out fails, still try to redirect to login
+                // If sign out fails, just reload the page
                 window.location.reload();
             }
         }, 3000);
