@@ -462,8 +462,8 @@ async function updateUserApproval(userId, state) {
             }
         }
         
-        // Show success notification before reloading (so user sees it)
-        showNotification('Success', `User ${state.toLowerCase()} successfully.`);
+        // Show success toast before reloading (so user sees it)
+        showToast('Success', `User ${state.toLowerCase()} successfully.`, 'success');
         
         // Reload users
         console.log('Reloading user list...');
@@ -471,7 +471,7 @@ async function updateUserApproval(userId, state) {
         
     } catch (error) {
         console.error('Error updating user approval:', error);
-        showNotification('Error', `Failed to update user approval: ${error.message}`);
+        showToast('Error', `Failed to update user approval: ${error.message}`, 'error');
         throw error; // Re-throw to allow caller to handle
     }
 }
@@ -680,7 +680,7 @@ async function deleteUser(userId) {
 // Function to approve all pending users
 async function approveAllPendingUsers(pendingUsers) {
     if (pendingUsers.length === 0) {
-        showNotification('Info', 'No pending users to approve.');
+        showToast('Information', 'No pending users to approve.', 'info', 3000);
         return;
     }
     
@@ -688,7 +688,7 @@ async function approveAllPendingUsers(pendingUsers) {
     const approveAllBtn = document.getElementById('approve-all-users');
     if (!approveAllBtn) {
         console.error('Approve All button not found in DOM');
-        showNotification('Error', 'UI element not found. Please refresh the page.');
+        showToast('Error', 'UI element not found. Please refresh the page.', 'error');
         return;
     }
     
@@ -697,11 +697,16 @@ async function approveAllPendingUsers(pendingUsers) {
     approveAllBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Approving...';
     approveAllBtn.disabled = true;
     
+    // Show processing toast (persistent until complete)
+    const processingToastId = showToast(
+        'Processing', 
+        `Approving ${pendingUsers.length} users. Please wait...`,
+        'processing',
+        0 // No auto-hide
+    );
+    
     try {
         console.log(`Starting bulk approval of ${pendingUsers.length} users`);
-        
-        // Show confirmation message
-        showNotification('Processing', `Approving ${pendingUsers.length} users. Please wait...`);
         
         let successCount = 0;
         let failCount = 0;
@@ -713,6 +718,11 @@ async function approveAllPendingUsers(pendingUsers) {
         for (const user of usersToProccess) {
             try {
                 console.log(`Processing user: ${user.full_name} (${user.id})`);
+                
+                // Update progress in the toast
+                updateToast(processingToastId, {
+                    message: `Approving ${pendingUsers.length} users: ${successCount + failCount + 1}/${pendingUsers.length}<br>Currently processing: ${user.full_name}`
+                });
                 
                 // Update user profile with detailed logging
                 console.log(`Updating approval state for: ${user.id}`);
@@ -751,11 +761,14 @@ async function approveAllPendingUsers(pendingUsers) {
         
         console.log(`Bulk approval complete. Success: ${successCount}, Failed: ${failCount}`);
         
-        // Show final results using alert for reliability
+        // Dismiss the processing toast
+        dismissToast(processingToastId);
+        
+        // Show final results
         if (failCount === 0) {
-            alert(`Success: Approved all ${successCount} users.`);
+            showToast('Success', `Successfully approved all ${successCount} users.`, 'success');
         } else {
-            alert(`Warning: Approved ${successCount} users. Failed to approve ${failCount} users.`);
+            showToast('Warning', `Approved ${successCount} users. Failed to approve ${failCount} users.`, 'warning');
         }
         
         // Wait a moment before reloading the users list to ensure UI stability
@@ -774,7 +787,12 @@ async function approveAllPendingUsers(pendingUsers) {
         
     } catch (error) {
         console.error('Error in bulk approval:', error);
-        showNotification('Error', `Failed to complete bulk approval: ${error.message}`);
+        
+        // Dismiss the processing toast
+        dismissToast(processingToastId);
+        
+        // Show error toast
+        showToast('Error', `Failed to complete bulk approval: ${error.message}`, 'error');
     } finally {
         // Always restore button state with safety checks
         console.log('Restoring button state...');

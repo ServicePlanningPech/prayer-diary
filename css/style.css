@@ -167,6 +167,43 @@ body {
     color: #6c757d;
 }
 
+/* Toast styling */
+.toast-container {
+    z-index: 1090;
+    max-width: 450px;
+    width: 90%;
+}
+
+.toast {
+    opacity: 1 !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border: none;
+    border-radius: var(--bs-border-radius);
+}
+
+.toast-header {
+    padding: 0.75rem 1rem;
+}
+
+.toast-body {
+    padding: 1rem;
+}
+
+/* Spinner animation for processing toasts */
+@keyframes spinner-border {
+    to { transform: rotate(360deg); }
+}
+
+.spin-animation {
+    display: inline-block;
+    animation: spinner-border 2s linear infinite;
+}
+
+/* Progress bar animation */
+.toast .progress-bar {
+    transition: width 5s linear;
+}
+
 /* For screens smaller than 768px */
 @media (max-width: 767.98px) {
     .card-title {
@@ -180,5 +217,9 @@ body {
     .container {
         padding-left: 0.75rem;
         padding-right: 0.75rem;
+    }
+    
+    .toast-container {
+        max-width: 300px;
     }
 }

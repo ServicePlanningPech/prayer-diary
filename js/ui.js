@@ -141,6 +141,199 @@ function setupModalClosers() {
     });
 }
 
+// Toast notification system
+let toastCounter = 0;
+const activeToasts = new Map();
+
+/**
+ * Show a toast notification
+ * @param {string} title - The toast title
+ * @param {string} message - The toast message
+ * @param {string} type - The type of toast: 'info', 'success', 'warning', 'error', or 'processing'
+ * @param {number} duration - Duration in ms (0 for persistent toast that requires manual dismissal)
+ * @returns {string} - Toast ID that can be used to dismiss the toast
+ */
+function showToast(title, message, type = 'info', duration = 5000) {
+    console.log(`Showing toast: ${title} (${type})`);
+    
+    // Increment the counter for unique IDs
+    toastCounter++;
+    const toastId = `toast-${toastCounter}`;
+    
+    // Get background color based on type
+    let bgColor, iconClass, progressBarColor;
+    switch (type) {
+        case 'success':
+            bgColor = 'bg-success text-white';
+            iconClass = 'bi-check-circle-fill';
+            progressBarColor = 'bg-light';
+            break;
+        case 'warning':
+            bgColor = 'bg-warning text-dark';
+            iconClass = 'bi-exclamation-triangle-fill';
+            progressBarColor = 'bg-dark';
+            break;
+        case 'error':
+            bgColor = 'bg-danger text-white';
+            iconClass = 'bi-x-circle-fill';
+            progressBarColor = 'bg-light';
+            break;
+        case 'processing':
+            bgColor = 'bg-primary text-white';
+            iconClass = 'bi-arrow-repeat';
+            progressBarColor = 'bg-light';
+            break;
+        default: // info
+            bgColor = 'bg-info text-white';
+            iconClass = 'bi-info-circle-fill';
+            progressBarColor = 'bg-light';
+    }
+    
+    // Create the toast element
+    const toastElement = document.createElement('div');
+    toastElement.className = `toast ${bgColor} mb-3`;
+    toastElement.id = toastId;
+    toastElement.setAttribute('role', 'alert');
+    toastElement.setAttribute('aria-live', 'assertive');
+    toastElement.setAttribute('aria-atomic', 'true');
+    
+    // Add a spinning animation for processing toasts
+    const iconAnimation = type === 'processing' ? 'spin-animation' : '';
+    
+    // Toast content
+    toastElement.innerHTML = `
+        <div class="toast-header ${bgColor} border-0">
+            <i class="bi ${iconClass} me-2 ${iconAnimation}"></i>
+            <strong class="me-auto">${title}</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+            ${duration > 0 ? `<div class="progress mt-2" style="height: 3px">
+                <div class="progress-bar ${progressBarColor}" role="progressbar" style="width: 100%"></div>
+            </div>` : ''}
+        </div>
+    `;
+    
+    // Add to DOM
+    const toastContainer = document.getElementById('toast-container');
+    if (toastContainer) {
+        toastContainer.appendChild(toastElement);
+    } else {
+        // Fallback: Add to body if container doesn't exist
+        document.body.appendChild(toastElement);
+    }
+    
+    // Initialize bootstrap toast
+    const toastInstance = new bootstrap.Toast(toastElement, {
+        autohide: duration > 0,
+        delay: duration
+    });
+    
+    // Add CSS for spinning icon if needed
+    if (type === 'processing') {
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+            .spin-animation {
+                display: inline-block;
+                animation: spinner-border 2s linear infinite;
+            }
+        `;
+        document.head.appendChild(styleElement);
+    }
+    
+    // Store toast instance for later reference
+    activeToasts.set(toastId, {
+        instance: toastInstance,
+        element: toastElement
+    });
+    
+    // Add event listener for when toast is hidden
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        // Remove toast from DOM after it's hidden
+        if (toastElement.parentNode) {
+            toastElement.parentNode.removeChild(toastElement);
+        }
+        // Remove from active toasts map
+        activeToasts.delete(toastId);
+    });
+    
+    // Show the toast
+    toastInstance.show();
+    
+    // Animate progress bar if duration is set
+    if (duration > 0) {
+        const progressBar = toastElement.querySelector('.progress-bar');
+        if (progressBar) {
+            progressBar.style.transition = `width ${duration}ms linear`;
+            setTimeout(() => {
+                progressBar.style.width = '0%';
+            }, 100); // Small delay to ensure transition is applied
+        }
+    }
+    
+    return toastId;
+}
+
+/**
+ * Dismiss a specific toast by ID
+ * @param {string} toastId - The ID of the toast to dismiss
+ */
+function dismissToast(toastId) {
+    const toast = activeToasts.get(toastId);
+    if (toast) {
+        toast.instance.hide();
+    }
+}
+
+/**
+ * Dismiss all active toasts
+ */
+function dismissAllToasts() {
+    activeToasts.forEach((toast) => {
+        toast.instance.hide();
+    });
+}
+
+/**
+ * Update an existing toast
+ * @param {string} toastId - The ID of the toast to update
+ * @param {object} options - The properties to update
+ */
+function updateToast(toastId, options = {}) {
+    const toast = activeToasts.get(toastId);
+    if (!toast) return;
+    
+    const { title, message, type } = options;
+    
+    // Update title if provided
+    if (title) {
+        const headerElement = toast.element.querySelector('.toast-header strong');
+        if (headerElement) {
+            headerElement.textContent = title;
+        }
+    }
+    
+    // Update message if provided
+    if (message) {
+        const bodyElement = toast.element.querySelector('.toast-body');
+        if (bodyElement) {
+            // Preserve the progress bar if it exists
+            const progressBar = bodyElement.querySelector('.progress');
+            bodyElement.innerHTML = message;
+            if (progressBar) {
+                bodyElement.appendChild(progressBar);
+            }
+        }
+    }
+    
+    // Update type/appearance if provided
+    if (type) {
+        // Implementation for changing toast type would go here
+        // This is more complex as it requires changing multiple classes
+    }
+}
+
 // Helper function to clean up modal backdrops and body classes
 function cleanupModalBackdrops() {
     console.log('Running modal cleanup');
