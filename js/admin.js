@@ -1,5 +1,8 @@
 // Admin Module
 
+// Global state variable to track approval operations
+let isApprovalInProgress = false;
+
 // Helper function to generate signed URLs for profile images
 async function getSignedProfileImageUrl(imagePath, expirySeconds = 3600) {
     if (!imagePath) return null;
@@ -161,12 +164,21 @@ async function loadUsers() {
             // Setup approve all button
             const approveAllBtn = document.getElementById('approve-all-users');
             if (approveAllBtn) {
-                approveAllBtn.onclick = async function() {
-                    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Approving...';
-                    this.disabled = true;
-                    await approveAllPendingUsers(pendingUsers);
-                };
-                approveAllBtn.disabled = false;
+                // Check if approval operation is already in progress
+                if (isApprovalInProgress) {
+                    approveAllBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Approving...';
+                    approveAllBtn.disabled = true;
+                } else {
+                    approveAllBtn.innerHTML = '<i class="bi bi-check-all me-1"></i>Approve All';
+                    approveAllBtn.disabled = false;
+                    
+                    // Add click event handler
+                    approveAllBtn.onclick = async function() {
+                        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Approving...';
+                        this.disabled = true;
+                        await approveAllPendingUsers(pendingUsers);
+                    };
+                }
             }
         }
         
@@ -433,17 +445,16 @@ async function deleteUser(userId) {
 
 // Function to approve all pending users
 async function approveAllPendingUsers(pendingUsers) {
-    const approveAllBtn = document.getElementById('approve-all-users');
-    const originalBtnText = approveAllBtn.innerHTML;
-    
     if (pendingUsers.length === 0) {
         showToast('Information', 'No pending users to approve.', 'info');
-        approveAllBtn.innerHTML = originalBtnText;
-        approveAllBtn.disabled = false;
+        isApprovalInProgress = false;
         return;
     }
     
     try {
+        // Set global state to track operation
+        isApprovalInProgress = true;
+        
         // Show processing toast
         const toastId = showToast('Processing', `Approving ${pendingUsers.length} users...`, 'info');
         
@@ -487,6 +498,9 @@ async function approveAllPendingUsers(pendingUsers) {
             showToast('Warning', `Approved ${successCount} users. Failed to approve ${failCount} users.`, 'warning');
         }
         
+        // Reset global state flag
+        isApprovalInProgress = false;
+        
         // Reload users list
         loadUsers();
         
@@ -494,10 +508,23 @@ async function approveAllPendingUsers(pendingUsers) {
         console.error('Error in bulk approval:', error);
         showToast('Error', `Failed to complete bulk approval: ${error.message}`, 'error');
         
-        // Make sure to reset the button on error
-        approveAllBtn.innerHTML = originalBtnText;
+        // Make sure to reset state on error
+        isApprovalInProgress = false;
+        
+        // Reload users to show updated state
+        loadUsers();
+    }
+}
+
+// Function to manually force reset of approve-all button
+function resetApprovalButton() {
+    isApprovalInProgress = false;
+    const approveAllBtn = document.getElementById('approve-all-users');
+    if (approveAllBtn) {
+        approveAllBtn.innerHTML = '<i class="bi bi-check-all me-1"></i>Approve All';
         approveAllBtn.disabled = false;
     }
+    return "Approval button reset. Please refresh the page to see updated state.";
 }
 
 // Send approval email to user

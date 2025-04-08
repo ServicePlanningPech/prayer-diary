@@ -3,7 +3,7 @@
 describe('Enhanced Bulk User Registration', () => {
   // Configuration - modify these settings as needed
   const config = {
-    userCount: 10,                     // Number of users to create
+    userCount: 5,                     // Number of users to create
     namePrefix: 'Church Member',       // Prefix for user names
     baseEmail: 'AlanReeves@proton.me', // Base email (without the +nnn part)
     startNumber: 1,                    // Starting number for email sequence
