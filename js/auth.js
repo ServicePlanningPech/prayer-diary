@@ -77,31 +77,40 @@ function openAuthModal(mode) {
     const title = document.getElementById('auth-modal-title');
     const submitBtn = document.getElementById('auth-submit');
     const switchText = document.getElementById('auth-switch-text');
-    const signupField = document.querySelector('.signup-field');
+    const signupFields = document.querySelectorAll('.signup-field');
     const signupNameInput = document.getElementById('signup-name');
+    const confirmPasswordInput = document.getElementById('auth-confirm-password');
     const signupHelpText = document.querySelector('.signup-field .form-text');
+    const passwordMatchMessage = document.querySelector('.password-match-message');
     
     // Reset form
     document.getElementById('auth-form').reset();
     document.getElementById('auth-error').classList.add('d-none');
     
+    // Hide password match message
+    if (passwordMatchMessage) {
+        passwordMatchMessage.classList.add('d-none');
+    }
+    
     if (mode === 'login') {
         title.textContent = 'Log In';
         submitBtn.textContent = 'Log In';
         switchText.innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
-        signupField.classList.add('d-none');
+        signupFields.forEach(field => field.classList.add('d-none'));
         
         // CRITICAL: Remove required attribute from hidden fields in login mode
         signupNameInput.removeAttribute('required');
+        confirmPasswordInput.removeAttribute('required');
         if (signupHelpText) signupHelpText.classList.add('d-none');
     } else {
         title.textContent = 'Sign Up';
         submitBtn.textContent = 'Sign Up';
         switchText.innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
-        signupField.classList.remove('d-none');
+        signupFields.forEach(field => field.classList.remove('d-none'));
         
         // Add required attribute back for signup mode
         signupNameInput.setAttribute('required', '');
+        confirmPasswordInput.setAttribute('required', '');
         if (signupHelpText) signupHelpText.classList.remove('d-none');
         
         // Initially disable the signup button until all fields are filled
@@ -128,8 +137,10 @@ function toggleAuthMode() {
     const title = document.getElementById('auth-modal-title');
     const isLogin = title.textContent === 'Log In';
     const signupNameInput = document.getElementById('signup-name');
-    const signupField = document.querySelector('.signup-field');
+    const confirmPasswordInput = document.getElementById('auth-confirm-password');
+    const signupFields = document.querySelectorAll('.signup-field');
     const signupHelpText = document.querySelector('.signup-field .form-text');
+    const passwordMatchMessage = document.querySelector('.password-match-message');
     
     if (isLogin) {
         // Switching to signup
@@ -138,9 +149,15 @@ function toggleAuthMode() {
         document.getElementById('auth-switch-text').innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
         
         // Show signup fields and make them required
-        signupField.classList.remove('d-none');
+        signupFields.forEach(field => field.classList.remove('d-none'));
         signupNameInput.setAttribute('required', '');
+        confirmPasswordInput.setAttribute('required', '');
         if (signupHelpText) signupHelpText.classList.remove('d-none');
+        
+        // Reset password match message
+        if (passwordMatchMessage) {
+            passwordMatchMessage.classList.add('d-none');
+        }
     } else {
         // Switching to login
         title.textContent = 'Log In';
@@ -148,8 +165,9 @@ function toggleAuthMode() {
         document.getElementById('auth-switch-text').innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
         
         // Hide signup fields and remove required attribute
-        signupField.classList.add('d-none');
+        signupFields.forEach(field => field.classList.add('d-none'));
         signupNameInput.removeAttribute('required');
+        confirmPasswordInput.removeAttribute('required');
         if (signupHelpText) signupHelpText.classList.add('d-none');
     }
     
@@ -172,9 +190,29 @@ function validateAuthForm() {
         // Login requires only email and password
         submitBtn.disabled = !(email && password);
     } else {
-        // Signup requires name, email, and password
+        // Signup requires name, email, password, and matching password confirmation
         const fullName = document.getElementById('signup-name').value.trim();
-        submitBtn.disabled = !(fullName && email && password);
+        const confirmPassword = document.getElementById('auth-confirm-password').value;
+        const passwordMatchMessage = document.querySelector('.password-match-message');
+        
+        // Check if passwords match when both fields have values
+        let passwordsMatch = true;
+        if (password && confirmPassword) {
+            passwordsMatch = password === confirmPassword;
+            
+            // Show/hide password match message
+            if (passwordsMatch) {
+                passwordMatchMessage.classList.add('d-none');
+            } else {
+                passwordMatchMessage.classList.remove('d-none');
+            }
+        } else {
+            // If one or both password fields are empty, hide the mismatch message
+            passwordMatchMessage.classList.add('d-none');
+        }
+        
+        // Enable submit button only if all fields are filled and passwords match
+        submitBtn.disabled = !(fullName && email && password && confirmPassword && passwordsMatch);
     }
 }
 
@@ -209,6 +247,12 @@ async function handleAuth(e) {
         } else {
             // Signup
             const fullName = document.getElementById('signup-name').value;
+            const confirmPassword = document.getElementById('auth-confirm-password').value;
+            
+            // Verify passwords match before proceeding
+            if (password !== confirmPassword) {
+                throw new Error('Passwords do not match. Please try again.');
+            }
             
             // Add debug log to see what we're sending
             console.log('Attempting to sign up user:', email);

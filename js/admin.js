@@ -67,11 +67,27 @@ async function loadUsers() {
     approvedContainer.innerHTML = createLoadingSpinner();
     
     try {
-        // Direct, simple query - no extra complexity
+        console.log('Checking auth session...');
+        // First, check for an active session and get fresh auth state
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            console.error('No active session found');
+            throw new Error('No active session. Please log in again.');
+        }
+        
+        console.log('Fetching user profiles from database...');
+        // Use a request ID to bypass potential caching issues
+        const requestId = Date.now().toString();
         const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
             .select('*')
-            .order('full_name', { ascending: true });
+            .order('full_name', { ascending: true })
+            .limit(100)
+            .order('created_at', { ascending: false }) // Get the most recently created first
+            .headers({
+                'x-request-id': requestId,
+                'Cache-Control': 'no-cache'
+            });
         
         if (profilesError) {
             console.error('Error fetching profiles:', profilesError);

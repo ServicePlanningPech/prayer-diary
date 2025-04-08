@@ -789,10 +789,16 @@
                             <label for="auth-email" class="form-label">Email <span class="text-danger">*</span></label>
                             <input type="email" class="form-control" id="auth-email" name="auth-email" placeholder="Your email" required>
                         </div>
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <label for="auth-password" class="form-label">Password <span class="text-danger">*</span></label>
                             <input type="password" class="form-control" id="auth-password" name="auth-password" placeholder="Your password" required>
                             <div class="form-text signup-field d-none">Must be at least 6 characters long.</div>
+                        </div>
+                        <!-- Password confirmation field - only shown during signup -->
+                        <div class="mb-4 signup-field d-none">
+                            <label for="auth-confirm-password" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="auth-confirm-password" name="auth-confirm-password" placeholder="Confirm your password" required>
+                            <div class="form-text password-match-message d-none text-danger">Passwords do not match.</div>
                         </div>
                         <div class="d-grid">
                             <button class="btn btn-primary" type="submit" id="auth-submit">Log In</button>
