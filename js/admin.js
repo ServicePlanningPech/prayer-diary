@@ -751,11 +751,11 @@ async function approveAllPendingUsers(pendingUsers) {
         
         console.log(`Bulk approval complete. Success: ${successCount}, Failed: ${failCount}`);
         
-        // Show final results
+        // Show final results using alert for reliability
         if (failCount === 0) {
-            showNotification('Success', `Successfully approved all ${successCount} users.`);
+            alert(`Success: Approved all ${successCount} users.`);
         } else {
-            showNotification('Warning', `Approved ${successCount} users. Failed to approve ${failCount} users.`);
+            alert(`Warning: Approved ${successCount} users. Failed to approve ${failCount} users.`);
         }
         
         // Wait a moment before reloading the users list to ensure UI stability

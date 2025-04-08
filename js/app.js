@@ -16,13 +16,65 @@ document.addEventListener('DOMContentLoaded', initializeApp);
 
 // Initialize app function
 function initializeApp() {
+    // Set up all modals
+    setupAllModals();
+    
     // Set up delete user confirmation modal functionality
     const deleteUserModal = document.getElementById('delete-user-modal');
     if (deleteUserModal) {
         deleteUserModal.addEventListener('shown.bs.modal', function() {
             // Focus the confirm delete button when modal is shown
-            document.getElementById('confirm-delete-user').focus();
+            const confirmButton = document.getElementById('confirm-delete-user');
+            if (confirmButton) {
+                confirmButton.focus();
+            }
         });
+    }
+}
+
+// Function to set up all modals properly
+function setupAllModals() {
+    console.log('Setting up all modals');
+    
+    // Add global handlers for all modals
+    document.addEventListener('hidden.bs.modal', function(event) {
+        console.log('Modal hidden event triggered');
+        
+        // Clean up any leftover backdrops
+        setTimeout(cleanupModalBackdrops, 100);
+    });
+    
+    // Set up a global emergency escape key handler
+    document.addEventListener('keydown', function(event) {
+        // If Escape key pressed
+        if (event.key === 'Escape') {
+            console.log('Escape key pressed - checking for stuck modals');
+            
+            // Check if body still has modal-open class but no visible modals
+            const visibleModals = document.querySelectorAll('.modal.show');
+            if (document.body.classList.contains('modal-open') && visibleModals.length === 0) {
+                console.log('Detected stuck modal state - cleaning up');
+                cleanupModalBackdrops();
+            }
+        }
+    });
+    
+    // Set up notification modal specifically
+    setupNotificationCloseButton();
+    
+    // Add a recovery button to force-fix UI in case of issues
+    const navContainer = document.querySelector('.navbar .container-fluid');
+    if (navContainer) {
+        const recoveryButton = document.createElement('button');
+        recoveryButton.className = 'btn btn-sm btn-outline-secondary d-none d-md-block ms-2';
+        recoveryButton.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i>';
+        recoveryButton.title = 'Fix UI Issues';
+        recoveryButton.id = 'ui-recovery-button';
+        recoveryButton.onclick = function() {
+            cleanupModalBackdrops();
+            alert('UI cleanup performed. If issues persist, please reload the page.');
+        };
+        navContainer.appendChild(recoveryButton);
     }
     // Check if Supabase configuration is set
     if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {

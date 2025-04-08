@@ -143,16 +143,46 @@ function setupModalClosers() {
 
 // Helper function to clean up modal backdrops and body classes
 function cleanupModalBackdrops() {
-    // Remove any stray backdrops
-    const backdrops = document.querySelectorAll('.modal-backdrop');
-    backdrops.forEach(backdrop => {
-        backdrop.parentNode.removeChild(backdrop);
-    });
+    console.log('Running modal cleanup');
     
-    // Clean up body classes and styles
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
+    try {
+        // Remove any stray backdrops
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        console.log(`Found ${backdrops.length} modal backdrops to clean up`);
+        
+        backdrops.forEach(backdrop => {
+            if (backdrop && backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        });
+        
+        // Check if there are any visible modals
+        const visibleModals = document.querySelectorAll('.modal.show');
+        
+        if (visibleModals.length === 0) {
+            console.log('No visible modals - cleaning up body classes');
+            // Clean up body classes and styles only if no visible modals
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        } else {
+            console.log(`${visibleModals.length} modals still visible - keeping body classes`);
+        }
+        
+        // Fix any modals that are hidden but still have show class
+        const hiddenButShowModals = document.querySelectorAll('.modal.show[style*="display: none"]');
+        hiddenButShowModals.forEach(modal => {
+            console.log('Fixing hidden modal with show class:', modal.id);
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+            modal.removeAttribute('aria-modal');
+        });
+        
+        return true;
+    } catch (error) {
+        console.error('Error in cleanupModalBackdrops:', error);
+        return false;
+    }
 }
 
 // Setup file input display
@@ -227,13 +257,26 @@ function initializeBootstrapComponents() {
     });
 }
 
+// Simple notification variable to track current notification
+let currentNotificationModal = null;
+
 // Show notification modal
 function showNotification(title, message) {
     try {
+        console.log(`Showing notification: ${title}`);
+        
+        // Use simple alert as fallback for critical messages in case modal system is unstable
+        if (title.includes('Error')) {
+            console.log('Using alert for error message for reliability');
+            setTimeout(() => alert(`${title}: ${message.replace(/<[^>]*>/g, '')}`), 100);
+            return;
+        }
+        
         // Get the modal element
         const modalElement = document.getElementById('notification-modal');
         if (!modalElement) {
             console.error('Notification modal element not found');
+            alert(`${title}: ${message.replace(/<[^>]*>/g, '')}`);
             return;
         }
         
@@ -243,67 +286,121 @@ function showNotification(title, message) {
         
         if (!titleElem || !contentElem) {
             console.error('Notification modal elements not found');
+            alert(`${title}: ${message.replace(/<[^>]*>/g, '')}`);
             return;
         }
         
-        // First, check if there's an existing modal and dispose it properly
-        try {
-            const existingModal = bootstrap.Modal.getInstance(modalElement);
-            if (existingModal) {
-                existingModal.dispose();
+        // Clean up any existing modal
+        if (currentNotificationModal) {
+            try {
+                currentNotificationModal.hide();
+                currentNotificationModal.dispose();
+            } catch (e) {
+                console.warn('Error cleaning up previous modal instance:', e);
             }
-        } catch (disposeError) {
-            console.warn('Error disposing existing modal:', disposeError);
+            currentNotificationModal = null;
         }
         
         // Update content first
         titleElem.textContent = title;
         contentElem.innerHTML = message;
         
-        // Clear any existing backdrop and clean up body state
-        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
-            if (backdrop && backdrop.parentNode) {
-                backdrop.parentNode.removeChild(backdrop);
-            }
-        });
+        // Ensure the close button has the right event handler
+        setupNotificationCloseButton();
         
-        // Clean up body state
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-        
-        // Use direct jQuery-style modal trigger to avoid Bootstrap Modal class issues
-        // This is a safer approach that avoids the TypeError
-        if (typeof $ !== 'undefined') {
-            // Use jQuery if available
-            $(modalElement).modal('show');
-        } else {
-            // Direct show with manual event trigger
-            try {
-                // Don't create a new modal instance - use direct DOM manipulation
-                modalElement.style.display = 'block';
-                modalElement.classList.add('show');
-                modalElement.setAttribute('aria-modal', 'true');
-                modalElement.setAttribute('role', 'dialog');
+        // Create a new modal instance
+        try {
+            currentNotificationModal = new bootstrap.Modal(modalElement, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+            
+            // Show the modal
+            currentNotificationModal.show();
+            
+            // Add listener for modal hidden event
+            modalElement.addEventListener('hidden.bs.modal', function onHidden() {
+                // Remove this listener to avoid memory leaks
+                modalElement.removeEventListener('hidden.bs.modal', onHidden);
                 
-                // Add backdrop manually
-                const backdrop = document.createElement('div');
-                backdrop.classList.add('modal-backdrop', 'fade', 'show');
-                document.body.appendChild(backdrop);
+                // Clean up the modal instance
+                if (currentNotificationModal) {
+                    try {
+                        currentNotificationModal.dispose();
+                    } catch (e) {
+                        console.warn('Error disposing modal after hide:', e);
+                    }
+                    currentNotificationModal = null;
+                }
                 
-                // Add body styles
-                document.body.classList.add('modal-open');
-            } catch (showError) {
-                console.error('Error showing modal manually:', showError);
-                // Last resort: use alert
-                alert(`${title}: ${message.replace(/<[^>]*>/g, '')}`);
-            }
+                // Clean up backdrops
+                cleanupModalBackdrops();
+            });
+            
+        } catch (error) {
+            console.error('Error initializing Bootstrap modal:', error);
+            alert(`${title}: ${message.replace(/<[^>]*>/g, '')}`);
         }
     } catch (error) {
         console.error('Error showing notification:', error);
         // Fallback to alert if modal fails
         alert(`${title}: ${message.replace(/<[^>]*>/g, '')}`);
     }
+}
+
+// Function to set up notification close button
+function setupNotificationCloseButton() {
+    const closeButton = document.getElementById('close-notification');
+    if (!closeButton) return;
+    
+    // Clone and replace to remove all event listeners
+    const newCloseButton = closeButton.cloneNode(true);
+    closeButton.parentNode.replaceChild(newCloseButton, closeButton);
+    
+    // Add a new event listener
+    newCloseButton.addEventListener('click', function(event) {
+        console.log('Notification close button clicked');
+        
+        // Prevent default behavior
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Reference the modal element directly
+        const modalElement = document.getElementById('notification-modal');
+        
+        // Try to use Bootstrap's API first
+        if (currentNotificationModal) {
+            try {
+                currentNotificationModal.hide();
+                return;
+            } catch (e) {
+                console.warn('Error hiding modal with Bootstrap API:', e);
+            }
+        }
+        
+        // Fallback to direct DOM manipulation
+        try {
+            if (modalElement) {
+                modalElement.classList.remove('show');
+                modalElement.style.display = 'none';
+                modalElement.setAttribute('aria-hidden', 'true');
+                modalElement.removeAttribute('aria-modal');
+            }
+            
+            // Remove backdrops
+            cleanupModalBackdrops();
+            
+            // Reset body
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        } catch (e) {
+            console.error('Error with manual modal cleanup:', e);
+            // Force page reload as last resort
+            window.location.reload();
+        }
+    });
 }
 
 // Format date for display
