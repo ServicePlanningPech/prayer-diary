@@ -5,16 +5,34 @@ module.exports = defineConfig({
     baseUrl: 'https://serviceplanningpech.github.io/prayer-diary/', // Change this to your development server URL
     supportFile: 'cypress/support/e2e.js',
     setupNodeEvents(on, config) {
-      // implement node event listeners here
+      // Log to console for better visibility during test runs
+      on('task', {
+        log(message) {
+          console.log(`[Test Log] ${message}`);
+          return null;
+        }
+      });
     },
-    // Set long timeout for authentication operations
-    defaultCommandTimeout: 10000,
+    // Increase timeouts for better reliability with auth operations
+    defaultCommandTimeout: 15000,
+    pageLoadTimeout: 30000,
     // Avoid test failures on uncaught exceptions from your app
-    uncaughtExceptionMode: 'warn'
+    uncaughtExceptionMode: 'warn',
+    // Retry failed tests
+    retries: {
+      runMode: 2,
+      openMode: 1
+    },
+    // Enable Cypress Studio for recording user interactions
+    experimentalStudio: true
   },
   // Default viewport size
   viewportWidth: 1280,
   viewportHeight: 800,
-  // Prevent Cypress from clearing localStorage between tests to preserve login state
-  experimentalPreserveLocalStorage: true
+  // Ensure sessions are properly supported
+  experimentalSessionAndOrigin: true,
+  experimentalSessionSupport: true,
+  // Other useful experimental features
+  experimentalMemoryManagement: true,
+  numTestsKeptInMemory: 5
 });

@@ -7,14 +7,18 @@ export const setupSupabaseMocks = () => {
     // Create a fake user ID for testing
     const fakeUserId = 'test-user-id-' + Date.now();
     
+    // Use the standardized email format
+    const mockEmail = 'AlanReeves+999@proton.me';
+    const mockName = 'Mock Test User';
+    
     // Mock the signUp method
     const mockSignUp = cy.stub().resolves({
       data: {
         user: {
           id: fakeUserId,
-          email: 'test@example.com',
+          email: mockEmail,
           user_metadata: {
-            full_name: 'Test User'
+            full_name: mockName
           }
         },
         session: {
@@ -33,7 +37,7 @@ export const setupSupabaseMocks = () => {
       data: {
         user: {
           id: fakeUserId,
-          email: 'test@example.com'
+          email: mockEmail
         },
         session: {
           access_token: 'fake-access-token',
@@ -54,7 +58,7 @@ export const setupSupabaseMocks = () => {
           refresh_token: 'fake-refresh-token',
           user: {
             id: fakeUserId,
-            email: 'test@example.com'
+            email: mockEmail
           }
         }
       },
@@ -81,7 +85,7 @@ export const setupSupabaseMocks = () => {
               single: () => Promise.resolve({
                 data: {
                   id: fakeUserId,
-                  full_name: 'Test User',
+                  full_name: mockName,
                   user_role: 'User',
                   approval_state: 'Approved',
                   profile_set: false

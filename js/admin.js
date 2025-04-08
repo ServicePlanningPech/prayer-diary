@@ -7,20 +7,39 @@ async function getSignedProfileImageUrl(imagePath, expirySeconds = 3600) {
     // Extract just the path part if it's a full URL
     let path = imagePath;
     
-    if (imagePath.includes('/storage/v1/object/')) {
-        const match = imagePath.match(/\/prayer-diary\/([^?]+)/);
-        if (match && match[1]) {
-            path = match[1];
-        } else {
-            console.warn('Could not extract path from URL:', imagePath);
-            return null;
-        }
-    }
-    
     try {
-        const { data, error } = await supabase.storage
+        // Handle different URL formats
+        if (imagePath.includes('/storage/v1/object/')) {
+            const match = imagePath.match(/\/prayer-diary\/([^?]+)/);
+            if (match && match[1]) {
+                path = match[1];
+            } else {
+                console.warn('Could not extract path from URL:', imagePath);
+                return null;
+            }
+        } else if (imagePath.startsWith('profiles/')) {
+            // Path is already in correct format
+            path = imagePath;
+        } else if (!imagePath.includes('/')) {
+            // Just a filename, assume it's in profiles folder
+            path = `profiles/${imagePath}`;
+        }
+        
+        // Add timeout for this operation to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Timeout getting signed URL')), 5000);
+        });
+        
+        // Create the signed URL with a timeout
+        const signedUrlPromise = supabase.storage
             .from('prayer-diary')
             .createSignedUrl(path, expirySeconds);
+            
+        // Race between the actual operation and the timeout
+        const { data, error } = await Promise.race([
+            signedUrlPromise,
+            timeoutPromise
+        ]);
         
         if (error) {
             console.error('Error creating signed URL:', error);
@@ -29,7 +48,7 @@ async function getSignedProfileImageUrl(imagePath, expirySeconds = 3600) {
         
         return data.signedUrl;
     } catch (e) {
-        console.error('Exception generating signed URL:', e);
+        console.error('Exception generating signed URL:', e, 'for path:', path);
         return null;
     }
 }
@@ -85,20 +104,19 @@ async function loadUsers() {
         // Display pending users
         if (pendingUsers.length === 0) {
             pendingContainer.innerHTML = `
-                <div class="notification is-info">
+                <div class="alert alert-info">
                     No pending users awaiting approval.
                 </div>
             `;
         } else {
             let pendingHtml = '';
-            // Need to process users sequentially due to async operations
+            
+            // Process all users at once with placeholder images first
             for (const user of pendingUsers) {
-                // Generate signed URLs for profile images
-                if (user.profile_image_url) {
-                    user.signed_image_url = await getSignedProfileImageUrl(user.profile_image_url);
-                }
+                // Don't wait for signed URLs here - use placeholder images
                 pendingHtml += createUserCard(user, true);
             }
+            
             pendingContainer.innerHTML = pendingHtml;
             
             // Add approval/rejection event listeners
@@ -115,25 +133,40 @@ async function loadUsers() {
                     await updateUserApproval(userId, 'Rejected');
                 });
             });
+            
+            // Load images asynchronously after rendering
+            for (const user of pendingUsers) {
+                if (user.profile_image_url) {
+                    try {
+                        const signedUrl = await getSignedProfileImageUrl(user.profile_image_url);
+                        if (signedUrl) {
+                            document.querySelectorAll(`img.user-avatar[data-user-id="${user.id}"]`).forEach(img => {
+                                img.src = signedUrl;
+                            });
+                        }
+                    } catch (err) {
+                        console.warn(`Failed to load image for user ${user.id}:`, err);
+                    }
+                }
+            }
         }
         
         // Display approved users
         if (approvedUsers.length === 0) {
             approvedContainer.innerHTML = `
-                <div class="notification is-info">
+                <div class="alert alert-info">
                     No approved users found.
                 </div>
             `;
         } else {
             let approvedHtml = '';
-            // Need to process users sequentially due to async operations
+            
+            // Process all users at once with placeholder images first
             for (const user of approvedUsers) {
-                // Generate signed URLs for profile images
-                if (user.profile_image_url) {
-                    user.signed_image_url = await getSignedProfileImageUrl(user.profile_image_url);
-                }
+                // Don't wait for signed URLs here - use placeholder images
                 approvedHtml += createUserCard(user, false);
             }
+            
             approvedContainer.innerHTML = approvedHtml;
             
             // Add edit permissions event listeners
@@ -146,17 +179,36 @@ async function loadUsers() {
                     }
                 });
             });
+            
+            // Load images asynchronously after rendering
+            // Use Promise.allSettled to load all images in parallel but handle failures individually
+            Promise.allSettled(
+                approvedUsers.map(async user => {
+                    if (user.profile_image_url) {
+                        try {
+                            const signedUrl = await getSignedProfileImageUrl(user.profile_image_url);
+                            if (signedUrl) {
+                                document.querySelectorAll(`img.user-avatar[data-user-id="${user.id}"]`).forEach(img => {
+                                    img.src = signedUrl;
+                                });
+                            }
+                        } catch (err) {
+                            console.warn(`Failed to load image for user ${user.id}:`, err);
+                        }
+                    }
+                })
+            );
         }
         
     } catch (error) {
         console.error('Error loading users:', error);
         pendingContainer.innerHTML = `
-            <div class="notification is-danger">
+            <div class="alert alert-danger">
                 Error loading users: ${error.message}
             </div>
         `;
         approvedContainer.innerHTML = `
-            <div class="notification is-danger">
+            <div class="alert alert-danger">
                 Error loading users: ${error.message}
             </div>
         `;

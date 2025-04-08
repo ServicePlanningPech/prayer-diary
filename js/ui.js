@@ -306,63 +306,12 @@ function createUrgentCard(prayer, isAdmin = false) {
 
 // Helper function to create a user card
 function createUserCard(user, isPending = true) {
-    // Get public URL for the profile image
+    // Always start with placeholder image for faster rendering
     let imageUrl = 'img/placeholder-profile.png';
     
     // Use the pre-generated signed URL if available (for admin view)
     if (user.signed_image_url) {
         imageUrl = user.signed_image_url;
-        console.log(`Using pre-generated signed URL for ${user.full_name}`);
-    }
-    // Otherwise, if there's a profile image URL, we'll use a placeholder and load asynchronously
-    else if (user.profile_image_url) {
-        imageUrl = 'img/placeholder-profile.png';
-        
-        // Store user id as data attribute so we can update it when the signed URL is ready
-        const userId = user.id;
-        // Generate a unique identifier for this user card
-        const cardId = `user-card-${userId.substring(0, 8)}`;
-        
-        // This technique lets us update the image after the card is rendered
-        setTimeout(() => {
-            (async () => {
-                try {
-                    // Extract the path from the profile_image_url
-                    let imagePath = '';
-                    const originalUrl = user.profile_image_url;
-                    
-                    if (originalUrl.includes('/storage/v1/object/')) {
-                        // Standard format extraction
-                        const match = originalUrl.match(/\/prayer-diary\/([^?]+)/);
-                        if (match && match[1]) {
-                            imagePath = match[1];
-                        }
-                    } else {
-                        // Path might already be relative
-                        imagePath = originalUrl.startsWith('profiles/') ? originalUrl : `profiles/${originalUrl}`;
-                    }
-                    
-                    if (imagePath) {
-                        // Remove await and use promise chain instead (since we're inside a non-async callback)
-                        supabase.storage
-                            .from('prayer-diary')
-                            .createSignedUrl(imagePath, 3600) // 1 hour validity
-                            .then(({ data, error }) => {
-                                if (!error && data) {
-                                    // Find all images for this user and update them
-                                    const userImages = document.querySelectorAll(`img.user-avatar[data-user-id="${userId}"]`);
-                                    userImages.forEach(img => {
-                                        img.src = data.signedUrl;
-                                    });
-                                }
-                            })
-                            .catch(err => console.error(`Error getting signed URL for ${user.full_name}:`, err));
-                    }
-                } catch (e) {
-                    console.error(`Error loading image for ${user.full_name}:`, e);
-                }
-            })();
-        }, 100);
     }
     
     return `

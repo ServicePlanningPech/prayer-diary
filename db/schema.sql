@@ -3,6 +3,7 @@ CREATE TABLE profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL PRIMARY KEY,
   updated_at TIMESTAMP WITH TIME ZONE,
   full_name TEXT,
+  email TEXT, -- Added email field to store the user's email address
   profile_image_url TEXT,
   prayer_points TEXT,
   user_role TEXT NOT NULL DEFAULT 'User',
@@ -145,7 +146,8 @@ RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (
     id, 
-    full_name, 
+    full_name,
+    email, -- Added email field here 
     user_role, 
     approval_state, 
     profile_set,
@@ -155,7 +157,8 @@ BEGIN
   )
   VALUES (
     NEW.id, 
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), 
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+    NEW.email, -- Store the user's email address from auth.users
     'User', 
     'Pending',
     FALSE,
@@ -167,7 +170,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER on_auth_user_created
+CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
   
