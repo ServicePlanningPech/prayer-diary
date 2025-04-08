@@ -55,31 +55,54 @@ async function getSignedProfileImageUrl(imagePath, expirySeconds = 3600) {
 
 // Load users for admin view
 async function loadUsers() {
+    console.log('Starting loadUsers function');
+    
     if (!isAdmin()) {
+        console.warn('Non-admin user attempted to access admin view');
         showNotification('Access Denied', 'You do not have administrator access to manage users.');
         showView('calendar-view');
         return;
     }
     
-    // Get container elements
+    // Get container elements with error handling
     const pendingContainer = document.getElementById('pending-users-container');
     const approvedContainer = document.getElementById('approved-users-container');
+    
+    if (!pendingContainer || !approvedContainer) {
+        console.error('User containers not found in DOM');
+        showNotification('Error', 'UI elements not found. Please refresh the page.');
+        return;
+    }
     
     // Show loading indicators
     pendingContainer.innerHTML = createLoadingSpinner();
     approvedContainer.innerHTML = createLoadingSpinner();
     
     try {
+        console.log('Fetching user profiles from database...');
+        
         // Get all profiles with their stored emails
         const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
             .select('*')
             .order('full_name', { ascending: true });
             
-        if (profilesError) throw profilesError;
+        if (profilesError) {
+            console.error('Error fetching profiles:', profilesError);
+            throw profilesError;
+        }
+        
+        if (!profiles || profiles.length === 0) {
+            console.log('No user profiles found in database');
+            pendingContainer.innerHTML = `<div class="alert alert-info">No pending users awaiting approval.</div>`;
+            approvedContainer.innerHTML = `<div class="alert alert-info">No approved users found.</div>`;
+            return;
+        }
+        
+        console.log(`Fetched ${profiles.length} user profiles`);
         
         // Process users, using stored email if available
-        processedUsers = profiles.map(profile => {
+        const processedUsers = profiles.map(profile => {
             // Use the profile.email field if it exists, otherwise fall back to defaults
             const email = profile.email || (
                 // Super admin fallback
@@ -544,22 +567,38 @@ async function approveAllPendingUsers(pendingUsers) {
         return;
     }
     
+    // Store reference to the button
     const approveAllBtn = document.getElementById('approve-all-users');
-    const originalText = approveAllBtn.textContent;
-    approveAllBtn.textContent = 'Approving...';
+    if (!approveAllBtn) {
+        console.error('Approve All button not found in DOM');
+        showNotification('Error', 'UI element not found. Please refresh the page.');
+        return;
+    }
+    
+    // Store original button text
+    const originalText = approveAllBtn.innerHTML;
+    approveAllBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Approving...';
     approveAllBtn.disabled = true;
     
     try {
+        console.log(`Starting bulk approval of ${pendingUsers.length} users`);
+        
         // Show confirmation message
         showNotification('Processing', `Approving ${pendingUsers.length} users. Please wait...`);
         
         let successCount = 0;
         let failCount = 0;
         
+        // Create a copy of pending users to avoid modifying the original array during iteration
+        const usersToProccess = [...pendingUsers];
+        
         // Process each user sequentially to avoid rate limits
-        for (const user of pendingUsers) {
+        for (const user of usersToProccess) {
             try {
-                // Update user profile
+                console.log(`Processing user: ${user.full_name} (${user.id})`);
+                
+                // Update user profile with detailed logging
+                console.log(`Updating approval state for: ${user.id}`);
                 const { error } = await supabase
                     .from('profiles')
                     .update({
@@ -567,17 +606,33 @@ async function approveAllPendingUsers(pendingUsers) {
                     })
                     .eq('id', user.id);
                     
-                if (error) throw error;
+                if (error) {
+                    console.error(`Database error approving user ${user.full_name}:`, error);
+                    throw error;
+                }
                 
-                // Send welcome email
-                await sendApprovalEmail(user.id);
+                console.log(`Successfully updated approval state for: ${user.full_name}`);
+                
+                // Send welcome email with error handling
+                try {
+                    console.log(`Sending welcome email to: ${user.full_name}`);
+                    await sendApprovalEmail(user.id);
+                    console.log(`Email sent to: ${user.full_name}`);
+                } catch (emailError) {
+                    console.warn(`Warning: Email failed for ${user.full_name}:`, emailError);
+                    // Continue despite email failure - user is still approved
+                }
                 
                 successCount++;
+                console.log(`Approved ${successCount}/${pendingUsers.length} users so far`);
+                
             } catch (userError) {
                 console.error(`Error approving user ${user.full_name}:`, userError);
                 failCount++;
             }
         }
+        
+        console.log(`Bulk approval complete. Success: ${successCount}, Failed: ${failCount}`);
         
         // Show final results
         if (failCount === 0) {
@@ -586,15 +641,36 @@ async function approveAllPendingUsers(pendingUsers) {
             showNotification('Warning', `Approved ${successCount} users. Failed to approve ${failCount} users.`);
         }
         
-        // Reload the users list
-        loadUsers();
+        // Wait a moment before reloading the users list to ensure UI stability
+        console.log('Waiting before reload...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Reload users with error handling
+        try {
+            console.log('Reloading user list...');
+            await loadUsers();
+            console.log('User list reload complete');
+        } catch (reloadError) {
+            console.error('Error reloading user list:', reloadError);
+            // Don't throw here - we want to restore button state even if reload fails
+        }
         
     } catch (error) {
         console.error('Error in bulk approval:', error);
         showNotification('Error', `Failed to complete bulk approval: ${error.message}`);
     } finally {
-        approveAllBtn.textContent = originalText;
-        approveAllBtn.disabled = false;
+        // Always restore button state with safety checks
+        console.log('Restoring button state...');
+        try {
+            const btnReference = document.getElementById('approve-all-users');
+            if (btnReference) {
+                btnReference.innerHTML = originalText;
+                btnReference.disabled = false;
+            }
+        } catch (buttonError) {
+            console.error('Error restoring button state:', buttonError);
+        }
+        console.log('Bulk approval function completed');
     }
 }
 
