@@ -65,6 +65,21 @@ function setupAuthListeners() {
     
     document.getElementById('auth-form').addEventListener('submit', handleAuth);
     
+    // Set up forgotten password event handler
+    const forgotPasswordLink = document.getElementById('forgot-password-link');
+    if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            openPasswordResetModal();
+        });
+    }
+    
+    // Set up password reset form submission
+    const passwordResetForm = document.getElementById('password-reset-form');
+    if (passwordResetForm) {
+        passwordResetForm.addEventListener('submit', handlePasswordReset);
+    }
+    
     // Close modal button
     document.getElementById('auth-modal-close').addEventListener('click', () => {
         document.getElementById('auth-modal').classList.remove('is-active');
@@ -78,6 +93,7 @@ function openAuthModal(mode) {
     const submitBtn = document.getElementById('auth-submit');
     const switchText = document.getElementById('auth-switch-text');
     const signupFields = document.querySelectorAll('.signup-field');
+    const loginFields = document.querySelectorAll('.login-field');
     const signupNameInput = document.getElementById('signup-name');
     const confirmPasswordInput = document.getElementById('auth-confirm-password');
     const signupHelpText = document.querySelector('.signup-field .form-text');
@@ -96,7 +112,10 @@ function openAuthModal(mode) {
         title.textContent = 'Log In';
         submitBtn.textContent = 'Log In';
         switchText.innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
+        
+        // Show login fields, hide signup fields
         signupFields.forEach(field => field.classList.add('d-none'));
+        loginFields.forEach(field => field.classList.remove('d-none'));
         
         // CRITICAL: Remove required attribute from hidden fields in login mode
         signupNameInput.removeAttribute('required');
@@ -106,7 +125,10 @@ function openAuthModal(mode) {
         title.textContent = 'Sign Up';
         submitBtn.textContent = 'Sign Up';
         switchText.innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
+        
+        // Hide login fields, show signup fields
         signupFields.forEach(field => field.classList.remove('d-none'));
+        loginFields.forEach(field => field.classList.add('d-none'));
         
         // Add required attribute back for signup mode
         signupNameInput.setAttribute('required', '');
@@ -139,6 +161,7 @@ function toggleAuthMode() {
     const signupNameInput = document.getElementById('signup-name');
     const confirmPasswordInput = document.getElementById('auth-confirm-password');
     const signupFields = document.querySelectorAll('.signup-field');
+    const loginFields = document.querySelectorAll('.login-field');
     const signupHelpText = document.querySelector('.signup-field .form-text');
     const passwordMatchMessage = document.querySelector('.password-match-message');
     
@@ -148,8 +171,11 @@ function toggleAuthMode() {
         document.getElementById('auth-submit').textContent = 'Sign Up';
         document.getElementById('auth-switch-text').innerHTML = 'Already have an account? <a href="#" id="auth-switch">Log in</a>';
         
-        // Show signup fields and make them required
+        // Show signup fields, hide login fields
         signupFields.forEach(field => field.classList.remove('d-none'));
+        loginFields.forEach(field => field.classList.add('d-none'));
+        
+        // Make signup fields required
         signupNameInput.setAttribute('required', '');
         confirmPasswordInput.setAttribute('required', '');
         if (signupHelpText) signupHelpText.classList.remove('d-none');
@@ -164,8 +190,11 @@ function toggleAuthMode() {
         document.getElementById('auth-submit').textContent = 'Log In';
         document.getElementById('auth-switch-text').innerHTML = 'Don\'t have an account? <a href="#" id="auth-switch">Sign up</a>';
         
-        // Hide signup fields and remove required attribute
+        // Show login fields, hide signup fields
         signupFields.forEach(field => field.classList.add('d-none'));
+        loginFields.forEach(field => field.classList.remove('d-none'));
+        
+        // Remove required attribute from signup fields
         signupNameInput.removeAttribute('required');
         confirmPasswordInput.removeAttribute('required');
         if (signupHelpText) signupHelpText.classList.add('d-none');
@@ -791,6 +820,74 @@ async function notifyAdminsAboutNewUser(userName, userEmail) {
         console.error('Error in notifyAdminsAboutNewUser:', error.message || error);
         if (error.stack) console.error(error.stack);
         return false;
+    }
+}
+
+// Open the password reset modal
+function openPasswordResetModal() {
+    // Close the auth modal first
+    const authModal = bootstrap.Modal.getInstance(document.getElementById('auth-modal'));
+    if (authModal) {
+        authModal.hide();
+    }
+    
+    // Reset the form and hide any previous messages
+    document.getElementById('password-reset-form').reset();
+    document.getElementById('password-reset-error').classList.add('d-none');
+    document.getElementById('password-reset-success').classList.add('d-none');
+    
+    // Show the password reset modal
+    const modal = new bootstrap.Modal(document.getElementById('password-reset-modal'));
+    modal.show();
+}
+
+// Handle password reset form submission
+async function handlePasswordReset(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('reset-email').value.trim();
+    const submitBtn = document.getElementById('reset-submit');
+    const originalText = submitBtn.textContent;
+    const errorElement = document.getElementById('password-reset-error');
+    const successElement = document.getElementById('password-reset-success');
+    
+    // Hide previous messages
+    errorElement.classList.add('d-none');
+    successElement.classList.add('d-none');
+    
+    // Show loading state
+    submitBtn.textContent = 'Sending...';
+    submitBtn.disabled = true;
+    
+    try {
+        // Use the Supabase resetPasswordForEmail function
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + '/index.html' // Redirect back to the app after reset
+        });
+        
+        if (error) throw error;
+        
+        // Show success message
+        successElement.querySelector('p').textContent = 
+            'Password reset link sent! Please check your email inbox and follow the instructions to reset your password.';
+        successElement.classList.remove('d-none');
+        
+        // Hide the form
+        document.getElementById('password-reset-form').classList.add('d-none');
+        
+        // Log the success (for debugging)
+        console.log('Password reset email sent successfully to:', email);
+        
+    } catch (error) {
+        // Show error message
+        console.error('Error sending password reset email:', error);
+        errorElement.querySelector('p').textContent = 
+            `Failed to send reset email: ${error.message || 'Unknown error'}`;
+        errorElement.classList.remove('d-none');
+    } finally {
+        // Restore button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
     }
 }
 

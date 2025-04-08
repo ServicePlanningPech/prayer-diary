@@ -803,6 +803,10 @@
                         <div class="d-grid">
                             <button class="btn btn-primary" type="submit" id="auth-submit">Log In</button>
                         </div>
+                        <!-- Forgotten password link - only shown during login -->
+                        <div class="text-center mt-2 login-field">
+                            <a href="#" id="forgot-password-link">Forgotten Password?</a>
+                        </div>
                     </form>
                     <div class="text-center mt-4">
                         <p id="auth-switch-text">Don't have an account? <a href="#" id="auth-switch">Sign up</a></p>
@@ -1092,6 +1096,39 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" id="close-notification">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Reset Modal -->
+    <div class="modal fade" id="password-reset-modal" tabindex="-1" aria-labelledby="password-reset-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="password-reset-title">Reset Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="password-reset-error" class="alert alert-danger d-none">
+                        <p class="mb-0">Error message will appear here</p>
+                    </div>
+                    <div id="password-reset-success" class="alert alert-success d-none">
+                        <p class="mb-0">Success message will appear here</p>
+                    </div>
+                    <form id="password-reset-form">
+                        <div class="mb-3">
+                            <label for="reset-email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="reset-email" name="reset-email" placeholder="Enter your email address" required>
+                            <div class="form-text">Enter the email address you used to register. We'll send you a link to reset your password.</div>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="submit" id="reset-submit">Send Reset Link</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 </div>
             </div>
         </div>
