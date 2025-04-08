@@ -122,8 +122,19 @@ async function loadUsers() {
             // Add event listeners for user actions
             document.querySelectorAll('.approve-user').forEach(button => {
                 button.addEventListener('click', async () => {
-                    const userId = button.getAttribute('data-id');
-                    await updateUserApproval(userId, 'Approved');
+                    try {
+                        console.log('Approve button clicked for user ID:', button.getAttribute('data-id'));
+                        const userId = button.getAttribute('data-id');
+                        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Approving...';
+                        button.disabled = true;
+                        await updateUserApproval(userId, 'Approved');
+                    } catch (error) {
+                        console.error('Error in approve button click handler:', error);
+                        showNotification('Error', `Approval failed: ${error.message}`);
+                    } finally {
+                        button.innerHTML = '<i class="bi bi-check"></i> Approve';
+                        button.disabled = false;
+                    }
                 });
             });
             
@@ -139,11 +150,25 @@ async function loadUsers() {
             const approveAllBtn = document.getElementById('approve-all-users');
             if (approveAllBtn) {
                 approveAllBtn.addEventListener('click', async () => {
-                    await approveAllPendingUsers(pendingUsers);
+                    try {
+                        console.log('Approve All button clicked');
+                        approveAllBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Approving...';
+                        approveAllBtn.disabled = true;
+                        await approveAllPendingUsers(pendingUsers);
+                    } catch (error) {
+                        console.error('Error in approve all button handler:', error);
+                        showNotification('Error', `Bulk approval failed: ${error.message}`);
+                    } finally {
+                        approveAllBtn.innerHTML = '<i class="bi bi-check-all me-1"></i>Approve All';
+                        approveAllBtn.disabled = pendingUsers.length === 0;
+                    }
                 });
                 
                 // Only enable the button if there are pending users
                 approveAllBtn.disabled = pendingUsers.length === 0;
+                console.log(`Approve All button ${pendingUsers.length === 0 ? 'disabled' : 'enabled'} (${pendingUsers.length} pending users)`);
+            } else {
+                console.warn('Approve All button not found in the DOM');
             }
             
             // Load images asynchronously after rendering
@@ -332,8 +357,40 @@ async function saveUserPermissions() {
 
 // Update user approval state
 async function updateUserApproval(userId, state) {
+    console.log(`Starting updateUserApproval for user ${userId} with state ${state}`);
+    
     try {
-        // Update user profile
+        // Log the Supabase URL and anon key (partial for security)
+        console.log('Supabase configuration check:', {
+            url: SUPABASE_URL ? 'Set' : 'Missing',
+            anonKey: SUPABASE_ANON_KEY ? 'Set (starts with ' + SUPABASE_ANON_KEY.substring(0, 5) + '...)' : 'Missing'
+        });
+        
+        // Log the current auth state
+        const authSession = await supabase.auth.getSession();
+        console.log('Auth session check:', authSession.data?.session ? 'Valid session' : 'No session');
+        
+        // Verify user exists before updating
+        console.log('Verifying user exists...');
+        const { data: userCheck, error: checkError } = await supabase
+            .from('profiles')
+            .select('id, approval_state')
+            .eq('id', userId)
+            .single();
+            
+        if (checkError) {
+            console.error('Error checking user existence:', checkError);
+            throw new Error(`User verification failed: ${checkError.message}`);
+        }
+        
+        if (!userCheck) {
+            throw new Error('User not found');
+        }
+        
+        console.log(`User found with current state: ${userCheck.approval_state}`);
+        
+        // Update user profile with detailed logging
+        console.log(`Updating user ${userId} to state: ${state}`);
         const { data, error } = await supabase
             .from('profiles')
             .update({
@@ -341,21 +398,36 @@ async function updateUserApproval(userId, state) {
             })
             .eq('id', userId);
             
-        if (error) throw error;
+        if (error) {
+            console.error('Error in Supabase update operation:', error);
+            throw error;
+        }
+        
+        console.log('Profile update successful');
         
         // If approving, also send welcome email
         if (state === 'Approved') {
-            await sendApprovalEmail(userId);
+            console.log('Sending approval email...');
+            try {
+                await sendApprovalEmail(userId);
+                console.log('Email sent successfully');
+            } catch (emailError) {
+                console.warn('Warning: Email sending failed, but approval was successful:', emailError);
+                // Continue despite email failure
+            }
         }
         
-        // Reload users
-        loadUsers();
-        
+        // Show success notification before reloading (so user sees it)
         showNotification('Success', `User ${state.toLowerCase()} successfully.`);
+        
+        // Reload users
+        console.log('Reloading user list...');
+        setTimeout(() => loadUsers(), 1000); // Short delay to ensure notification is seen
         
     } catch (error) {
         console.error('Error updating user approval:', error);
         showNotification('Error', `Failed to update user approval: ${error.message}`);
+        throw error; // Re-throw to allow caller to handle
     }
 }
 

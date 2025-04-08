@@ -330,19 +330,23 @@ function createUserCard(user, isPending = true) {
                 </div>
                 <div class="col-md-auto mt-2 mt-md-0">
                     ${isPending ? `
-                    <button class="btn btn-sm btn-success approve-user me-1" data-id="${user.id}">
-                        <i class="bi bi-check"></i> Approve
-                    </button>
-                    <button class="btn btn-sm btn-danger delete-user" data-id="${user.id}" data-name="${user.full_name}">
-                        <i class="bi bi-trash"></i> Delete
-                    </button>
+                    <div>
+                        <button class="btn btn-sm btn-success approve-user me-1" data-id="${user.id}" type="button">
+                            <i class="bi bi-check"></i> Approve
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-user" data-id="${user.id}" data-name="${user.full_name}" type="button">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
                     ` : `
-                    <button class="btn btn-sm btn-primary edit-user me-1" data-id="${user.id}">
-                        <i class="bi bi-pencil-square"></i> Edit Permissions
-                    </button>
-                    <button class="btn btn-sm btn-danger delete-user" data-id="${user.id}" data-name="${user.full_name}">
-                        <i class="bi bi-trash"></i> Delete
-                    </button>
+                    <div>
+                        <button class="btn btn-sm btn-primary edit-user me-1" data-id="${user.id}" type="button">
+                            <i class="bi bi-pencil-square"></i> Edit Permissions
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-user" data-id="${user.id}" data-name="${user.full_name}" type="button">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
                     `}
                 </div>
             </div>

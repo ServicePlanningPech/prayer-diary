@@ -16,6 +16,14 @@ document.addEventListener('DOMContentLoaded', initializeApp);
 
 // Initialize app function
 function initializeApp() {
+    // Set up delete user confirmation modal functionality
+    const deleteUserModal = document.getElementById('delete-user-modal');
+    if (deleteUserModal) {
+        deleteUserModal.addEventListener('shown.bs.modal', function() {
+            // Focus the confirm delete button when modal is shown
+            document.getElementById('confirm-delete-user').focus();
+        });
+    }
     // Check if Supabase configuration is set
     if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
         showNotification(
