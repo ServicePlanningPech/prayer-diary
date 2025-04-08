@@ -12,14 +12,34 @@ async function initAuth() {
     try {
         console.log("Initializing authentication...");
         
-        // Check if we have a reset password token in the URL
-        await checkForPasswordResetToken();
+        // Parse the URL parameters first to check for recovery mode
+        const params = new URLSearchParams(window.location.search);
+        const type = params.get('type');
+        const isRecoveryMode = type === 'recovery';
         
+        // Clean up the URL to remove the token (for security)
+        if (isRecoveryMode) {
+            console.log("Password reset flow detected");
+            const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
+        
+        // Get the session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (session) {
             console.log("Session found, user is logged in");
             currentUser = session.user;
+            
+            // Special handling for recovery mode - show password reset form instead of normal login flow
+            if (isRecoveryMode) {
+                console.log("Recovery session detected, prompting for new password");
+                openNewPasswordModal();
+                setupAuthListeners();
+                return; // Early return to prevent normal login flow
+            }
+            
+            // Normal login flow
             const profile = await fetchUserProfile();
             if (profile) {
                 console.log("Profile loaded successfully:", profile.full_name);
@@ -36,25 +56,6 @@ async function initAuth() {
     } catch (error) {
         console.error("Error initializing authentication:", error);
         showLoggedOutState();
-    }
-}
-
-// Check for password reset token in URL
-async function checkForPasswordResetToken() {
-    // Parse the URL parameters
-    const params = new URLSearchParams(window.location.search);
-    const type = params.get('type');
-    
-    // If this is a password reset link
-    if (type === 'recovery') {
-        console.log("Password reset token detected in URL");
-        
-        // Show the new password form
-        openNewPasswordModal();
-        
-        // Clean up the URL to remove the token (for security)
-        const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
     }
 }
 
@@ -1003,24 +1004,42 @@ async function handleNewPassword(e) {
         
         // Show success message
         successElement.querySelector('p').textContent = 
-            'Your password has been successfully updated! You can now log in with your new password.';
+            'Your password has been successfully updated! You will now be redirected to the application.';
         successElement.classList.remove('d-none');
         
         // Hide the form
         document.getElementById('new-password-form').classList.add('d-none');
         
-        // After 3 seconds, close the modal and open the login modal
-        setTimeout(() => {
-            // Close the new password modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('new-password-modal'));
-            if (modal) {
-                modal.hide();
+        // After successful password update, sign out and then redirect to login
+        setTimeout(async () => {
+            try {
+                // Sign out the user to clear the recovery session
+                await supabase.auth.signOut();
+                
+                // Close the new password modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('new-password-modal'));
+                if (modal) {
+                    modal.hide();
+                }
+                
+                // Open the login modal after a short delay
+                setTimeout(() => {
+                    // Reset to logged out state
+                    currentUser = null;
+                    userProfile = null;
+                    showLoggedOutState();
+                    
+                    // Show login modal
+                    openAuthModal('login');
+                    
+                    // Show success message
+                    showToast('Success', 'Password updated successfully. Please log in with your new password.', 'success');
+                }, 500);
+            } catch (signOutError) {
+                console.error('Error signing out after password reset:', signOutError);
+                // If sign out fails, still try to redirect to login
+                window.location.reload();
             }
-            
-            // Open the login modal
-            setTimeout(() => {
-                openAuthModal('login');
-            }, 500);
         }, 3000);
         
     } catch (error) {
