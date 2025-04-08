@@ -220,19 +220,8 @@ function openAuthModal(mode) {
         }, 2000);
     }
     
-    // Re-attach event listener for switch link
-    document.getElementById('auth-switch').addEventListener('click', toggleAuthMode);
-    
-    // Add input validation event listeners
-    const formInputs = document.querySelectorAll('#auth-form input');
-    formInputs.forEach(input => {
-        input.addEventListener('input', validateAuthForm);
-    });
-    
-    // Initial validation
-    validateAuthForm();
-    
-    modal.show();
+    // The event listeners and validation are already set up in the try block above
+    // Remove duplicate code that's causing the error
 }
 
 // Toggle between login and signup
