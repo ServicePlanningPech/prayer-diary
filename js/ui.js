@@ -38,56 +38,16 @@ function setupNavigation() {
     
     // Admin navigation
     document.getElementById('nav-manage-users').addEventListener('click', () => {
-        // First clear any existing content to avoid stale data
-        const pendingContainer = document.getElementById('pending-users-container');
-        const approvedContainer = document.getElementById('approved-users-container');
-        
-        if (pendingContainer) {
-            pendingContainer.innerHTML = createLoadingSpinner();
-        }
-        
-        if (approvedContainer) {
-            approvedContainer.innerHTML = createLoadingSpinner();
-        }
-        
-        // Show view first to make UI responsive
+        // Show view first
         showView('manage-users-view');
         
-        // Then load users with a slight delay to ensure DOM is ready
-        setTimeout(() => {
-            if (typeof loadUsers === 'function') {
-                try {
-                    // Show a toast to indicate loading is in progress
-                    showToast('Loading', 'Fetching user data...', 'info', 3000);
-                    
-                    // Use a timeout to prevent infinite loading
-                    const loadTimeout = setTimeout(() => {
-                        if (pendingContainer && pendingContainer.querySelector('.spinner-border')) {
-                            pendingContainer.innerHTML = `
-                                <div class="alert alert-warning">
-                                    <div class="d-flex align-items-center">
-                                        <div>Loading timed out. Please try again.</div>
-                                        <button class="btn btn-sm btn-outline-primary ms-auto" onclick="loadUsers()">
-                                            <i class="bi bi-arrow-clockwise"></i> Retry
-                                        </button>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                    }, 20000); // 20 second timeout
-                    
-                    // Load users and clear timeout when done
-                    loadUsers().finally(() => clearTimeout(loadTimeout));
-                    
-                } catch (error) {
-                    console.error('Error starting user load:', error);
-                    showToast('Error', 'Could not load users. Please refresh the page.', 'error');
-                }
-            } else {
-                console.error('loadUsers function is not defined. Check that admin.js is loaded before ui.js.');
-                showToast('Error', 'Could not load users. Please refresh the page.', 'error');
-            }
-        }, 100);
+        // Then load users - simple and direct
+        if (typeof loadUsers === 'function') {
+            loadUsers();
+        } else {
+            console.error('loadUsers function is not defined');
+            showToast('Error', 'Could not load users. Please refresh the page.', 'error');
+        }
     });
     
     document.getElementById('nav-manage-calendar').addEventListener('click', () => {
