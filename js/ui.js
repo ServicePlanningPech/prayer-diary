@@ -247,34 +247,58 @@ function showNotification(title, message) {
         }
         
         // First, check if there's an existing modal and dispose it properly
-        const existingModal = bootstrap.Modal.getInstance(modalElement);
-        if (existingModal) {
-            existingModal.dispose();
+        try {
+            const existingModal = bootstrap.Modal.getInstance(modalElement);
+            if (existingModal) {
+                existingModal.dispose();
+            }
+        } catch (disposeError) {
+            console.warn('Error disposing existing modal:', disposeError);
         }
         
-        // Clear any existing backdrop
-        const backdrops = document.querySelectorAll('.modal-backdrop');
-        backdrops.forEach(backdrop => {
-            backdrop.parentNode.removeChild(backdrop);
-        });
-        
-        // Reset modal state
-        modalElement.classList.remove('show');
-        modalElement.style.display = 'none';
-        modalElement.removeAttribute('aria-modal');
-        modalElement.removeAttribute('role');
-        
-        // Update content
+        // Update content first
         titleElem.textContent = title;
         contentElem.innerHTML = message;
         
-        // Create a new modal instance
-        const modal = new bootstrap.Modal(modalElement);
+        // Clear any existing backdrop and clean up body state
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+            if (backdrop && backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        });
         
-        // Show with a slight delay to ensure DOM is ready
-        setTimeout(() => {
-            modal.show();
-        }, 50);
+        // Clean up body state
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Use direct jQuery-style modal trigger to avoid Bootstrap Modal class issues
+        // This is a safer approach that avoids the TypeError
+        if (typeof $ !== 'undefined') {
+            // Use jQuery if available
+            $(modalElement).modal('show');
+        } else {
+            // Direct show with manual event trigger
+            try {
+                // Don't create a new modal instance - use direct DOM manipulation
+                modalElement.style.display = 'block';
+                modalElement.classList.add('show');
+                modalElement.setAttribute('aria-modal', 'true');
+                modalElement.setAttribute('role', 'dialog');
+                
+                // Add backdrop manually
+                const backdrop = document.createElement('div');
+                backdrop.classList.add('modal-backdrop', 'fade', 'show');
+                document.body.appendChild(backdrop);
+                
+                // Add body styles
+                document.body.classList.add('modal-open');
+            } catch (showError) {
+                console.error('Error showing modal manually:', showError);
+                // Last resort: use alert
+                alert(`${title}: ${message.replace(/<[^>]*>/g, '')}`);
+            }
+        }
     } catch (error) {
         console.error('Error showing notification:', error);
         // Fallback to alert if modal fails

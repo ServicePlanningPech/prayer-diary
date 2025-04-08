@@ -169,27 +169,49 @@ async function loadUsers() {
                 });
             });
             
-            // Add event listener for the "Approve All" button
-            const approveAllBtn = document.getElementById('approve-all-users');
-            if (approveAllBtn) {
-                approveAllBtn.addEventListener('click', async () => {
+            // Create a safe copy of the pending users array
+            const pendingUsersSnapshot = [...pendingUsers];
+            
+            // Remove any existing event listener by cloning the button
+            const approveAllBtnOld = document.getElementById('approve-all-users');
+            if (approveAllBtnOld) {
+                const approveAllBtnNew = approveAllBtnOld.cloneNode(true);
+                approveAllBtnOld.parentNode.replaceChild(approveAllBtnNew, approveAllBtnOld);
+                
+                // Add fresh event listener to the new button
+                approveAllBtnNew.addEventListener('click', async (event) => {
                     try {
+                        // Prevent any default action or bubbling
+                        event.preventDefault();
+                        event.stopPropagation();
+                        
                         console.log('Approve All button clicked');
-                        approveAllBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Approving...';
-                        approveAllBtn.disabled = true;
-                        await approveAllPendingUsers(pendingUsers);
+                        
+                        // Update button UI
+                        approveAllBtnNew.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Approving...';
+                        approveAllBtnNew.disabled = true;
+                        
+                        // Use the snapshot to avoid issues with the original array changing
+                        await approveAllPendingUsers(pendingUsersSnapshot);
                     } catch (error) {
                         console.error('Error in approve all button handler:', error);
-                        showNotification('Error', `Bulk approval failed: ${error.message}`);
+                        alert(`Bulk approval failed: ${error.message}`); // Use alert instead of modal for reliability
                     } finally {
-                        approveAllBtn.innerHTML = '<i class="bi bi-check-all me-1"></i>Approve All';
-                        approveAllBtn.disabled = pendingUsers.length === 0;
+                        // Button might have been removed from DOM during reload
+                        const currentBtn = document.getElementById('approve-all-users');
+                        if (currentBtn) {
+                            currentBtn.innerHTML = '<i class="bi bi-check-all me-1"></i>Approve All';
+                            currentBtn.disabled = pendingUsersSnapshot.length === 0;
+                        }
                     }
+                    
+                    // Return false to prevent any further event handling
+                    return false;
                 });
                 
                 // Only enable the button if there are pending users
-                approveAllBtn.disabled = pendingUsers.length === 0;
-                console.log(`Approve All button ${pendingUsers.length === 0 ? 'disabled' : 'enabled'} (${pendingUsers.length} pending users)`);
+                approveAllBtnNew.disabled = pendingUsersSnapshot.length === 0;
+                console.log(`Approve All button ${pendingUsersSnapshot.length === 0 ? 'disabled' : 'enabled'} (${pendingUsersSnapshot.length} pending users)`);
             } else {
                 console.warn('Approve All button not found in the DOM');
             }
@@ -456,19 +478,114 @@ async function updateUserApproval(userId, state) {
 
 // Function to show delete user confirmation modal
 function showDeleteUserConfirmation(userId, userName) {
-    // Set the user ID and name in the modal
-    document.getElementById('delete-user-id').value = userId;
-    document.getElementById('delete-user-name').textContent = userName;
-    
-    // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('delete-user-modal'));
-    modal.show();
-    
-    // Set up the confirm delete button handler
-    document.getElementById('confirm-delete-user').onclick = async () => {
-        await deleteUser(userId);
-        modal.hide();
-    };
+    try {
+        console.log(`Showing delete confirmation for user: ${userName} (${userId})`);
+        
+        // Get the modal element
+        const modalElement = document.getElementById('delete-user-modal');
+        if (!modalElement) {
+            console.error('Delete user modal element not found');
+            return;
+        }
+        
+        // Set the user ID and name in the modal
+        const userIdField = document.getElementById('delete-user-id');
+        const userNameField = document.getElementById('delete-user-name');
+        
+        if (!userIdField || !userNameField) {
+            console.error('Modal fields not found');
+            return;
+        }
+        
+        userIdField.value = userId;
+        userNameField.textContent = userName;
+        
+        // First dispose any existing modal
+        try {
+            const existingModal = bootstrap.Modal.getInstance(modalElement);
+            if (existingModal) {
+                existingModal.dispose();
+            }
+        } catch (disposeError) {
+            console.warn('Error disposing existing modal:', disposeError);
+        }
+        
+        // Clean up any stray backdrops
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+            if (backdrop && backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        });
+        
+        // Clean up body state
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Create a new modal instance
+        const modal = new bootstrap.Modal(modalElement);
+        
+        // Remove any previous event listeners on the confirm button
+        const confirmBtn = document.getElementById('confirm-delete-user');
+        if (confirmBtn) {
+            // Clone and replace to remove all event listeners
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            
+            // Add fresh event listener
+            newConfirmBtn.addEventListener('click', async () => {
+                try {
+                    await deleteUser(userId);
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    } else {
+                        // Manual hide
+                        modalElement.classList.remove('show');
+                        modalElement.style.display = 'none';
+                        
+                        // Remove backdrop
+                        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                            if (backdrop && backdrop.parentNode) {
+                                backdrop.parentNode.removeChild(backdrop);
+                            }
+                        });
+                        
+                        // Reset body
+                        document.body.classList.remove('modal-open');
+                        document.body.style.overflow = '';
+                    }
+                } catch (error) {
+                    console.error('Error in delete confirmation handler:', error);
+                }
+            });
+        }
+        
+        // Show modal
+        try {
+            modal.show();
+        } catch (showError) {
+            console.error('Error showing modal:', showError);
+            // Manual show as fallback
+            modalElement.classList.add('show');
+            modalElement.style.display = 'block';
+            
+            // Add backdrop manually if needed
+            if (!document.querySelector('.modal-backdrop')) {
+                const backdrop = document.createElement('div');
+                backdrop.classList.add('modal-backdrop', 'fade', 'show');
+                document.body.appendChild(backdrop);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error setting up delete confirmation:', error);
+        
+        // Use a simple confirmation as fallback
+        if (confirm(`Are you sure you want to delete user: ${userName}? This action cannot be undone.`)) {
+            deleteUser(userId);
+        }
+    }
 }
 
 // Function to delete a user
