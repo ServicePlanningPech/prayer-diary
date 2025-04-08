@@ -82,12 +82,7 @@ async function loadUsers() {
             .from('profiles')
             .select('*')
             .order('full_name', { ascending: true })
-            .limit(100)
-            .order('created_at', { ascending: false }) // Get the most recently created first
-            .headers({
-                'x-request-id': requestId,
-                'Cache-Control': 'no-cache'
-            });
+            .limit(100); // Removed the second order and headers call that was causing the error
         
         if (profilesError) {
             console.error('Error fetching profiles:', profilesError);
