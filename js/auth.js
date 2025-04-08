@@ -12,32 +12,44 @@ async function initAuth() {
     try {
         console.log("Initializing authentication...");
         
-        // Parse the URL parameters first to check for recovery mode
+        // FIRST CHECK: Look for our custom reset password parameter
         const params = new URLSearchParams(window.location.search);
-        const type = params.get('type');
-        const isRecoveryMode = type === 'recovery';
+        const hasResetParam = params.has('reset_password');
+        const hasTypeParam = params.get('type') === 'recovery';
         
-        // Clean up the URL to remove the token (for security)
-        if (isRecoveryMode) {
-            console.log("Password reset flow detected");
+        // If we have either reset parameter, this is a password reset flow
+        if (hasResetParam || hasTypeParam) {
+            console.log("Password reset flow detected via URL parameters");
+            
+            // Clean up the URL immediately (for security)
             const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
             window.history.replaceState({}, document.title, cleanUrl);
+            
+            // Wait a small time to ensure Supabase has processed the auth change
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Check if we now have a session (from the recovery token)
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session) {
+                console.log("Recovery session detected - forcing password reset");
+                // Set currentUser so the password update will work
+                currentUser = session.user;
+                
+                // Show the password reset form immediately
+                setupAuthListeners(); // Set up listeners first
+                openNewPasswordModal();
+                return; // Important: Return early to prevent normal auth flow
+            }
         }
         
-        // Get the session
+        // If we reach here, this is a normal login flow (not password reset)
+        // Normal session check
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (session) {
-            console.log("Session found, user is logged in");
+            console.log("Normal session found, user is logged in");
             currentUser = session.user;
-            
-            // Special handling for recovery mode - show password reset form instead of normal login flow
-            if (isRecoveryMode) {
-                console.log("Recovery session detected, prompting for new password");
-                openNewPasswordModal();
-                setupAuthListeners();
-                return; // Early return to prevent normal login flow
-            }
             
             // Normal login flow
             const profile = await fetchUserProfile();
@@ -890,9 +902,9 @@ async function handlePasswordReset(e) {
     submitBtn.disabled = true;
     
     try {
-        // Use the Supabase resetPasswordForEmail function
+        // Use the Supabase resetPasswordForEmail function with a special reset page indicator
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + window.location.pathname // Redirect to the same page
+            redirectTo: window.location.origin + window.location.pathname + '?reset_password=true'
         });
         
         if (error) throw error;
@@ -923,6 +935,21 @@ async function handlePasswordReset(e) {
 
 // Open the new password modal
 function openNewPasswordModal() {
+    // First, ensure the landing view is visible
+    document.getElementById('landing-view').classList.remove('d-none');
+    document.getElementById('app-views').classList.add('d-none');
+    
+    // Show an alert in the landing view to explain what's happening
+    const statusMessage = document.getElementById('auth-status-message');
+    if (statusMessage) {
+        statusMessage.innerHTML = `
+            <div class="alert alert-info">
+                <h4 class="alert-heading">Password Reset Required</h4>
+                <p>You've clicked a password reset link. Please set a new password to continue.</p>
+            </div>
+        `;
+    }
+    
     // Reset the form and hide any previous messages
     document.getElementById('new-password-form').reset();
     document.getElementById('new-password-error').classList.add('d-none');
@@ -963,9 +990,24 @@ function openNewPasswordModal() {
     newPasswordInput.addEventListener('input', validatePasswords);
     confirmPasswordInput.addEventListener('input', validatePasswords);
     
-    // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('new-password-modal'));
+    // Force the modal to show and make it not dismissible
+    const modalElement = document.getElementById('new-password-modal');
+    modalElement.setAttribute('data-bs-backdrop', 'static');
+    modalElement.setAttribute('data-bs-keyboard', 'false');
+    
+    // Remove the close button
+    const closeButton = modalElement.querySelector('.btn-close');
+    if (closeButton) {
+        closeButton.style.display = 'none';
+    }
+    
+    // Show the modal with high z-index to ensure it's on top
+    const modal = new bootstrap.Modal(modalElement);
+    modalElement.style.zIndex = '1060'; // Higher than the default 1050
     modal.show();
+    
+    // Log for debugging
+    console.log("Password reset modal opened and displayed");
 }
 
 // Handle new password form submission
@@ -1010,11 +1052,11 @@ async function handleNewPassword(e) {
         // Hide the form
         document.getElementById('new-password-form').classList.add('d-none');
         
-        // After successful password update, sign out and then redirect to login
+        // After successful password update, force sign out and reload
         setTimeout(async () => {
             try {
                 // Sign out the user to clear the recovery session
-                await supabase.auth.signOut();
+                await supabase.auth.signOut({ scope: 'global' });
                 
                 // Close the new password modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('new-password-modal'));
@@ -1022,19 +1064,14 @@ async function handleNewPassword(e) {
                     modal.hide();
                 }
                 
-                // Open the login modal after a short delay
+                // Show toast first so it appears after reload
+                showToast('Success', 'Password updated successfully. Please log in with your new password.', 'success');
+                
+                // Force page reload to clear everything
+                console.log("Forcing complete page reload to clear session state");
                 setTimeout(() => {
-                    // Reset to logged out state
-                    currentUser = null;
-                    userProfile = null;
-                    showLoggedOutState();
-                    
-                    // Show login modal
-                    openAuthModal('login');
-                    
-                    // Show success message
-                    showToast('Success', 'Password updated successfully. Please log in with your new password.', 'success');
-                }, 500);
+                    window.location.href = window.location.origin + window.location.pathname;
+                }, 1000);
             } catch (signOutError) {
                 console.error('Error signing out after password reset:', signOutError);
                 // If sign out fails, still try to redirect to login
