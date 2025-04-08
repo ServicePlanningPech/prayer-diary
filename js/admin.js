@@ -97,6 +97,22 @@ async function loadUsers() {
         
         console.log(`Found ${pendingUsers.length} pending users and ${approvedUsers.length} approved users`);
         
+        // Generate signed URLs for profile images
+        console.log('Generating signed URLs for profile images...');
+        for (const user of [...pendingUsers, ...approvedUsers]) {
+            if (user.profile_image_url) {
+                try {
+                    const signedUrl = await getSignedProfileImageUrl(user.profile_image_url);
+                    if (signedUrl) {
+                        user.signed_image_url = signedUrl;
+                        console.log(`Generated signed URL for user ${user.full_name}`);
+                    }
+                } catch (error) {
+                    console.warn(`Failed to generate signed URL for user ${user.full_name}:`, error);
+                }
+            }
+        }
+        
         // Display pending users
         if (pendingUsers.length === 0) {
             pendingContainer.innerHTML = `

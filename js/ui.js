@@ -707,6 +707,8 @@ function createUrgentCard(prayer, isAdmin = false) {
     `;
 }
 
+
+
 // Helper function to create a user card
 function createUserCard(user, isPending = true) {
     // Always start with placeholder image for faster rendering
@@ -715,7 +717,23 @@ function createUserCard(user, isPending = true) {
     // Use the pre-generated signed URL if available (for admin view)
     if (user.signed_image_url) {
         imageUrl = user.signed_image_url;
+    } else if (user.profile_image_url) {
+        // Fallback to the regular URL if we couldn't generate a signed URL
+        imageUrl = user.profile_image_url;
     }
+    
+    // Add styling for the user avatar
+    const style = document.createElement('style');
+    style.textContent = `
+        .user-avatar {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 2px solid #eee;
+        }
+    `;
+    document.head.appendChild(style);
     
     return `
     <div class="card user-card mb-3">

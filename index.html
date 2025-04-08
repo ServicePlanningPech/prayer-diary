@@ -1223,17 +1223,35 @@
         loadScript("js/app.js");
     </script>
     
-    <!-- Service Worker Registration - Production Mode -->
+    <!-- Service Worker Registration - Production Mode with update checking -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                // Normal registration for production
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    }, function(err) {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
+                // Add cache-busting query parameter to force update
+                const swUrl = 'service-worker.js?v=' + Date.now();
+                
+                // Unregister any existing service worker first
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for (let registration of registrations) {
+                        registration.unregister().then(function(success) {
+                            console.log('ServiceWorker unregistered successfully:', success);
+                        }).catch(function(error) {
+                            console.error('ServiceWorker unregister failed:', error);
+                        });
+                    }
+                    
+                    // Then register the new one
+                    navigator.serviceWorker.register(swUrl)
+                        .then(function(registration) {
+                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                            
+                            // Force update check
+                            registration.update();
+                        })
+                        .catch(function(err) {
+                            console.log('ServiceWorker registration failed: ', err);
+                        });
+                });
             });
         }
     </script>

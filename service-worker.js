@@ -1,7 +1,7 @@
-// Service Worker for Prayer Diary PWA
+// Service Worker for Prayer Diary PWA - Updated with improved error handling
 
 // Use timestamp for more aggressive cache busting
-const CACHE_NAME = 'prayer-diary-v1-' + Date.now();
+const CACHE_NAME = 'prayer-diary-v2-' + Date.now();
 const urlsToCache = [
   '/',
   '/index.html',
@@ -135,17 +135,28 @@ self.addEventListener('fetch', event => {
             // Clone the response
             const responseToCache = response.clone();
             
-            try {
-              caches.open(CACHE_NAME)
-                .then(cache => {
-                  try {
-                    cache.put(event.request, responseToCache);
-                  } catch (cacheError) {
-                    console.warn('Error caching response:', cacheError.message);
-                  }
-                });
-            } catch (error) {
-              console.warn('Error opening cache:', error.message);
+            // Only cache http/https requests - This is likely line 118 where the error occurs
+            if (event.request.url.startsWith('http:') || event.request.url.startsWith('https:')) {
+              try {
+                caches.open(CACHE_NAME)
+                  .then(cache => {
+                    try {
+                      cache.put(event.request, responseToCache)
+                        .catch(putError => {
+                          console.warn('Cache put error:', putError.message);
+                        });
+                    } catch (cacheError) {
+                      console.warn('Error in cache.put operation:', cacheError.message);
+                    }
+                  })
+                  .catch(openError => {
+                    console.warn('Error opening cache:', openError.message);
+                  });
+              } catch (error) {
+                console.warn('Error in caching block:', error.message);
+              }
+            } else {
+              console.log('Skipping non-HTTP URL for caching:', event.request.url.substring(0, 50) + '...');
             }
               
             return response;
