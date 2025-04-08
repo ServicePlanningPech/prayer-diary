@@ -119,7 +119,7 @@ async function loadUsers() {
             
             pendingContainer.innerHTML = pendingHtml;
             
-            // Add approval/rejection event listeners
+            // Add event listeners for user actions
             document.querySelectorAll('.approve-user').forEach(button => {
                 button.addEventListener('click', async () => {
                     const userId = button.getAttribute('data-id');
@@ -127,12 +127,24 @@ async function loadUsers() {
                 });
             });
             
-            document.querySelectorAll('.reject-user').forEach(button => {
-                button.addEventListener('click', async () => {
+            document.querySelectorAll('.delete-user').forEach(button => {
+                button.addEventListener('click', () => {
                     const userId = button.getAttribute('data-id');
-                    await updateUserApproval(userId, 'Rejected');
+                    const userName = button.getAttribute('data-name');
+                    showDeleteUserConfirmation(userId, userName);
                 });
             });
+            
+            // Add event listener for the "Approve All" button
+            const approveAllBtn = document.getElementById('approve-all-users');
+            if (approveAllBtn) {
+                approveAllBtn.addEventListener('click', async () => {
+                    await approveAllPendingUsers(pendingUsers);
+                });
+                
+                // Only enable the button if there are pending users
+                approveAllBtn.disabled = pendingUsers.length === 0;
+            }
             
             // Load images asynchronously after rendering
             for (const user of pendingUsers) {
@@ -169,7 +181,7 @@ async function loadUsers() {
             
             approvedContainer.innerHTML = approvedHtml;
             
-            // Add edit permissions event listeners
+            // Add edit permissions and delete event listeners
             document.querySelectorAll('.edit-user').forEach(button => {
                 button.addEventListener('click', () => {
                     const userId = button.getAttribute('data-id');
@@ -177,6 +189,14 @@ async function loadUsers() {
                     if (user) {
                         openEditUserModal(user);
                     }
+                });
+            });
+            
+            document.querySelectorAll('.delete-user').forEach(button => {
+                button.addEventListener('click', () => {
+                    const userId = button.getAttribute('data-id');
+                    const userName = button.getAttribute('data-name');
+                    showDeleteUserConfirmation(userId, userName);
                 });
             });
             
@@ -336,6 +356,132 @@ async function updateUserApproval(userId, state) {
     } catch (error) {
         console.error('Error updating user approval:', error);
         showNotification('Error', `Failed to update user approval: ${error.message}`);
+    }
+}
+
+// Function to show delete user confirmation modal
+function showDeleteUserConfirmation(userId, userName) {
+    // Set the user ID and name in the modal
+    document.getElementById('delete-user-id').value = userId;
+    document.getElementById('delete-user-name').textContent = userName;
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('delete-user-modal'));
+    modal.show();
+    
+    // Set up the confirm delete button handler
+    document.getElementById('confirm-delete-user').onclick = async () => {
+        await deleteUser(userId);
+        modal.hide();
+    };
+}
+
+// Function to delete a user
+async function deleteUser(userId) {
+    try {
+        const deleteBtn = document.getElementById('confirm-delete-user');
+        const originalText = deleteBtn.textContent;
+        deleteBtn.textContent = 'Deleting...';
+        deleteBtn.disabled = true;
+        
+        // Delete the user from the auth database
+        const { error: authError } = await supabase.functions.invoke('admin-delete-user', {
+            body: { userId }
+        });
+        
+        if (authError) {
+            console.error('Error deleting user from auth database:', authError);
+            throw new Error(`Failed to delete user: ${authError.message}`);
+        }
+        
+        // Delete the user profile from the profiles table
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', userId);
+            
+        if (profileError) {
+            console.error('Error deleting user profile:', profileError);
+            throw new Error(`Failed to delete user profile: ${profileError.message}`);
+        }
+        
+        // Show success notification
+        showNotification('Success', 'User has been deleted successfully.');
+        
+        // Reload the users list
+        loadUsers();
+        
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        showNotification('Error', `Failed to delete user: ${error.message}`);
+    } finally {
+        // Reset the delete button if it exists (modal might be closed)
+        const deleteBtn = document.getElementById('confirm-delete-user');
+        if (deleteBtn) {
+            deleteBtn.textContent = 'Delete User';
+            deleteBtn.disabled = false;
+        }
+    }
+}
+
+// Function to approve all pending users
+async function approveAllPendingUsers(pendingUsers) {
+    if (pendingUsers.length === 0) {
+        showNotification('Info', 'No pending users to approve.');
+        return;
+    }
+    
+    const approveAllBtn = document.getElementById('approve-all-users');
+    const originalText = approveAllBtn.textContent;
+    approveAllBtn.textContent = 'Approving...';
+    approveAllBtn.disabled = true;
+    
+    try {
+        // Show confirmation message
+        showNotification('Processing', `Approving ${pendingUsers.length} users. Please wait...`);
+        
+        let successCount = 0;
+        let failCount = 0;
+        
+        // Process each user sequentially to avoid rate limits
+        for (const user of pendingUsers) {
+            try {
+                // Update user profile
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({
+                        approval_state: 'Approved'
+                    })
+                    .eq('id', user.id);
+                    
+                if (error) throw error;
+                
+                // Send welcome email
+                await sendApprovalEmail(user.id);
+                
+                successCount++;
+            } catch (userError) {
+                console.error(`Error approving user ${user.full_name}:`, userError);
+                failCount++;
+            }
+        }
+        
+        // Show final results
+        if (failCount === 0) {
+            showNotification('Success', `Successfully approved all ${successCount} users.`);
+        } else {
+            showNotification('Warning', `Approved ${successCount} users. Failed to approve ${failCount} users.`);
+        }
+        
+        // Reload the users list
+        loadUsers();
+        
+    } catch (error) {
+        console.error('Error in bulk approval:', error);
+        showNotification('Error', `Failed to complete bulk approval: ${error.message}`);
+    } finally {
+        approveAllBtn.textContent = originalText;
+        approveAllBtn.disabled = false;
     }
 }
 

@@ -330,17 +330,18 @@ function createUserCard(user, isPending = true) {
                 </div>
                 <div class="col-md-auto mt-2 mt-md-0">
                     ${isPending ? `
-                    <div class="btn-group">
-                        <button class="btn btn-sm btn-success approve-user" data-id="${user.id}">
-                            <i class="bi bi-check"></i> Approve
-                        </button>
-                        <button class="btn btn-sm btn-danger reject-user" data-id="${user.id}">
-                            <i class="bi bi-x"></i> Reject
-                        </button>
-                    </div>
+                    <button class="btn btn-sm btn-success approve-user me-1" data-id="${user.id}">
+                        <i class="bi bi-check"></i> Approve
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-user" data-id="${user.id}" data-name="${user.full_name}">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
                     ` : `
-                    <button class="btn btn-sm btn-primary edit-user" data-id="${user.id}">
+                    <button class="btn btn-sm btn-primary edit-user me-1" data-id="${user.id}">
                         <i class="bi bi-pencil-square"></i> Edit Permissions
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-user" data-id="${user.id}" data-name="${user.full_name}">
+                        <i class="bi bi-trash"></i> Delete
                     </button>
                     `}
                 </div>
