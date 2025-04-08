@@ -1101,7 +1101,7 @@
         </div>
     </div>
 
-    <!-- Password Reset Modal -->
+    <!-- Password Reset Request Modal (to request a reset link) -->
     <div class="modal fade" id="password-reset-modal" tabindex="-1" aria-labelledby="password-reset-title" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -1129,6 +1129,43 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Password Modal (after clicking the reset link) -->
+    <div class="modal fade" id="new-password-modal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="new-password-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="new-password-title">Set New Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="new-password-error" class="alert alert-danger d-none">
+                        <p class="mb-0">Error message will appear here</p>
+                    </div>
+                    <div id="new-password-success" class="alert alert-success d-none">
+                        <p class="mb-0">Success message will appear here</p>
+                    </div>
+                    <form id="new-password-form">
+                        <div class="mb-3">
+                            <label for="new-password" class="form-label">New Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="new-password" name="new-password" 
+                                   placeholder="Enter your new password" required>
+                            <div class="form-text">Password must be at least 6 characters long.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="confirm-new-password" class="form-label">Confirm New Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="confirm-new-password" name="confirm-new-password" 
+                                   placeholder="Confirm your new password" required>
+                            <div class="form-text password-match-message-reset d-none text-danger">Passwords do not match.</div>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="submit" id="new-password-submit">Update Password</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

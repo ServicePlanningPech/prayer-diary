@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', initAuth);
 async function initAuth() {
     try {
         console.log("Initializing authentication...");
+        
+        // Check if we have a reset password token in the URL
+        await checkForPasswordResetToken();
+        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (session) {
@@ -32,6 +36,25 @@ async function initAuth() {
     } catch (error) {
         console.error("Error initializing authentication:", error);
         showLoggedOutState();
+    }
+}
+
+// Check for password reset token in URL
+async function checkForPasswordResetToken() {
+    // Parse the URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get('type');
+    
+    // If this is a password reset link
+    if (type === 'recovery') {
+        console.log("Password reset token detected in URL");
+        
+        // Show the new password form
+        openNewPasswordModal();
+        
+        // Clean up the URL to remove the token (for security)
+        const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
     }
 }
 
@@ -78,6 +101,12 @@ function setupAuthListeners() {
     const passwordResetForm = document.getElementById('password-reset-form');
     if (passwordResetForm) {
         passwordResetForm.addEventListener('submit', handlePasswordReset);
+    }
+    
+    // Set up new password form submission
+    const newPasswordForm = document.getElementById('new-password-form');
+    if (newPasswordForm) {
+        newPasswordForm.addEventListener('submit', handleNewPassword);
     }
     
     // Close modal button
@@ -862,7 +891,7 @@ async function handlePasswordReset(e) {
     try {
         // Use the Supabase resetPasswordForEmail function
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/index.html' // Redirect back to the app after reset
+            redirectTo: window.location.origin + window.location.pathname // Redirect to the same page
         });
         
         if (error) throw error;
@@ -883,6 +912,122 @@ async function handlePasswordReset(e) {
         console.error('Error sending password reset email:', error);
         errorElement.querySelector('p').textContent = 
             `Failed to send reset email: ${error.message || 'Unknown error'}`;
+        errorElement.classList.remove('d-none');
+    } finally {
+        // Restore button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+// Open the new password modal
+function openNewPasswordModal() {
+    // Reset the form and hide any previous messages
+    document.getElementById('new-password-form').reset();
+    document.getElementById('new-password-error').classList.add('d-none');
+    document.getElementById('new-password-success').classList.add('d-none');
+    
+    // Add event listeners for password validation
+    const newPasswordInput = document.getElementById('new-password');
+    const confirmPasswordInput = document.getElementById('confirm-new-password');
+    const passwordMatchMessage = document.querySelector('.password-match-message-reset');
+    const submitBtn = document.getElementById('new-password-submit');
+    
+    // Set up form submission handler
+    document.getElementById('new-password-form').removeEventListener('submit', handleNewPassword);
+    document.getElementById('new-password-form').addEventListener('submit', handleNewPassword);
+    
+    // Set up password matching validation
+    const validatePasswords = () => {
+        const password = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        if (password && confirmPassword) {
+            const passwordsMatch = password === confirmPassword;
+            
+            if (passwordsMatch) {
+                passwordMatchMessage.classList.add('d-none');
+                submitBtn.disabled = false;
+            } else {
+                passwordMatchMessage.classList.remove('d-none');
+                submitBtn.disabled = true;
+            }
+        } else {
+            // If either field is empty, hide the message
+            passwordMatchMessage.classList.add('d-none');
+            submitBtn.disabled = !(password && confirmPassword);
+        }
+    };
+    
+    newPasswordInput.addEventListener('input', validatePasswords);
+    confirmPasswordInput.addEventListener('input', validatePasswords);
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('new-password-modal'));
+    modal.show();
+}
+
+// Handle new password form submission
+async function handleNewPassword(e) {
+    e.preventDefault();
+    
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-new-password').value;
+    const submitBtn = document.getElementById('new-password-submit');
+    const originalText = submitBtn.textContent;
+    const errorElement = document.getElementById('new-password-error');
+    const successElement = document.getElementById('new-password-success');
+    
+    // Hide previous messages
+    errorElement.classList.add('d-none');
+    successElement.classList.add('d-none');
+    
+    // Verify passwords match
+    if (newPassword !== confirmPassword) {
+        errorElement.querySelector('p').textContent = 'Passwords do not match. Please try again.';
+        errorElement.classList.remove('d-none');
+        return;
+    }
+    
+    // Show loading state
+    submitBtn.textContent = 'Updating...';
+    submitBtn.disabled = true;
+    
+    try {
+        // Use Supabase function to update the password
+        const { error } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+        
+        if (error) throw error;
+        
+        // Show success message
+        successElement.querySelector('p').textContent = 
+            'Your password has been successfully updated! You can now log in with your new password.';
+        successElement.classList.remove('d-none');
+        
+        // Hide the form
+        document.getElementById('new-password-form').classList.add('d-none');
+        
+        // After 3 seconds, close the modal and open the login modal
+        setTimeout(() => {
+            // Close the new password modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('new-password-modal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Open the login modal
+            setTimeout(() => {
+                openAuthModal('login');
+            }, 500);
+        }, 3000);
+        
+    } catch (error) {
+        // Show error message
+        console.error('Error updating password:', error);
+        errorElement.querySelector('p').textContent = 
+            `Failed to update password: ${error.message || 'Unknown error'}`;
         errorElement.classList.remove('d-none');
     } finally {
         // Restore button state
