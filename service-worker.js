@@ -42,20 +42,34 @@ self.addEventListener('install', event => {
         // Use a simpler caching approach - add what we can, ignore failures
         return Promise.allSettled(
           urlsToCache.map(url => {
+            // Skip non-HTTP URLs if any are in the list
+            if (!url.startsWith('http:') && !url.startsWith('https:') && !url.startsWith('/')) {
+              console.warn('Skipping non-HTTP URL in cache list:', url);
+              return Promise.resolve();
+            }
+            
             // Attempt to cache each asset, but don't let failures stop the service worker from installing
             return fetch(url, { mode: 'no-cors' })
               .then(response => {
                 if (response.status === 200 || response.type === 'opaque') {
-                  return cache.put(url, response);
+                  try {
+                    return cache.put(url, response);
+                  } catch (cacheError) {
+                    console.warn('Could not cache asset:', url, cacheError.message);
+                    return Promise.resolve();
+                  }
                 }
               })
               .catch(error => {
-                console.warn('Could not cache asset:', url, error.message);
+                console.warn('Could not fetch asset:', url, error.message);
                 // Continue despite the error
                 return Promise.resolve();
               });
           })
         );
+      })
+      .catch(error => {
+        console.error('Cache opening failed:', error);
       })
   );
   
@@ -87,6 +101,14 @@ self.addEventListener('activate', event => {
 
 // Fetch event - serve from cache, fall back to network
 self.addEventListener('fetch', event => {
+  // Skip certain requests that shouldn't be cached
+  
+  // Skip if the request URL doesn't use http/https protocol
+  const url = new URL(event.request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return; // Skip non-HTTP(S) requests like chrome-extension:// URLs
+  }
+  
   // Skip Supabase API requests
   if (event.request.url.includes('supabase.co')) {
     return;
@@ -113,14 +135,27 @@ self.addEventListener('fetch', event => {
             // Clone the response
             const responseToCache = response.clone();
             
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
+            try {
+              caches.open(CACHE_NAME)
+                .then(cache => {
+                  try {
+                    cache.put(event.request, responseToCache);
+                  } catch (cacheError) {
+                    console.warn('Error caching response:', cacheError.message);
+                  }
+                });
+            } catch (error) {
+              console.warn('Error opening cache:', error.message);
+            }
               
             return response;
           }
         );
+      })
+      .catch(error => {
+        console.warn('Fetch handler error:', error.message);
+        // Fall back to network if anything fails
+        return fetch(event.request);
       })
   );
 });
