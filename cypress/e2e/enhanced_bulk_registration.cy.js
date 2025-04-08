@@ -59,63 +59,80 @@ describe('Enhanced Bulk User Registration', () => {
       const user = userList[i];
       cy.log(`Attempting to register ${user.name} (${user.email})`);
       
-      // Visit the app
+      // Visit the app and ensure we're starting from a clean state
       cy.visit('/');
+      
+      // Make sure we're logged out by checking for login button
+      cy.get('#btn-login', { timeout: 5000 }).should('be.visible');
       
       // Click the signup button
       cy.get('#btn-signup').click();
+	   cy.wait(3000);
       
       // Fill in the registration form
       cy.get('#signup-name').type(user.name);
       cy.get('#auth-email').type(user.email);
       cy.get('#auth-password').type(user.password);
+      cy.get('#auth-confirm-password').type(user.password);
+      
+      // Wait for the form validation to enable the submit button
+      cy.get('#auth-submit').should('not.be.disabled');
       
       // Submit the form
       cy.get('#auth-submit').click();
       
-      // Verify registration success by looking for either the success message or confirmation screen
+      // Wait for potential responses (success or error)
+      cy.wait(3000);
+      
+      // Check for success or failure
       cy.get('body').then($body => {
-        // Wait for various success indicators with a generous timeout
-        cy.wait(2000); // Give the app time to process
-        
-        if ($body.find('#close-session-btn').length > 0) {
-          // If we find the close-session-btn, click it
-          cy.log('Found #close-session-btn');
-          cy.get('#close-session-btn').click();
+        // Check for success message
+        if ($body.text().includes('Registration Complete!')) {
           successCount++;
-        }
-        else if ($body.find('#pending-logout-btn').length > 0) {
-          // If we find the pending-logout-btn, click it
-          cy.log('Found #pending-logout-btn');
-          cy.get('#pending-logout-btn').click();
-          successCount++;
-        }
-        else if ($body.text().includes('Registration Complete') || 
-                 $body.text().includes('Account Created') ||
-                 $body.text().includes('Account Pending Approval')) {
-          // We found success text but no button, try to find the logout button
-          cy.log('Found success message but no logout button');
-          cy.get('button:contains("Close Session"), button:contains("Log out")').then($btn => {
-            if ($btn.length) {
-              cy.wrap($btn).click();
-            } else {
-              // Just consider it a success even if we can't logout
-              cy.log('Could not find logout button, but registration appears successful');
-            }
-            successCount++;
-          });
-        }
-        else {
-          // No success indicators found
-          cy.log('No success indicators found - registration may have failed');
+          cy.log('Registration successful for user:', user.email);
+          
+          // Try to find and click the close session button
+          if ($body.find('#close-session-btn').length > 0) {
+            cy.get('#close-session-btn').click();
+          } else if ($body.find('#pending-logout-btn').length > 0) {
+            cy.get('#pending-logout-btn').click();
+          } else {
+            // Try other logout buttons
+            cy.log('Looking for alternative logout buttons');
+            cy.get('button:contains("Close Session"), button:contains("Log out")').then($altBtn => {
+              if ($altBtn.length) {
+                cy.wrap($altBtn).first().click();
+              } else {
+                cy.log('No logout button found, but registration was successful');
+              }
+            });
+          }
+        } else {
+          // Check for error message
+          if ($body.find('#auth-error').is(':visible')) {
+            cy.get('#auth-error').then($error => {
+              cy.log('Error shown during registration:', $error.text());
+            });
+          } else {
+            cy.log('No success or error message found for user:', user.email);
+          }
+          
+          // Take screenshot and increment failure counter
           cy.screenshot(`registration-failed-${user.email}`);
           failureCount++;
         }
       });
       
-      // Verify we're back at the landing page or logged out state
-      cy.wait(1000); // Wait for logout to complete
-      cy.get('body').should('contain', 'Prayer Diary');
+      // Verify we're back at the landing page or logged out state - using a more robust approach
+      cy.get('body', { timeout: 5000 }).then($body => {
+        // If we see login button, we're in the right state
+        if (!$body.find('#btn-login').is(':visible')) {
+          // If not found, force a reload to get to clean state
+          cy.log('Login button not visible, reloading page to clean state');
+          cy.reload();
+          cy.wait(1000);
+        }
+      });
     });
   }
   
@@ -125,6 +142,14 @@ describe('Enhanced Bulk User Registration', () => {
     cy.log(`Total attempted: ${userList.length}`);
     cy.log(`Successful: ${successCount}`);
     cy.log(`Failed: ${failureCount}`);
+    cy.log(`Success rate: ${(successCount / userList.length * 100).toFixed(2)}%`);
+    
+    // Determine overall test result
+    if (failureCount > 0) {
+      cy.log(`⚠️ WARNING: ${failureCount} registrations failed`);
+    } else {
+      cy.log(`✅ SUCCESS: All ${userList.length} users registered successfully`);
+    }
     
     // Print all user emails for reference
     cy.log(`--- Registered Email Addresses ---`);

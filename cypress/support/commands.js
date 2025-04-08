@@ -154,6 +154,7 @@ Cypress.Commands.add('registerUser', (fullName, email, password) => {
   cy.get('#auth-email').should('have.value', email);
   
   cy.get('#auth-password').should('be.visible').clear().type(password, { delay: 50 });
+  cy.get('#auth-confirm-password').should('be.visible').clear().type(password, { delay: 50 });
   
   // Listen to console errors
   cy.window().then((win) => {
@@ -180,8 +181,62 @@ Cypress.Commands.add('registerUser', (fullName, email, password) => {
     }
   });
   
-  // Continue with test when success message appears
-  cy.contains('Account Created', { timeout: 10000 }).should('be.visible');
+  // Continue with test when success message appears - updated for new UI
+  cy.contains('Registration Complete!', { timeout: 10000 }).should('be.visible');
+});
+
+// Command for testing password reset request
+Cypress.Commands.add('requestPasswordReset', (email) => {
+  cy.task('log', `Requesting password reset for ${email}`);
+  cy.visit('/');
+  cy.get('#btn-login').click();
+  
+  // Wait for modal to be fully visible
+  cy.get('#auth-modal', { timeout: 10000 }).should('be.visible');
+  cy.wait(500); // Extra wait for modal animation
+  
+  // Click the forgotten password link
+  cy.get('#forgot-password-link').should('be.visible').click();
+  
+  // Wait for reset modal to appear
+  cy.get('#password-reset-modal', { timeout: 10000 }).should('be.visible');
+  
+  // Enter email address
+  cy.get('#reset-email').should('be.visible').type(email, { delay: 100 });
+  
+  // Submit the form
+  cy.get('#reset-submit').click();
+  
+  // Verify success message
+  cy.contains('Password reset link sent!', { timeout: 15000 }).should('be.visible');
+  cy.task('log', 'Password reset request sent successfully');
+});
+
+// Command for simulating password reset flow
+Cypress.Commands.add('completePasswordReset', (newPassword) => {
+  cy.task('log', 'Simulating password reset flow');
+  
+  // Simulate clicking the reset link in email by visiting with the recovery parameter
+  cy.visit('/?type=recovery');
+  
+  // The app should detect this and show the password reset form
+  cy.get('#new-password-modal', { timeout: 10000 }).should('be.visible');
+  
+  // Enter new password and confirmation
+  cy.get('#new-password').should('be.visible').type(newPassword, { delay: 100 });
+  cy.get('#confirm-new-password').should('be.visible').type(newPassword, { delay: 100 });
+  
+  // Submit form
+  cy.get('#new-password-submit').click();
+  
+  // Check for success message
+  cy.contains('Your password has been successfully updated!', { timeout: 10000 }).should('be.visible');
+  
+  // Once reset is complete, click the login button
+  cy.wait(3000); // Wait for the reset process to complete
+  cy.get('#post-reset-login-btn').should('be.visible').click();
+  
+  cy.task('log', 'Password reset completed successfully');
 });
 
 // Command to log out

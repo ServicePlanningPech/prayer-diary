@@ -22,18 +22,19 @@ describe('User Registration Flow', () => {
     cy.get('#signup-name').type(testUser.name);
     cy.get('#auth-email').type(testUser.email);
     cy.get('#auth-password').type(testUser.password);
+    cy.get('#auth-confirm-password').type(testUser.password);
     
     // Submit the form
     cy.get('#auth-submit').click();
     
-    // Verify success message appears
-    cy.contains('Account Created').should('be.visible');
+    // Verify success message appears - updated to match new success message
+    cy.contains('Registration Complete!').should('be.visible');
     
     // If you want to test logout too
-    cy.get('#pending-logout-btn').click();
+    cy.get('#close-session-btn').click();
     
     // Verify we're logged out and back at the landing page
-    cy.contains('Please log in or sign up').should('be.visible');
+    cy.contains('Please log in or sign up').should('be.visible', { timeout: 10000 });
   });
   
   // This test requires an admin user to be available

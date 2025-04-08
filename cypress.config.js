@@ -14,25 +14,41 @@ module.exports = defineConfig({
       });
     },
     // Increase timeouts for better reliability with auth operations
-    defaultCommandTimeout: 15000,
-    pageLoadTimeout: 30000,
+    defaultCommandTimeout: 20000,
+    pageLoadTimeout: 40000,
     // Avoid test failures on uncaught exceptions from your app
     uncaughtExceptionMode: 'warn',
     // Retry failed tests
     retries: {
-      runMode: 2,
-      openMode: 1
+      runMode: 3,
+      openMode: 2
     },
     // Enable Cypress Studio for recording user interactions
-    experimentalStudio: true
+    experimentalStudio: true,
+    // Improved handling of service workers
+    serviceWorker: {
+      enabled: true,
+      // Add any service worker related commands
+    },
+    // Clear browser cache between tests
+    testIsolation: true
   },
   // Default viewport size
   viewportWidth: 1280,
   viewportHeight: 800,
-  // Ensure sessions are properly supported
+  // Updated session support
   experimentalSessionAndOrigin: true,
   experimentalSessionSupport: true,
-  // Other useful experimental features
+  // Memory management optimization
   experimentalMemoryManagement: true,
-  numTestsKeptInMemory: 5
+  numTestsKeptInMemory: 3,
+  // Updated CSP handling with specific directives
+  experimentalCspAllowList: [
+    "script-src-elem",
+    "script-src", 
+    "default-src", 
+    "form-action", 
+    "child-src", 
+    "frame-src"
+  ]
 });

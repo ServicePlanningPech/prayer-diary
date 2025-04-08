@@ -433,8 +433,13 @@ async function deleteUser(userId) {
 
 // Function to approve all pending users
 async function approveAllPendingUsers(pendingUsers) {
+    const approveAllBtn = document.getElementById('approve-all-users');
+    const originalBtnText = approveAllBtn.innerHTML;
+    
     if (pendingUsers.length === 0) {
         showToast('Information', 'No pending users to approve.', 'info');
+        approveAllBtn.innerHTML = originalBtnText;
+        approveAllBtn.disabled = false;
         return;
     }
     
@@ -488,6 +493,10 @@ async function approveAllPendingUsers(pendingUsers) {
     } catch (error) {
         console.error('Error in bulk approval:', error);
         showToast('Error', `Failed to complete bulk approval: ${error.message}`, 'error');
+        
+        // Make sure to reset the button on error
+        approveAllBtn.innerHTML = originalBtnText;
+        approveAllBtn.disabled = false;
     }
 }
 
