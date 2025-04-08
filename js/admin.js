@@ -456,9 +456,44 @@ async function deleteUser(userId) {
         deleteBtn.textContent = 'Deleting...';
         deleteBtn.disabled = true;
         
-        // Delete the user from the auth database
+        console.log(`Deleting user with ID: ${userId}`);
+        
+        // First, check if the user exists
+        const { data: userData, error: checkError } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', userId)
+            .single();
+            
+        if (checkError) {
+            console.error('Error checking user existence:', checkError);
+            throw new Error(`User check failed: ${checkError.message}`);
+        }
+        
+        if (!userData) {
+            throw new Error('User not found');
+        }
+        
+        console.log(`Found user to delete: ${userData.full_name}`);
+        
+        // Get the current session token for authorization
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            throw new Error('No active session found. Please log in again.');
+        }
+        
+        console.log('Got valid session token for Edge Function auth');
+        
+        // Delete the user from the auth database using Edge Function
+        console.log('Calling Edge Function to delete auth user...');
+        
+        // Use the anon key from the config directly for the function call
         const { error: authError } = await supabase.functions.invoke('admin-delete-user', {
-            body: { userId }
+            body: { userId },
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Cache-Control': 'no-cache',
+            }
         });
         
         if (authError) {
@@ -466,7 +501,10 @@ async function deleteUser(userId) {
             throw new Error(`Failed to delete user: ${authError.message}`);
         }
         
+        console.log('Auth user deleted successfully from auth database');
+        
         // Delete the user profile from the profiles table
+        console.log('Deleting user profile from database...');
         const { error: profileError } = await supabase
             .from('profiles')
             .delete()
@@ -477,11 +515,14 @@ async function deleteUser(userId) {
             throw new Error(`Failed to delete user profile: ${profileError.message}`);
         }
         
+        console.log('User profile deleted successfully');
+        
         // Show success notification
         showNotification('Success', 'User has been deleted successfully.');
         
         // Reload the users list
-        loadUsers();
+        console.log('Reloading user list...');
+        setTimeout(() => loadUsers(), 1000);
         
     } catch (error) {
         console.error('Error deleting user:', error);

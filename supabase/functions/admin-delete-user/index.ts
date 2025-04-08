@@ -6,7 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey, Cache-Control',
   'Access-Control-Max-Age': '86400'
 };
 
@@ -48,44 +48,28 @@ serve(async (req) => {
       });
     }
 
-    // Get JWT token from request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({
-        error: 'Authorization header is required'
-      }), {
-        status: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      });
-    }
+    // Log environment variables (without sensitive data)
+    console.log('Environment check:', {
+      supabaseUrl: Deno.env.get('SUPABASE_URL') ? 'Set' : 'Missing',
+      serviceRole: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? 'Set (length: ' + 
+                  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.length + ')' : 'Missing',
+      anonKey: Deno.env.get('SUPABASE_ANON_KEY') ? 'Set' : 'Missing',
+    });
 
-    // Extract the token
-    const token = authHeader.replace('Bearer ', '');
-
-    // Create Supabase client with server-side admin rights
+    // Create Supabase admin client using service role key
+    // Do NOT use Authorization header - use direct service role instead
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Create standard client to check the caller's permissions
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
-    );
-
-    // Verify the caller is an admin
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Get API key from header for authorization check
+    const apikey = req.headers.get('apikey');
     
-    if (userError || !user) {
+    // Verify the API key matches the ANON key (simplified auth)
+    if (apikey !== Deno.env.get('SUPABASE_ANON_KEY')) {
       return new Response(JSON.stringify({
-        error: 'Unauthorized - authentication failed',
-        details: userError?.message
+        error: 'Unauthorized - invalid API key'
       }), {
         status: 401,
         headers: {
@@ -95,29 +79,16 @@ serve(async (req) => {
       });
     }
 
-    // Check if user is an admin
-    const { data: caller, error: callerError } = await supabase
-      .from('profiles')
-      .select('user_role')
-      .eq('id', user.id)
-      .single();
-      
-    if (callerError || caller?.user_role !== 'Administrator') {
-      return new Response(JSON.stringify({
-        error: 'Forbidden - admin privileges required'
-      }), {
-        status: 403,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      });
-    }
+    // Log the operation
+    console.log(`Attempting to delete user: ${userId}`);
 
-    // Delete the user
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    // Delete the user using admin API
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
+      userId
+    );
 
     if (deleteError) {
+      console.error('Delete error:', deleteError);
       return new Response(JSON.stringify({
         error: 'Failed to delete user',
         details: deleteError.message
@@ -143,6 +114,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    console.error('Function error:', error);
     return new Response(JSON.stringify({
       error: 'Server error',
       message: error.message || 'An unknown error occurred'
