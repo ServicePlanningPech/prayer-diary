@@ -59,7 +59,7 @@ async function loadUsers() {
     
     if (!isAdmin()) {
         console.warn('Non-admin user attempted to access admin view');
-        showNotification('Access Denied', 'You do not have administrator access to manage users.');
+        showToast('Access Denied', 'You do not have administrator access to manage users.', 'error');
         showView('calendar-view');
         return;
     }
@@ -70,7 +70,7 @@ async function loadUsers() {
     
     if (!pendingContainer || !approvedContainer) {
         console.error('User containers not found in DOM');
-        showNotification('Error', 'UI elements not found. Please refresh the page.');
+        showToast('Error', 'UI elements not found. Please refresh the page.', 'error');
         return;
     }
     
@@ -78,23 +78,74 @@ async function loadUsers() {
     pendingContainer.innerHTML = createLoadingSpinner();
     approvedContainer.innerHTML = createLoadingSpinner();
     
-    try {
-        console.log('Fetching user profiles from database...');
+    // Add refresh button to the pending users panel
+    const pendingPanel = pendingContainer.closest('#pending-users');
+    if (pendingPanel) {
+        const refreshButton = document.createElement('button');
+        refreshButton.className = 'btn btn-outline-primary btn-sm position-absolute top-0 end-0 m-3';
+        refreshButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+        refreshButton.onclick = () => {
+            showToast('Refreshing', 'Fetching latest user data...', 'info', 2000);
+            loadUsers();
+        };
         
-        // Get all profiles with their stored emails
-        const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('*')
-            .order('full_name', { ascending: true });
+        // Add the refresh button if it doesn't already exist
+        if (!pendingPanel.querySelector('.btn-outline-primary')) {
+            pendingPanel.style.position = 'relative';
+            pendingPanel.appendChild(refreshButton);
+        }
+    }
+    
+    // Set a timeout to prevent infinite loading
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout fetching users')), 15000);
+    });
+    
+    try {
+        console.log('Fetching user profiles from database with cache busting...');
+        
+        // Create the query with a timestamp to prevent caching
+        const timestamp = new Date().getTime();
+        
+        // Use Promise.race to implement timeout
+        const queryPromise = async () => {
+            // Force refresh from server
+            await supabase.auth.refreshSession();
             
+            // Use a direct query with no caching
+            const response = await supabase
+                .from('profiles')
+                .select('*')
+                .order('full_name', { ascending: true })
+                .throwOnError();
+                
+            return response;
+        };
+        
+        const { data: profiles, error: profilesError } = await Promise.race([
+            queryPromise(),
+            timeoutPromise
+        ]);
+        
         if (profilesError) {
             console.error('Error fetching profiles:', profilesError);
             throw profilesError;
         }
         
+        // Log the full response for debugging
+        console.log('Raw profiles data:', profiles);
+        
         if (!profiles || profiles.length === 0) {
             console.log('No user profiles found in database');
-            pendingContainer.innerHTML = `<div class="alert alert-info">No pending users awaiting approval.</div>`;
+            pendingContainer.innerHTML = `
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div>No pending users awaiting approval.</div>
+                        <button class="btn btn-sm btn-outline-primary ms-auto" onclick="loadUsers()">
+                            <i class="bi bi-arrow-clockwise"></i> Check Again
+                        </button>
+                    </div>
+                </div>`;
             approvedContainer.innerHTML = `<div class="alert alert-info">No approved users found.</div>`;
             return;
         }
@@ -120,19 +171,36 @@ async function loadUsers() {
             };
         });
         
-        // Separate pending and approved users
+        // Separate pending and approved users - add extra logging
+        console.log('Separating users by approval state...');
         const pendingUsers = processedUsers.filter(user => user.approval_state === 'Pending');
         const approvedUsers = processedUsers.filter(user => user.approval_state === 'Approved');
         
-        // Display pending users
+        console.log(`Found ${pendingUsers.length} pending users and ${approvedUsers.length} approved users`);
+        
+        // Display pending users with a count in the header
         if (pendingUsers.length === 0) {
             pendingContainer.innerHTML = `
                 <div class="alert alert-info">
-                    No pending users awaiting approval.
+                    <div class="d-flex align-items-center">
+                        <div>No pending users awaiting approval.</div>
+                        <button class="btn btn-sm btn-outline-primary ms-auto refresh-users-btn">
+                            <i class="bi bi-arrow-clockwise"></i> Check Again
+                        </button>
+                    </div>
                 </div>
             `;
         } else {
-            let pendingHtml = '';
+            let pendingHtml = `
+                <div class="alert alert-primary mb-3">
+                    <div class="d-flex align-items-center">
+                        <div><strong>${pendingUsers.length}</strong> user${pendingUsers.length !== 1 ? 's' : ''} awaiting approval</div>
+                        <button class="btn btn-sm btn-outline-primary ms-auto refresh-users-btn">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            `;
             
             // Process all users at once with placeholder images first
             for (const user of pendingUsers) {
@@ -141,6 +209,15 @@ async function loadUsers() {
             }
             
             pendingContainer.innerHTML = pendingHtml;
+            
+            // Add event listener to the refresh button within the container
+            const refreshBtn = pendingContainer.querySelector('.refresh-users-btn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function() {
+                    showToast('Refreshing', 'Fetching latest user data...', 'info', 2000);
+                    loadUsers();
+                });
+            }
             
             // Add event listeners for user actions
             document.querySelectorAll('.approve-user').forEach(button => {
@@ -292,16 +369,70 @@ async function loadUsers() {
         
     } catch (error) {
         console.error('Error loading users:', error);
+        
+        // Show error toast
+        showToast('Error', `Failed to load users: ${error.message}`, 'error');
+        
+        // Add a refresh button to both containers for easy recovery
         pendingContainer.innerHTML = `
             <div class="alert alert-danger">
-                Error loading users: ${error.message}
+                <div class="d-flex align-items-center">
+                    <div><strong>Error:</strong> ${error.message}</div>
+                    <button class="btn btn-sm btn-outline-primary ms-auto refresh-users-btn">
+                        <i class="bi bi-arrow-clockwise"></i> Try Again
+                    </button>
+                </div>
             </div>
         `;
         approvedContainer.innerHTML = `
             <div class="alert alert-danger">
-                Error loading users: ${error.message}
+                <div class="d-flex align-items-center">
+                    <div><strong>Error:</strong> ${error.message}</div>
+                    <button class="btn btn-sm btn-outline-primary ms-auto refresh-users-btn">
+                        <i class="bi bi-arrow-clockwise"></i> Try Again
+                    </button>
+                </div>
             </div>
         `;
+        
+        // Add event listeners to the refresh buttons
+        document.querySelectorAll('.refresh-users-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                showToast('Refreshing', 'Fetching latest user data...', 'info', 2000);
+                loadUsers();
+            });
+        });
+    } finally {
+        // Add a fallback to reset loading state if something goes wrong
+        const loadingSpinners = document.querySelectorAll('.spinner-border');
+        if (loadingSpinners.length > 0) {
+            setTimeout(() => {
+                loadingSpinners.forEach(spinner => {
+                    // If spinners are still visible after 20 seconds, replace with error message
+                    if (spinner.parentNode && spinner.parentNode.contains(spinner)) {
+                        spinner.parentNode.innerHTML = `
+                            <div class="alert alert-warning">
+                                <div class="d-flex align-items-center">
+                                    <div>Loading timed out. Please try again.</div>
+                                    <button class="btn btn-sm btn-outline-primary ms-auto refresh-users-btn">
+                                        <i class="bi bi-arrow-clockwise"></i> Retry
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Add event listener to the refresh button
+                        const refreshBtn = spinner.parentNode.querySelector('.refresh-users-btn');
+                        if (refreshBtn) {
+                            refreshBtn.addEventListener('click', function() {
+                                showToast('Refreshing', 'Fetching latest user data...', 'info', 2000);
+                                loadUsers();
+                            });
+                        }
+                    }
+                });
+            }, 20000); // 20 second timeout
+        }
     }
 }
 
