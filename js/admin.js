@@ -126,6 +126,13 @@ async function loadUsers() {
                     </button>
                 </div>
             `;
+            
+            // Reset the Approve All button when no pending users exist
+            const approveAllBtn = document.getElementById('approve-all-users');
+            if (approveAllBtn) {
+                approveAllBtn.innerHTML = '<i class="bi bi-check-all me-1"></i>Approve All';
+                approveAllBtn.disabled = true; // Disable the button since there's nothing to approve
+            }
         } else {
             let pendingHtml = `
                 <div class="alert alert-primary mb-3">
