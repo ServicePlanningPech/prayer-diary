@@ -195,15 +195,18 @@
                                     
                                     <div class="mb-3">
                                         <label for="profile-image" class="form-label">Profile Picture</label>
-                                        <div class="input-group">
-                                            <input type="file" class="form-control" id="profile-image" accept="image/*">
-                                            <label class="input-group-text" for="profile-image">
-                                                <i class="bi bi-upload"></i>
-                                            </label>
-                                        </div>
-                                        <div class="form-text" id="profile-image-name">No file selected</div>
-                                        <div class="mt-2">
-                                            <img id="profile-image-preview" class="d-none profile-img-preview" alt="Profile preview">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="me-3">
+                                                <img id="profile-image-preview" class="profile-img-preview border rounded" 
+                                                     src="img/placeholder-profile.png" alt="Profile preview" 
+                                                     style="width: 80px; height: 80px; object-fit: cover;">
+                                            </div>
+                                            <div>
+                                                <button type="button" class="btn btn-outline-primary" id="select-profile-image">
+                                                    <i class="bi bi-camera me-1"></i> Change Picture
+                                                </button>
+                                                <input type="file" class="d-none" id="profile-image" accept="image/*">
+                                            </div>
                                         </div>
                                     </div>
                                     
@@ -211,16 +214,6 @@
                                         <label for="profile-prayer-points" class="form-label">Prayer Points</label>
                                         <textarea class="form-control" id="profile-prayer-points" rows="4" 
                                                   placeholder="Enter prayer points to share with the church family"></textarea>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label for="profile-phone" class="form-label">Phone Number (for SMS notifications)</label>
-                                        <input type="tel" class="form-control" id="profile-phone" placeholder="E.g., +441234567890">
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label for="profile-whatsapp" class="form-label">WhatsApp Number (if different)</label>
-                                        <input type="tel" class="form-control" id="profile-whatsapp" placeholder="E.g., +441234567890">
                                     </div>
                                     
                                     <div class="mb-4">
@@ -277,6 +270,36 @@
                                         <!-- Push notifications hidden but kept in code for future use -->
                                         <div class="d-none">
                                             <input class="form-check-input" type="checkbox" id="notify-push">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Phone Numbers Section (conditionally displayed) -->
+                                    <div id="phone-numbers-section" class="mb-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-subtitle mb-3">Contact Numbers</h6>
+                                                
+                                                <!-- SMS Phone Number - Only shown when SMS is selected -->
+                                                <div id="sms-phone-container" class="mb-3 d-none">
+                                                    <label for="profile-phone" class="form-label">Phone Number for SMS</label>
+                                                    <input type="tel" class="form-control" id="profile-phone" placeholder="E.g., +441234567890">
+                                                    <div class="form-text small">Enter your full phone number with country code</div>
+                                                </div>
+                                                
+                                                <!-- WhatsApp Number - Only shown when WhatsApp is selected -->
+                                                <div id="whatsapp-phone-container" class="mb-3 d-none">
+                                                    <label for="profile-whatsapp" class="form-label">WhatsApp Number</label>
+                                                    <input type="tel" class="form-control" id="profile-whatsapp" placeholder="E.g., +441234567890">
+                                                    <div class="form-text small">Your WhatsApp account phone number</div>
+                                                </div>
+                                                
+                                                <div id="no-phone-needed-message">
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="bi bi-info-circle me-1"></i>
+                                                        Select SMS or WhatsApp notifications above to enter your phone numbers.
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     

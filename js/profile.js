@@ -115,6 +115,12 @@ async function loadUserProfile() {
         const urgentPrayerMethod = userProfile.urgent_prayer_notification_method || 'email';
         document.querySelector(`input[name="urgent-prayer-notification"][value="${urgentPrayerMethod}"]`).checked = true;
         
+        // Set up notification method change handlers
+        setupNotificationMethodHandlers();
+        
+        // Initial check for which phone fields to show
+        updatePhoneFieldsVisibility();
+        
         // Keep push notification setting in the background
         document.getElementById('notify-push').checked = userProfile.notification_push || false;
         
@@ -197,30 +203,89 @@ async function loadUserProfile() {
     }
 }
 
-// Handle profile image selection
+// Handle profile image selection with the new button-based approach
 function handleProfileImageChange() {
     const fileInput = document.getElementById('profile-image');
     const previewImage = document.getElementById('profile-image-preview');
-    const previewName = document.getElementById('profile-image-name');
     
     if (fileInput.files && fileInput.files[0]) {
         const reader = new FileReader();
         
         reader.onload = function(e) {
             previewImage.src = e.target.result;
-            previewImage.classList.remove('is-hidden');
-            previewImage.classList.remove('d-none');
             
             // Also update the card preview
             document.getElementById('preview-profile-image').src = e.target.result;
         };
         
         reader.readAsDataURL(fileInput.files[0]);
-        previewName.textContent = fileInput.files[0].name;
+    }
+}
+
+// Set up the profile image button click handler
+function setupProfileImageButton() {
+    const selectButton = document.getElementById('select-profile-image');
+    const fileInput = document.getElementById('profile-image');
+    
+    if (selectButton && fileInput) {
+        selectButton.addEventListener('click', function() {
+            fileInput.click();
+        });
+    }
+}
+
+// Set up handlers for notification method changes
+function setupNotificationMethodHandlers() {
+    // Set up event listeners for prayer update notification method
+    const prayerUpdateRadios = document.querySelectorAll('input[name="prayer-update-notification"]');
+    prayerUpdateRadios.forEach(radio => {
+        radio.addEventListener('change', updatePhoneFieldsVisibility);
+    });
+    
+    // Set up event listeners for urgent prayer notification method
+    const urgentPrayerRadios = document.querySelectorAll('input[name="urgent-prayer-notification"]');
+    urgentPrayerRadios.forEach(radio => {
+        radio.addEventListener('change', updatePhoneFieldsVisibility);
+    });
+    
+    // Setup the profile image button
+    setupProfileImageButton();
+}
+
+// Update phone fields visibility based on notification method selections
+function updatePhoneFieldsVisibility() {
+    const prayerUpdateMethod = document.querySelector('input[name="prayer-update-notification"]:checked').value;
+    const urgentPrayerMethod = document.querySelector('input[name="urgent-prayer-notification"]:checked').value;
+    
+    const smsContainer = document.getElementById('sms-phone-container');
+    const whatsappContainer = document.getElementById('whatsapp-phone-container');
+    const noPhoneMessage = document.getElementById('no-phone-needed-message');
+    
+    // Check if SMS is selected for either notification type
+    const smsNeeded = (prayerUpdateMethod === 'sms' || urgentPrayerMethod === 'sms');
+    
+    // Check if WhatsApp is selected for either notification type
+    const whatsappNeeded = (prayerUpdateMethod === 'whatsapp' || urgentPrayerMethod === 'whatsapp');
+    
+    // Update visibility of SMS container
+    if (smsNeeded) {
+        smsContainer.classList.remove('d-none');
     } else {
-        previewImage.classList.add('is-hidden');
-        previewImage.classList.add('d-none');
-        previewName.textContent = 'No file selected';
+        smsContainer.classList.add('d-none');
+    }
+    
+    // Update visibility of WhatsApp container
+    if (whatsappNeeded) {
+        whatsappContainer.classList.remove('d-none');
+    } else {
+        whatsappContainer.classList.add('d-none');
+    }
+    
+    // Show/hide the "no phone needed" message
+    if (smsNeeded || whatsappNeeded) {
+        noPhoneMessage.classList.add('d-none');
+    } else {
+        noPhoneMessage.classList.remove('d-none');
     }
 }
 
