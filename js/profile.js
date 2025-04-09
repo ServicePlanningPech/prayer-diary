@@ -295,6 +295,39 @@ function setupNotificationMethodHandlers() {
     console.log('Notification method handlers setup complete');
 }
 
+// Helper function to ensure no hidden fields have required attribute
+function disableHiddenRequiredFields() {
+    // Get all required inputs
+    const requiredInputs = document.querySelectorAll('input[required], select[required], textarea[required]');
+    
+    requiredInputs.forEach(input => {
+        // Check if the input is hidden (either directly or inside a hidden container)
+        if (isHidden(input)) {
+            // Temporarily remove required attribute to prevent validation errors
+            input.removeAttribute('required');
+            // Flag it so we can restore later if needed
+            input.dataset.wasRequired = 'true';
+        }
+    });
+    
+    // Helper to check if an element is hidden
+    function isHidden(el) {
+        // Check if the element itself is hidden
+        if (el.style.display === 'none' || el.classList.contains('d-none')) return true;
+        
+        // Check if any parent container is hidden (recursive check up the DOM)
+        let parent = el.parentElement;
+        while (parent) {
+            if (parent.style.display === 'none' || parent.classList.contains('d-none')) {
+                return true;
+            }
+            parent = parent.parentElement;
+        }
+        
+        return false;
+    }
+}
+
 // Update phone fields visibility based on notification method selections
 function updatePhoneFieldsVisibility() {
     const prayerUpdateMethod = document.querySelector('input[name="prayer-update-notification"]:checked').value;
@@ -314,6 +347,11 @@ function updatePhoneFieldsVisibility() {
     // Hide the entire phone numbers section if neither SMS nor WhatsApp is needed
     if (!smsNeeded && !whatsappNeeded) {
         phoneNumbersSection.classList.add('d-none');
+        // Make sure to remove required from fields when hiding the section
+        const phoneInput = document.getElementById('profile-phone');
+        const whatsappInput = document.getElementById('profile-whatsapp');
+        if (phoneInput) phoneInput.removeAttribute('required');
+        if (whatsappInput) whatsappInput.removeAttribute('required');
         return; // Exit early since the whole section is hidden
     } else {
         phoneNumbersSection.classList.remove('d-none');
@@ -349,6 +387,9 @@ function updatePhoneFieldsVisibility() {
     } else {
         noPhoneMessage.classList.remove('d-none');
     }
+    
+    // Run this directly after changing visibility
+    disableHiddenRequiredFields();
 }
 
 // Add debugging for profile image loading issues
@@ -442,6 +483,9 @@ let gdprModal = null;
 // Save the user's profile
 async function saveProfile(e) {
     e.preventDefault();
+    
+    // Ensure no hidden form fields have required attribute
+    disableHiddenRequiredFields();
     
     const submitBtn = e.submitter;
     const originalText = submitBtn.textContent;
