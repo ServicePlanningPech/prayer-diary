@@ -131,6 +131,31 @@ function setupAuthListeners() {
 // Open auth modal for login or signup
 function openAuthModal(mode) {
     try {
+        // Check if we're trying to log in after a forced logout
+        // If it's been less than 2 seconds since forced logout, reload the page
+        const forcedLogoutFlag = sessionStorage.getItem('prayerDiaryForcedLogout');
+        const logoutTime = parseInt(sessionStorage.getItem('prayerDiaryLogoutTime') || '0');
+        const timeSinceLogout = Date.now() - logoutTime;
+        
+        if (forcedLogoutFlag === 'true' && timeSinceLogout < 2000) {
+            console.log("Detected login attempt immediately after forced logout, reloading page...");
+            sessionStorage.removeItem('prayerDiaryForcedLogout');
+            sessionStorage.removeItem('prayerDiaryLogoutTime');
+            
+            // Show a message then reload
+            showToast('Please Wait', 'Refreshing the page for a clean login...', 'info');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+            return;
+        }
+        
+        // Clear the logout flag if it's been more than 2 seconds
+        if (forcedLogoutFlag === 'true') {
+            sessionStorage.removeItem('prayerDiaryForcedLogout');
+            sessionStorage.removeItem('prayerDiaryLogoutTime');
+        }
+        
         // Get all necessary elements with null checks
         const modalElement = document.getElementById('auth-modal');
         if (!modalElement) {
@@ -329,9 +354,25 @@ function validateAuthForm() {
     }
 }
 
+// Flag to prevent login from getting stuck
+let loginInProgress = false;
+
 // Handle login/signup form submission
 async function handleAuth(e) {
     e.preventDefault();
+    
+    // If login already in progress, reset the state
+    if (loginInProgress) {
+        console.log("Detecting a stuck login attempt, resetting state...");
+        resetLoginState();
+        // Show an error message
+        const errorElem = document.getElementById('auth-error');
+        errorElem.querySelector('p').textContent = "Previous login attempt didn't complete. Please try again.";
+        errorElem.classList.remove('d-none');
+        return;
+    }
+    
+    loginInProgress = true;
     
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
@@ -343,19 +384,50 @@ async function handleAuth(e) {
     submitBtn.textContent = 'Loading...';
     submitBtn.disabled = true;
     
+    // Set timeout to prevent hanging login attempts
+    const loginTimeout = setTimeout(() => {
+        console.warn("Login attempt timed out after 10 seconds");
+        resetLoginState();
+        
+        // Show error message
+        const errorElem = document.getElementById('auth-error');
+        errorElem.classList.remove('d-none');
+        errorElem.querySelector('p').textContent = "Login request timed out. Please try again or refresh the page.";
+        
+        // Reset the button
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    }, 10000); // 10 second timeout
+    
     try {
         if (isLogin) {
-            // Login
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
+            console.log("Processing login request for:", email);
+            
+            // Add a timeout to the login request
+            const loginWithTimeout = Promise.race([
+                supabase.auth.signInWithPassword({
+                    email,
+                    password
+                }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Login API timeout')), 8000)
+                )
+            ]);
+            
+            // Attempt login with timeout
+            const { data, error } = await loginWithTimeout;
             
             if (error) throw error;
             
+            // If successful, clear the timeout
+            clearTimeout(loginTimeout);
+            
             // Close modal on success
             const modal = bootstrap.Modal.getInstance(document.getElementById('auth-modal'));
-            modal.hide();
+            if (modal) modal.hide();
+            
+            // Reset login flag
+            loginInProgress = false;
             
         } else {
             // Signup
@@ -466,9 +538,42 @@ async function handleAuth(e) {
         errorElem.style.whiteSpace = 'pre-line'; // Preserve line breaks
         errorElem.classList.remove('d-none');
     } finally {
+        // Clear the timeout if it hasn't fired yet
+        clearTimeout(loginTimeout);
+        
         // Restore button state
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
+        
+        // Reset flag after a delay to prevent race conditions
+        setTimeout(() => {
+            loginInProgress = false;
+        }, 500);
+    }
+}
+
+// Helper function to reset login state
+function resetLoginState() {
+    loginInProgress = false;
+    
+    // Clean up any potential lingering state
+    try {
+        // Force reset internal Supabase state
+        supabase.auth.signOut({ scope: 'local' })
+            .catch(e => console.warn("Error during state reset:", e));
+        
+        // Clear and reset form fields
+        const authForm = document.getElementById('auth-form');
+        if (authForm) authForm.reset();
+        
+        // Reset login button
+        const submitBtn = document.getElementById('auth-submit');
+        if (submitBtn) {
+            submitBtn.textContent = 'Log In';
+            submitBtn.disabled = false;
+        }
+    } catch (error) {
+        console.error("Error resetting login state:", error);
     }
 }
 
@@ -544,6 +649,15 @@ async function logout() {
         clearTimeout(logoutTimeout);
         
         if (!logoutInProgress) return; // Avoid duplicate execution
+        
+        // Set a flag in sessionStorage to indicate logout just happened
+        // This will be checked on next login attempt
+        try {
+            sessionStorage.setItem('prayerDiaryForcedLogout', 'true');
+            sessionStorage.setItem('prayerDiaryLogoutTime', Date.now().toString());
+        } catch (e) {
+            console.warn("Couldn't set logout flag:", e);
+        }
         
         try {
             // Always reset the local state regardless of API success
