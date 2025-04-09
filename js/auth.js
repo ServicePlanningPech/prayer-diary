@@ -472,14 +472,41 @@ async function handleAuth(e) {
     }
 }
 
+// Flag to prevent multiple simultaneous logout attempts
+let logoutInProgress = false;
+
 // Logout function with enhanced error handling and force-logout capability
 async function logout() {
+    // Prevent multiple calls
+    if (logoutInProgress) {
+        console.log("Logout already in progress, ignoring duplicate call");
+        return;
+    }
+    
+    logoutInProgress = true;
     console.log("Attempting to logout user...");
     
+    // Show a loading toast to indicate logout is in progress
+    const logoutToastId = showToast('Logging Out', 'Please wait...', 'info');
+    
+    // Set a timeout to force completion if the API calls hang
+    const logoutTimeout = setTimeout(() => {
+        console.warn("Logout operation timed out - forcing completion");
+        completeLogout();
+    }, 5000); // 5 second timeout
+    
     try {
-        // First attempt - standard Supabase signOut
-        console.log("Trying standard signOut method...");
-        const { error } = await supabase.auth.signOut();
+        // First create a promise that will timeout
+        const signOutWithTimeout = Promise.race([
+            supabase.auth.signOut(),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Logout API timeout')), 3000)
+            )
+        ]);
+        
+        // Attempt the signout with timeout
+        console.log("Trying standard signOut method with timeout...");
+        const { error } = await signOutWithTimeout;
         
         if (error) {
             console.warn("Standard signOut had an error:", error.message);
@@ -487,42 +514,126 @@ async function logout() {
         }
         
         console.log("Standard signOut successful");
+        completeLogout();
     } catch (error) {
         console.error("Error during standard logout:", error);
         
         try {
-            // Second attempt - alternative signOut with options
+            // Second attempt with timeout
             console.log("Trying alternative signOut method...");
-            await supabase.auth.signOut({ scope: 'global' });
+            await Promise.race([
+                supabase.auth.signOut({ scope: 'global' }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Alternative logout timeout')), 3000)
+                )
+            ]);
             console.log("Alternative signOut completed");
+            completeLogout();
         } catch (secondError) {
             console.error("Error during alternative logout:", secondError);
             
             // Force client-side logout regardless of server response
             console.log("Forcing client-side logout...");
+            completeLogout();
         }
-    } finally {
-        // Always reset the local state regardless of API success
-        console.log("Resetting local state...");
-        currentUser = null;
-        userProfile = null;
+    }
+    
+    // Helper function to complete the logout process
+    function completeLogout() {
+        // Clear the timeout if it hasn't fired yet
+        clearTimeout(logoutTimeout);
         
-        // Clear any stored tokens from localStorage (if they exist)
+        if (!logoutInProgress) return; // Avoid duplicate execution
+        
         try {
-            localStorage.removeItem('supabase.auth.token');
-            localStorage.removeItem('supabase.auth.expires_at');
-            sessionStorage.removeItem('supabase.auth.token');
-        } catch (storageError) {
-            console.warn("Error clearing auth storage:", storageError);
+            // Always reset the local state regardless of API success
+            console.log("Resetting local state...");
+            currentUser = null;
+            userProfile = null;
+            
+            // More aggressive token clearing approach
+            try {
+                // Clear all tokens with various browser storage prefixes
+                const tokenPrefixes = ['supabase.auth.token', 'sb-', 'supa'];
+                
+                // Look for all items that might contain auth tokens
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key) {
+                        // Clear any key that starts with known Supabase prefixes
+                        for (const prefix of tokenPrefixes) {
+                            if (key.startsWith(prefix)) {
+                                console.log(`Clearing localStorage item: ${key}`);
+                                localStorage.removeItem(key);
+                            }
+                        }
+                    }
+                }
+                
+                // Do the same for sessionStorage
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    if (key) {
+                        for (const prefix of tokenPrefixes) {
+                            if (key.startsWith(prefix)) {
+                                console.log(`Clearing sessionStorage item: ${key}`);
+                                sessionStorage.removeItem(key);
+                            }
+                        }
+                    }
+                }
+                
+                // Directly try specific token names
+                localStorage.removeItem('supabase.auth.token');
+                localStorage.removeItem('supabase.auth.expires_at');
+                sessionStorage.removeItem('supabase.auth.token');
+                
+                // Clear cookies that might contain auth info
+                document.cookie.split(';').forEach(cookie => {
+                    const [name] = cookie.trim().split('=');
+                    for (const prefix of tokenPrefixes) {
+                        if (name && name.startsWith(prefix)) {
+                            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                        }
+                    }
+                });
+            } catch (storageError) {
+                console.warn("Error clearing auth storage:", storageError);
+            }
+            
+            // Update UI to logged out state
+            showLoggedOutState();
+            
+            // Clear any app-specific state
+            clearLocalAppState();
+            
+            // Dismiss the loading toast
+            dismissToast(logoutToastId);
+            
+            // Show success message
+            showToast('Logged Out', 'You have been successfully logged out', 'success', 3000);
+            
+            console.log("Logout procedure completed");
+            
+            // Reset the flag after a small delay to prevent any race conditions
+            setTimeout(() => {
+                logoutInProgress = false;
+            }, 500);
+        } catch (finalError) {
+            console.error("Critical error during logout cleanup:", finalError);
+            
+            // Show error toast
+            dismissToast(logoutToastId);
+            showToast('Logout Error', 'There was a problem logging out. Please refresh the page.', 'error');
+            
+            // Reset the flag
+            logoutInProgress = false;
+            
+            // Last resort - offer page reload
+            if (confirm("Logout encountered an error. Reload the page?")) {
+                window.location.reload();
+            }
         }
-        
-        // Update UI to logged out state
-        showLoggedOutState();
-        
-        // Clear any app-specific state
-        clearLocalAppState();
-        
-        console.log("Logout procedure completed");
     }
 }
 
