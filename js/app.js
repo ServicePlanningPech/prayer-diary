@@ -19,6 +19,9 @@ function initializeApp() {
     // Set up all modals
     setupAllModals();
     
+    // Set up tab close detection for logout
+    setupTabCloseLogout();
+    
     // Set up delete user confirmation modal functionality
     const deleteUserModal = document.getElementById('delete-user-modal');
     if (deleteUserModal) {
@@ -30,6 +33,34 @@ function initializeApp() {
             }
         });
     }
+}
+
+// Setup logout on tab close functionality
+function setupTabCloseLogout() {
+    // Use the beforeunload event to detect when the user is leaving
+    window.addEventListener('beforeunload', function(e) {
+        if (isLoggedIn && isLoggedIn()) {
+            console.log("Tab closing - performing quick logout");
+            
+            // We can't wait for async operations to complete on tab close,
+            // so we'll just clear the auth tokens from storage directly
+            try {
+                localStorage.removeItem('supabase.auth.token');
+                localStorage.removeItem('supabase.auth.expires_at');
+                sessionStorage.removeItem('supabase.auth.token');
+                
+                // Clear any app-specific storage
+                sessionStorage.removeItem('prayerDiaryLastView');
+                sessionStorage.removeItem('prayerDiaryLastUpdate');
+                
+                // Set a flag indicating the user didn't log out properly
+                // This could be used to show a message on next login if needed
+                sessionStorage.setItem('prayerDiaryTabClosed', 'true');
+            } catch (error) {
+                console.error("Error clearing auth storage on tab close:", error);
+            }
+        }
+    });
 }
 
 // Function to set up all modals properly

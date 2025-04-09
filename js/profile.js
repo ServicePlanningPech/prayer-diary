@@ -228,28 +228,43 @@ function setupProfileImageButton() {
     const fileInput = document.getElementById('profile-image');
     
     if (selectButton && fileInput) {
-        selectButton.addEventListener('click', function() {
+        // Remove any existing event listeners first to prevent duplicates
+        const newSelectButton = selectButton.cloneNode(true);
+        selectButton.parentNode.replaceChild(newSelectButton, selectButton);
+        
+        // Add the event listener to the fresh button
+        newSelectButton.addEventListener('click', function() {
             fileInput.click();
         });
+        
+        console.log('Profile image button setup complete');
     }
 }
 
 // Set up handlers for notification method changes
 function setupNotificationMethodHandlers() {
-    // Set up event listeners for prayer update notification method
-    const prayerUpdateRadios = document.querySelectorAll('input[name="prayer-update-notification"]');
-    prayerUpdateRadios.forEach(radio => {
-        radio.addEventListener('change', updatePhoneFieldsVisibility);
-    });
+    // First remove any existing event listeners by cloning and replacing the radio buttons
+    const replaceRadioListeners = (name) => {
+        const radios = document.querySelectorAll(`input[name="${name}"]`);
+        radios.forEach(radio => {
+            const newRadio = radio.cloneNode(true);
+            radio.parentNode.replaceChild(newRadio, radio);
+        });
+        
+        // Now add fresh event listeners
+        document.querySelectorAll(`input[name="${name}"]`).forEach(radio => {
+            radio.addEventListener('change', updatePhoneFieldsVisibility);
+        });
+    };
     
-    // Set up event listeners for urgent prayer notification method
-    const urgentPrayerRadios = document.querySelectorAll('input[name="urgent-prayer-notification"]');
-    urgentPrayerRadios.forEach(radio => {
-        radio.addEventListener('change', updatePhoneFieldsVisibility);
-    });
+    // Apply to both sets of radio buttons
+    replaceRadioListeners('prayer-update-notification');
+    replaceRadioListeners('urgent-prayer-notification');
     
     // Setup the profile image button
     setupProfileImageButton();
+    
+    console.log('Notification method handlers setup complete');
 }
 
 // Update phone fields visibility based on notification method selections
@@ -257,6 +272,7 @@ function updatePhoneFieldsVisibility() {
     const prayerUpdateMethod = document.querySelector('input[name="prayer-update-notification"]:checked').value;
     const urgentPrayerMethod = document.querySelector('input[name="urgent-prayer-notification"]:checked').value;
     
+    const phoneNumbersSection = document.getElementById('phone-numbers-section');
     const smsContainer = document.getElementById('sms-phone-container');
     const whatsappContainer = document.getElementById('whatsapp-phone-container');
     const noPhoneMessage = document.getElementById('no-phone-needed-message');
@@ -266,6 +282,14 @@ function updatePhoneFieldsVisibility() {
     
     // Check if WhatsApp is selected for either notification type
     const whatsappNeeded = (prayerUpdateMethod === 'whatsapp' || urgentPrayerMethod === 'whatsapp');
+    
+    // Hide the entire phone numbers section if neither SMS nor WhatsApp is needed
+    if (!smsNeeded && !whatsappNeeded) {
+        phoneNumbersSection.classList.add('d-none');
+        return; // Exit early since the whole section is hidden
+    } else {
+        phoneNumbersSection.classList.remove('d-none');
+    }
     
     // Update visibility of SMS container
     if (smsNeeded) {
