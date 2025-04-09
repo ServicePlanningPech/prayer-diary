@@ -281,16 +281,18 @@
                                                 
                                                 <!-- SMS Phone Number - Only shown when SMS is selected -->
                                                 <div id="sms-phone-container" class="mb-3 d-none">
-                                                    <label for="profile-phone" class="form-label">Phone Number for SMS</label>
+                                                    <label for="profile-phone" class="form-label">Phone Number for SMS <span class="text-danger">*</span></label>
                                                     <input type="tel" class="form-control" id="profile-phone" placeholder="E.g., +441234567890">
                                                     <div class="form-text small">Enter your full phone number with country code</div>
+                                                    <div class="invalid-feedback">Phone number is required for SMS notifications</div>
                                                 </div>
                                                 
                                                 <!-- WhatsApp Number - Only shown when WhatsApp is selected -->
                                                 <div id="whatsapp-phone-container" class="mb-3 d-none">
-                                                    <label for="profile-whatsapp" class="form-label">WhatsApp Number</label>
+                                                    <label for="profile-whatsapp" class="form-label">WhatsApp Number <span class="text-danger">*</span></label>
                                                     <input type="tel" class="form-control" id="profile-whatsapp" placeholder="E.g., +441234567890">
                                                     <div class="form-text small">Your WhatsApp account phone number</div>
+                                                    <div class="invalid-feedback">WhatsApp number is required for WhatsApp notifications</div>
                                                 </div>
                                                 
                                                 <div id="no-phone-needed-message">

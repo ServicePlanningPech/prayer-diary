@@ -261,6 +261,34 @@ function setupNotificationMethodHandlers() {
     replaceRadioListeners('prayer-update-notification');
     replaceRadioListeners('urgent-prayer-notification');
     
+    // Setup real-time validation for phone number fields
+    const phoneInput = document.getElementById('profile-phone');
+    const whatsappInput = document.getElementById('profile-whatsapp');
+    
+    if (phoneInput) {
+        const newPhoneInput = phoneInput.cloneNode(true);
+        phoneInput.parentNode.replaceChild(newPhoneInput, phoneInput);
+        newPhoneInput.addEventListener('input', function() {
+            if (this.hasAttribute('required') && this.value.trim() === '') {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+    
+    if (whatsappInput) {
+        const newWhatsappInput = whatsappInput.cloneNode(true);
+        whatsappInput.parentNode.replaceChild(newWhatsappInput, whatsappInput);
+        newWhatsappInput.addEventListener('input', function() {
+            if (this.hasAttribute('required') && this.value.trim() === '') {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+    
     // Setup the profile image button
     setupProfileImageButton();
     
@@ -292,17 +320,27 @@ function updatePhoneFieldsVisibility() {
     }
     
     // Update visibility of SMS container
+    const phoneInput = document.getElementById('profile-phone');
     if (smsNeeded) {
         smsContainer.classList.remove('d-none');
+        phoneInput.setAttribute('required', '');
     } else {
         smsContainer.classList.add('d-none');
+        phoneInput.removeAttribute('required');
+        // Clear validation state when hiding
+        phoneInput.classList.remove('is-invalid');
     }
     
     // Update visibility of WhatsApp container
+    const whatsappInput = document.getElementById('profile-whatsapp');
     if (whatsappNeeded) {
         whatsappContainer.classList.remove('d-none');
+        whatsappInput.setAttribute('required', '');
     } else {
         whatsappContainer.classList.add('d-none');
+        whatsappInput.removeAttribute('required');
+        // Clear validation state when hiding
+        whatsappInput.classList.remove('is-invalid');
     }
     
     // Show/hide the "no phone needed" message
@@ -423,6 +461,32 @@ async function saveProfile(e) {
         
         // Keep push notification setting (hidden in UI)
         const notifyPush = document.getElementById('notify-push').checked;
+        
+        // Check if phone numbers are required but missing
+        const phoneInput = document.getElementById('profile-phone');
+        const whatsappInput = document.getElementById('profile-whatsapp');
+        
+        // Clear previous validation states
+        phoneInput.classList.remove('is-invalid');
+        whatsappInput.classList.remove('is-invalid');
+        
+        // Check SMS requirements
+        const smsNeeded = (prayerUpdateNotification === 'sms' || urgentPrayerNotification === 'sms');
+        if (smsNeeded && !phoneNumber) {
+            phoneInput.classList.add('is-invalid');
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+            return; // Stop form submission
+        }
+        
+        // Check WhatsApp requirements
+        const whatsappNeeded = (prayerUpdateNotification === 'whatsapp' || urgentPrayerNotification === 'whatsapp');
+        if (whatsappNeeded && !whatsappNumber) {
+            whatsappInput.classList.add('is-invalid');
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+            return; // Stop form submission
+        }
         
         // Check if user has accepted GDPR
         if (!userProfile.gdpr_accepted) {
