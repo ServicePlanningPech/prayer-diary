@@ -148,51 +148,20 @@ async function loadUserProfile() {
             // Log profile image URL for debugging
             console.log('Profile image URL:', userProfile.profile_image_url);
             
-            // Better approach - use an Image object to test loading directly
+            // Skip image validation and directly use the signed URL
             if (userProfile.profile_image_url) {
-                console.log('Testing image loading with Image object');
+                console.log('Using signed URL directly for profile image');
                 
-                // First, clean the URL
-                let testImageUrl = userProfile.profile_image_url;
-                if (testImageUrl.includes('?')) {
-                    testImageUrl = testImageUrl.split('?')[0];
+                // Directly use the URL we got from createSignedUrl earlier
+                // This is the same approach used in admin.js that works reliably
+                if (data && data.signedUrl) {
+                    console.log('Using verified signed URL for profile image');
+                    updateAllProfileImages(data.signedUrl);
+                } else if (userProfile.profile_image_url) {
+                    // Fallback to the original URL if we don't have a signed URL
+                    console.log('Using original profile URL');
+                    updateAllProfileImages(userProfile.profile_image_url);
                 }
-                
-                // Use the Image constructor to test loading
-                const testImg = new Image();
-                testImg.onload = function() {
-                    console.log('✅ Image loaded successfully using Image constructor');
-                    // Update all instances of the profile image in the UI
-                    updateAllProfileImages(testImageUrl);
-                };
-                
-                testImg.onerror = function() {
-                    console.error('❌ Image failed to load using constructor:', testImageUrl);
-                    
-                    // Try a different URL format as fallback
-                    if (testImageUrl.includes('/storage/v1/object/')) {
-                        // Try alternative URL format
-                        const altUrl = testImageUrl.replace('/storage/v1/object/', '/storage/v1/render/');
-                        console.log('Trying alternative URL format:', altUrl);
-                        
-                        const altImg = new Image();
-                        altImg.onload = function() {
-                            console.log('✅ Alternative URL format worked!');
-                            updateAllProfileImages(altUrl);
-                        };
-                        altImg.onerror = function() {
-                            console.error('❌ Alternative URL also failed, falling back to placeholder');
-                            updateAllProfileImages('img/placeholder-profile.png');
-                        };
-                        altImg.src = altUrl;
-                    } else {
-                        // Default to placeholder
-                        updateAllProfileImages('img/placeholder-profile.png');
-                    }
-                };
-                
-                // Start loading test
-                testImg.src = testImageUrl;
             }
         }, 100);
         
