@@ -100,9 +100,24 @@
                         <button class="btn btn-outline-light" id="btn-login">Log in</button>
                     </div>
                     <div class="d-flex align-items-center logged-in hidden">
-                        <a class="nav-link me-3" id="nav-profile" href="#">
-                            <i class="bi bi-person-circle"></i> My Profile
-                        </a>
+                        <div class="nav-item dropdown me-3">
+                            <a class="nav-link dropdown-toggle" href="#" id="myDetailsDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i> My Details
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="myDetailsDropdown">
+                                <li>
+                                    <a class="dropdown-item" id="nav-profile" href="#">
+                                        <i class="bi bi-person"></i> My Profile
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" id="nav-change-password" href="#">
+                                        <i class="bi bi-key"></i> Change my Password
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                         <button class="btn btn-outline-light" id="btn-logout" type="button">Log out</button>
                     </div>
                 </div>
@@ -1037,6 +1052,45 @@
         </div>
     </div>
 
+    <!-- Change Password Modal -->
+    <div class="modal fade" id="change-password-modal" tabindex="-1" aria-labelledby="change-password-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="change-password-title">Change Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="password-change-error" class="alert alert-danger d-none">
+                        <p class="mb-0">Error message will appear here</p>
+                    </div>
+                    <div id="password-change-success" class="alert alert-success d-none">
+                        <p class="mb-0">Success message will appear here</p>
+                    </div>
+                    <form id="change-password-form">
+                        <div class="mb-3">
+                            <label for="current-password" class="form-label">Current Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="current-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-password" class="form-label">New Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="new-password" required>
+                            <div class="form-text">Password must be at least 6 characters long.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="confirm-password" class="form-label">Confirm New Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="confirm-password" required>
+                            <div class="form-text password-match-message d-none text-danger">Passwords do not match.</div>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="submit" id="change-password-submit">Update Password</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- GDPR Consent Modal - Static backdrop, no keyboard escape, no close on outside click -->
     <div class="modal fade" id="gdpr-consent-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="gdpr-consent-title" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -1243,6 +1297,7 @@
         loadScript("js/notifications.js");
         loadScript("js/notification-processor.js");
         loadScript("js/email-test.js");
+        loadScript("js/password-change.js");
         // loadScript("js/emergency-fix.js"); // Add emergency fix for auth issues
         // loadScript("js/troubleshoot.js"); // Troubleshooting tool removed
         loadScript("js/app.js");
