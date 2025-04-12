@@ -204,6 +204,66 @@ body {
     transition: width 5s linear;
 }
 
+/* Calendar Management */
+.calendar-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.calendar-day:hover {
+    background-color: #e9ecef;
+}
+
+.calendar-day.selected {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.member-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.member-card {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.member-img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 12px;
+}
+
+.member-info {
+    flex-grow: 1;
+}
+
+.month-selector {
+    width: 140px;
+    margin-right: 10px;
+}
+
 /* For screens smaller than 768px */
 @media (max-width: 767.98px) {
     .card-title {
@@ -221,5 +281,18 @@ body {
     
     .toast-container {
         max-width: 300px;
+    }
+    
+    .calendar-days-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    
+    .member-img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .month-selector {
+        width: 120px;
     }
 }

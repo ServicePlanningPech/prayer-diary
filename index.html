@@ -403,124 +403,98 @@
             <!-- Manage Prayer Calendar View -->
             <div id="manage-calendar-view" class="view-content d-none">
                 <h1 class="display-6 mb-4">Manage Prayer Calendar</h1>
-                <div class="row">
-                    <div class="col-md-4 mb-4">
-                        <div class="card shadow border-0">
-                            <div class="card-header bg-primary text-white py-3">
-                                <h4 class="card-title mb-0">
-                                    <i class="bi bi-plus-circle me-2"></i>Add to Prayer Calendar
-                                </h4>
+                
+                <ul class="nav nav-tabs mb-4" id="calendarTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="members-tab" data-bs-toggle="tab" 
+                                data-bs-target="#members-content" type="button" role="tab" 
+                                aria-controls="members-content" aria-selected="true">Add Members</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="other-tab" data-bs-toggle="tab" 
+                                data-bs-target="#other-content" type="button" role="tab" 
+                                aria-controls="other-content" aria-selected="false">Add Other Items</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="calendarTabContent">
+                    <!-- Add Members Tab -->
+                    <div class="tab-pane fade show active" id="members-content" role="tabpanel" aria-labelledby="members-tab">
+                        <div class="row">
+                            <!-- Days selection in calendar format -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card shadow">
+                                    <div class="card-header bg-primary text-white py-3">
+                                        <h4 class="card-title mb-0">Select Day for Prayer</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-3">Click on a day to select it for member allocation:</p>
+                                        <div class="calendar-days-grid">
+                                            <!-- Days 1-31 will be dynamically inserted here -->
+                                        </div>
+                                        <div class="mt-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="selected-day-info">
+                                                    <span class="fw-bold">Selected day: </span>
+                                                    <span id="selected-day">None</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body p-4">
-                                <form id="calendar-entry-form">
-                                    <div class="mb-4">
-                                        <label for="calendar-day" class="form-label fw-bold">Day of Month</label>
-                                        <select class="form-select form-select-lg" id="calendar-day">
-                                            <!-- Options 1-31 will be added dynamically -->
-                                        </select>
+
+                            <!-- Member lists -->
+                            <div class="col-md-6">
+                                <div class="card shadow">
+                                    <div class="card-header bg-primary text-white py-3">
+                                        <h4 class="card-title mb-0">Assign Members to Prayer Calendar</h4>
                                     </div>
-                                    
-                                    <div class="mb-4">
-                                        <label class="form-label fw-bold">Entry Type</label>
-                                        <div class="bg-light p-3 rounded border">
-                                            <div class="form-check mb-2">
-                                                <input class="form-check-input" type="radio" name="entry-type" id="entry-type-user" value="user" checked>
-                                                <label class="form-check-label" for="entry-type-user">
-                                                    <i class="bi bi-person me-1"></i>Registered User
-                                                </label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="entry-type" id="entry-type-other" value="other">
-                                                <label class="form-check-label" for="entry-type-other">
-                                                    <i class="bi bi-building me-1"></i>Other (organization, missionary, etc.)
-                                                </label>
-                                            </div>
+                                    <div class="card-body">
+                                        <!-- Search box -->
+                                        <div class="mb-3">
+                                            <input type="text" class="form-control" id="member-search" placeholder="Search for a member...">
                                         </div>
-                                    </div>
-                                    
-                                    <hr class="my-4 border-primary">
-                                    
-                                    <div id="user-select-container" class="mb-4">
-                                        <label for="calendar-user" class="form-label fw-bold">Select User</label>
-                                        <p class="text-muted small mb-2">
-                                            <i class="bi bi-info-circle"></i> The user's profile image and prayer points will be used automatically.
-                                        </p>
-                                        <select class="form-select form-select-lg" id="calendar-user">
-                                            <!-- Approved users will be added dynamically -->
-                                        </select>
-                                        <div class="mt-3 p-3 bg-light rounded border">
-                                            <div class="d-flex">
-                                                <div class="flex-shrink-0 me-3">
-                                                    <img id="user-preview-image" src="img/placeholder-profile.png" class="rounded" width="60" height="60" alt="User image preview">
+                                        
+                                        <!-- Tabs for unallocated/allocated members -->
+                                        <ul class="nav nav-tabs mb-3" id="memberListTab" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link active" id="unallocated-tab" data-bs-toggle="tab" 
+                                                       data-bs-target="#unallocated-members" type="button" role="tab" 
+                                                       aria-controls="unallocated-members" aria-selected="true">Unallocated Members</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="allocated-tab" data-bs-toggle="tab" 
+                                                       data-bs-target="#allocated-members" type="button" role="tab" 
+                                                       aria-controls="allocated-members" aria-selected="false">Allocated Members</button>
+                                            </li>
+                                        </ul>
+                                        
+                                        <div class="tab-content" id="memberListTabContent">
+                                            <!-- Unallocated members list -->
+                                            <div class="tab-pane fade show active" id="unallocated-members" role="tabpanel" aria-labelledby="unallocated-tab">
+                                                <div id="unallocated-members-list" class="member-list">
+                                                    <!-- Unallocated members will be dynamically inserted here -->
                                                 </div>
-                                                <div>
-                                                    <h6 id="user-preview-name" class="mb-1">Selected user</h6>
-                                                    <small id="user-preview-points" class="text-muted">Prayer points will appear here</small>
+                                            </div>
+                                            
+                                            <!-- Allocated members list -->
+                                            <div class="tab-pane fade" id="allocated-members" role="tabpanel" aria-labelledby="allocated-tab">
+                                                <div id="allocated-members-list" class="member-list">
+                                                    <!-- Allocated members will be dynamically inserted here -->
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    <div id="other-entry-container" class="d-none">
-                                        <div class="mb-3">
-                                            <label for="calendar-name" class="form-label fw-bold">Name</label>
-                                            <input type="text" class="form-control" id="calendar-name" placeholder="Person or organization name">
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="calendar-image" class="form-label fw-bold">Image</label>
-                                            <div class="input-group mb-2">
-                                                <input type="file" class="form-control" id="calendar-image" accept="image/*">
-                                                <label class="input-group-text" for="calendar-image">
-                                                    <i class="bi bi-upload"></i>
-                                                </label>
-                                            </div>
-                                            <div class="form-text" id="calendar-image-name">No file selected</div>
-                                            <div class="mt-2">
-                                                <img id="calendar-image-preview" class="d-none profile-img-preview" alt="Image preview">
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="mb-4">
-                                            <label for="calendar-prayer-points" class="form-label fw-bold">Prayer Points</label>
-                                            <textarea class="form-control" id="calendar-prayer-points" rows="4" placeholder="Enter prayer points"></textarea>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="d-grid mt-4">
-                                        <button class="btn btn-primary btn-lg" type="submit">
-                                            <i class="bi bi-calendar-plus me-2"></i>Add to Calendar
-                                        </button>
-                                    </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="col-md-8">
-                        <div class="card shadow border-0">
-                            <div class="card-header bg-primary text-white py-3">
-                                <h4 class="card-title mb-0">
-                                    <i class="bi bi-calendar-week me-2"></i>Current Calendar Entries
-                                </h4>
-                            </div>
-                            <div class="card-body p-4">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Day</th>
-                                                <th>Name</th>
-                                                <th>Type</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="calendar-entries-table">
-                                            <!-- Calendar entries will be added dynamically -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                    <!-- Add Other Items Tab (placeholder for now) -->
+                    <div class="tab-pane fade" id="other-content" role="tabpanel" aria-labelledby="other-tab">
+                        <div class="alert alert-info">
+                            This feature will be implemented in the next phase.
                         </div>
                     </div>
                 </div>

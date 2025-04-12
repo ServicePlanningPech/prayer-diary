@@ -1,5 +1,10 @@
 // Prayer Calendar Module
 
+// Variables to track state
+let selectedDay = null;
+let allUsers = [];
+let filteredUsers = [];
+
 // Load prayer calendar entries
 async function loadPrayerCalendar() {
     if (!isApproved()) return;
@@ -8,29 +13,46 @@ async function loadPrayerCalendar() {
     container.innerHTML = createLoadingSpinner();
     
     try {
+        // Get current date for determining which users to show based on month
+        const currentDate = new Date();
+        const currentDay = currentDate.getDate();
+        const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
+        const isOddMonth = currentMonth % 2 === 1;
+        
+        // Get users with pray_day > 0 who should be shown this month
         const { data, error } = await supabase
-            .from('prayer_calendar')
+            .from('profiles')
             .select(`
                 id,
-                day_of_month,
-                name,
-                image_url,
+                full_name,
+                profile_image_url,
                 prayer_points,
-                is_user,
-                user_id
+                pray_day,
+                pray_months
             `)
-            .order('day_of_month', { ascending: true });
+            .eq('approval_state', 'Approved')
+            .gt('pray_day', 0)
+            .or(`pray_months.eq.0,pray_months.eq.${isOddMonth ? 1 : 2}`)
+            .order('pray_day', { ascending: true });
             
         if (error) throw error;
         
-        // Get current day of month
-        const today = new Date().getDate();
+        // Transform user data to match the old format for compatibility
+        let prayerEntries = data.map(user => ({
+            id: user.id,
+            day_of_month: user.pray_day,
+            name: user.full_name,
+            image_url: user.profile_image_url,
+            prayer_points: user.prayer_points,
+            is_user: true,
+            user_id: user.id
+        }));
         
         // Sort entries so today's entries come first
-        const sortedEntries = [...data].sort((a, b) => {
+        const sortedEntries = [...prayerEntries].sort((a, b) => {
             // Calculate distance from today (circular)
-            const distA = (a.day_of_month - today + 31) % 31;
-            const distB = (b.day_of_month - today + 31) % 31;
+            const distA = (a.day_of_month - currentDay + 31) % 31;
+            const distB = (b.day_of_month - currentDay + 31) % 31;
             return distA - distB;
         });
         
@@ -76,421 +98,228 @@ async function loadPrayerCalendar() {
     }
 }
 
-// Load calendar entries for admin view
-async function loadCalendarAdmin() {
+// Initialize calendar management
+async function initCalendarManagement() {
     if (!hasPermission('prayer_calendar_editor')) return;
+
+    createCalendarDaysGrid();
+    await loadAllUsers();
+    setupEventListeners();
+}
+
+// Create the calendar days grid (1-31)
+function createCalendarDaysGrid() {
+    const container = document.querySelector('.calendar-days-grid');
+    container.innerHTML = '';
     
-    const container = document.getElementById('calendar-entries-table');
-    container.innerHTML = `<tr><td colspan="4">${createLoadingSpinner()}</td></tr>`;
-    
-    try {
-        // Load calendar entries
-        const { data: entries, error: entriesError } = await supabase
-            .from('prayer_calendar')
-            .select(`
-                id,
-                day_of_month,
-                name,
-                is_user,
-                user_id
-            `)
-            .order('day_of_month', { ascending: true });
+    for (let day = 1; day <= 31; day++) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        dayElement.textContent = day;
+        dayElement.dataset.day = day;
+        
+        dayElement.addEventListener('click', () => {
+            // Remove selected class from all days
+            document.querySelectorAll('.calendar-day').forEach(el => {
+                el.classList.remove('selected');
+            });
             
-        if (entriesError) throw entriesError;
-        
-        // Load approved users for dropdown
-        const { data: users, error: usersError } = await supabase
-            .from('profiles')
-            .select('id, full_name, profile_image_url, prayer_points')
-            .eq('approval_state', 'Approved')
-            .order('full_name', { ascending: true });
-            
-        if (usersError) throw usersError;
-        
-        // Populate user dropdown
-        const userSelect = document.getElementById('calendar-user');
-        userSelect.innerHTML = '<option value="">Select a user...</option>';
-        
-        users.forEach(user => {
-            const option = document.createElement('option');
-            option.value = user.id;
-            option.textContent = user.full_name;
-            // Store user data as attributes for easy retrieval
-            option.setAttribute('data-image', user.profile_image_url || 'img/placeholder-profile.png');
-            option.setAttribute('data-points', user.prayer_points || 'No prayer points available');
-            userSelect.appendChild(option);
+            // Add selected class to clicked day
+            dayElement.classList.add('selected');
+            selectedDay = day;
+            document.getElementById('selected-day').textContent = day;
         });
         
-        // Setup user selection preview
-        userSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const previewImage = document.getElementById('user-preview-image');
-            const previewName = document.getElementById('user-preview-name');
-            const previewPoints = document.getElementById('user-preview-points');
-            
-            if (this.value) {
-                previewImage.src = selectedOption.getAttribute('data-image');
-                previewName.textContent = selectedOption.textContent;
-                previewPoints.textContent = selectedOption.getAttribute('data-points');
-            } else {
-                previewImage.src = 'img/placeholder-profile.png';
-                previewName.textContent = 'Selected user';
-                previewPoints.textContent = 'Prayer points will appear here';
-            }
-        });
-        
-        // Show entries in table
-        if (entries.length === 0) {
-            container.innerHTML = `<tr><td colspan="4" class="text-center">No calendar entries found. Add your first entry using the form.</td></tr>`;
-            return;
-        }
-        
-        let html = '';
-        entries.forEach(entry => {
-            html += `
-            <tr>
-                <td class="align-middle">${entry.day_of_month}</td>
-                <td class="align-middle">${entry.name}</td>
-                <td class="align-middle">${entry.is_user ? '<span class="badge bg-primary">User</span>' : '<span class="badge bg-secondary">Other</span>'}</td>
-                <td>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-primary edit-calendar-entry" data-id="${entry.id}">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-danger delete-calendar-entry" data-id="${entry.id}">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-            `;
-        });
-        
-        container.innerHTML = html;
-        
-        // Add event listeners
-        setupCalendarAdminListeners(entries);
-        
-    } catch (error) {
-        console.error('Error loading calendar admin view:', error);
-        container.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error loading calendar entries: ${error.message}</td></tr>`;
+        container.appendChild(dayElement);
     }
 }
 
-// Setup event listeners for calendar admin view
-function setupCalendarAdminListeners(entries) {
-    // Toggle between user and other entry types
-    const entryTypeRadios = document.querySelectorAll('input[name="entry-type"]');
-    const userContainer = document.getElementById('user-select-container');
-    const otherContainer = document.getElementById('other-entry-container');
-    
-    entryTypeRadios.forEach(radio => {
-        radio.addEventListener('change', () => {
-            if (radio.value === 'user') {
-                userContainer.classList.remove('d-none');
-                otherContainer.classList.add('d-none');
-            } else {
-                userContainer.classList.add('d-none');
-                otherContainer.classList.remove('d-none');
-            }
-        });
-    });
-    
-    // Form submission for adding entry
-    document.getElementById('calendar-entry-form').addEventListener('submit', addCalendarEntry);
-    
-    // Edit calendar entry buttons
-    document.querySelectorAll('.edit-calendar-entry').forEach(button => {
-        button.addEventListener('click', () => {
-            const entryId = button.getAttribute('data-id');
-            const entry = entries.find(e => e.id === entryId);
-            if (entry) {
-                openEditCalendarModal(entry);
-            }
-        });
-    });
-    
-    // Delete calendar entry buttons
-    document.querySelectorAll('.delete-calendar-entry').forEach(button => {
-        button.addEventListener('click', async () => {
-            const entryId = button.getAttribute('data-id');
-            const entry = entries.find(e => e.id === entryId);
-            
-            if (confirm(`Are you sure you want to delete the prayer calendar entry for ${entry.name} on day ${entry.day_of_month}?`)) {
-                await deleteCalendarEntry(entryId);
-            }
-        });
-    });
-    
-    // Save edited calendar entry
-    document.getElementById('save-calendar-entry').addEventListener('click', saveCalendarEntry);
-    
-    // Cancel edit
-    document.getElementById('cancel-edit-calendar').addEventListener('click', () => {
-        // Using Bootstrap Modal API
-        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-calendar-modal'));
-        if (modal) modal.hide();
-    });
-}
-
-// Add a new calendar entry
-async function addCalendarEntry(e) {
-    e.preventDefault();
-    
-    const submitBtn = e.submitter;
-    const originalText = submitBtn.textContent;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
-    submitBtn.disabled = true;
-    
+// Load all users from the profiles table
+async function loadAllUsers() {
     try {
-        const dayOfMonth = parseInt(document.getElementById('calendar-day').value);
-        const entryType = document.querySelector('input[name="entry-type"]:checked').value;
-        
-        let name, imageUrl, prayerPoints, userId, isUser;
-        
-        if (entryType === 'user') {
-            userId = document.getElementById('calendar-user').value;
-            if (!userId) {
-                throw new Error('Please select a user');
-            }
-            
-            // Get user details
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('full_name, profile_image_url, prayer_points')
-                .eq('id', userId)
-                .single();
-                
-            if (error) throw error;
-            
-            name = data.full_name;
-            imageUrl = data.profile_image_url;
-            prayerPoints = data.prayer_points;
-            isUser = true;
-        } else {
-            name = document.getElementById('calendar-name').value.trim();
-            prayerPoints = document.getElementById('calendar-prayer-points').value.trim();
-            isUser = false;
-            
-            if (!name) {
-                throw new Error('Please enter a name');
-            }
-            
-            // Handle image upload
-            const imageFile = document.getElementById('calendar-image').files[0];
-            if (imageFile) {
-                const fileExt = imageFile.name.split('.').pop();
-                const fileName = `${Date.now()}.${fileExt}`;
-                const filePath = `calendar/${fileName}`;
-                
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('prayer-diary')
-                    .upload(filePath, imageFile);
-                    
-                if (uploadError) throw uploadError;
-                
-                // Get public URL
-                const { data: { publicUrl } } = supabase.storage
-                    .from('prayer-diary')
-                    .getPublicUrl(filePath);
-                    
-                imageUrl = publicUrl;
-            }
-        }
-        
-        // Insert calendar entry
         const { data, error } = await supabase
-            .from('prayer_calendar')
-            .insert({
-                day_of_month: dayOfMonth,
-                name,
-                image_url: imageUrl,
-                prayer_points: prayerPoints,
-                is_user: isUser,
-                user_id: isUser ? userId : null,
-                created_by: getUserId()
-            });
+            .from('profiles')
+            .select('id, full_name, profile_image_url, prayer_points, pray_day, pray_months, approval_state')
+            .eq('approval_state', 'Approved')
+            .order('pray_day', { ascending: true })
+            .order('full_name', { ascending: true });
             
         if (error) throw error;
         
-        // Reset form
-        document.getElementById('calendar-entry-form').reset();
-        
-        if (document.getElementById('calendar-image-preview')) {
-            document.getElementById('calendar-image-preview').classList.add('d-none');
-            document.getElementById('calendar-image-name').textContent = 'No file selected';
-        }
-        
-        // Reset user preview
-        const previewImage = document.getElementById('user-preview-image');
-        const previewName = document.getElementById('user-preview-name');
-        const previewPoints = document.getElementById('user-preview-points');
-        
-        if (previewImage && previewName && previewPoints) {
-            previewImage.src = 'img/placeholder-profile.png';
-            previewName.textContent = 'Selected user';
-            previewPoints.textContent = 'Prayer points will appear here';
-        }
-        
-        // Refresh calendar entries
-        loadCalendarAdmin();
-        
-        showNotification('Success', 'Prayer calendar entry added successfully.');
+        allUsers = data;
+        filterAndDisplayUsers();
         
     } catch (error) {
-        console.error('Error adding calendar entry:', error);
-        showNotification('Error', `Failed to add calendar entry: ${error.message}`);
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
+        console.error('Error loading users:', error);
+        showNotification('Error', `Failed to load users: ${error.message}`);
     }
 }
 
-// Open edit calendar modal
-async function openEditCalendarModal(entry) {
-    const modalEl = document.getElementById('edit-calendar-modal');
-    const modal = new bootstrap.Modal(modalEl);
+// Filter and display users based on search term and allocation status
+function filterAndDisplayUsers(searchTerm = '') {
+    // Filter users based on search term
+    if (searchTerm) {
+        filteredUsers = allUsers.filter(user => 
+            user.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    } else {
+        filteredUsers = [...allUsers];
+    }
     
-    // We only support editing non-user entries for simplicity
-    if (entry.is_user) {
-        showNotification('Info', 'User entries cannot be directly edited. Please edit the user\'s profile instead.');
+    // Separate users into allocated and unallocated
+    const unallocatedUsers = filteredUsers.filter(user => user.pray_day === 0);
+    const allocatedUsers = filteredUsers.filter(user => user.pray_day > 0);
+    
+    // Sort allocated users by day
+    allocatedUsers.sort((a, b) => a.pray_day - b.pray_day);
+    
+    displayUserList(unallocatedUsers, 'unallocated-members-list');
+    displayUserList(allocatedUsers, 'allocated-members-list');
+}
+
+// Display a list of users in the specified container
+function displayUserList(users, containerId) {
+    const container = document.getElementById(containerId);
+    
+    if (users.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">No members found</div>';
+        return;
+    }
+    
+    let html = '';
+    
+    users.forEach(user => {
+        const imgSrc = user.profile_image_url || 'img/placeholder-profile.png';
+        const prayDay = user.pray_day > 0 ? `Day ${user.pray_day}` : 'Not assigned';
+        const isAllocated = user.pray_day > 0;
+        
+        html += `
+        <div class="member-card" data-user-id="${user.id}">
+            <img src="${imgSrc}" alt="${user.full_name}" class="member-img">
+            <div class="member-info">
+                <h5 class="mb-1">${user.full_name}</h5>
+                <div class="d-flex align-items-center">
+                    <div class="me-2 text-muted small">
+                        ${isAllocated ? `<span class="badge bg-primary">Day ${user.pray_day}</span>` : ''}
+                    </div>
+                    <select class="form-select form-select-sm month-selector" data-user-id="${user.id}">
+                        <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
+                        <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
+                        <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-sm assign-user" data-user-id="${user.id}">
+                ${isAllocated ? 'Reassign' : 'Assign'}
+            </button>
+        </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    
+    // Add event listeners to assign buttons
+    container.querySelectorAll('.assign-user').forEach(button => {
+        button.addEventListener('click', () => {
+            const userId = button.dataset.userId;
+            assignUserToDay(userId);
+        });
+    });
+    
+    // Add event listeners to month selectors
+    container.querySelectorAll('.month-selector').forEach(select => {
+        select.addEventListener('change', function() {
+            const userId = this.dataset.userId;
+            const months = parseInt(this.value);
+            updateUserMonths(userId, months);
+        });
+    });
+}
+
+// Assign a user to the selected day
+async function assignUserToDay(userId) {
+    if (!selectedDay) {
+        showNotification('Warning', 'Please select a day first', 'warning');
         return;
     }
     
     try {
-        // Get full entry details
         const { data, error } = await supabase
-            .from('prayer_calendar')
-            .select('*')
-            .eq('id', entry.id)
-            .single();
+            .from('profiles')
+            .update({ pray_day: selectedDay })
+            .eq('id', userId);
             
         if (error) throw error;
         
-        // Populate form
-        document.getElementById('edit-calendar-id').value = data.id;
-        document.getElementById('edit-calendar-day').value = data.day_of_month;
-        document.getElementById('edit-calendar-name').value = data.name;
-        document.getElementById('edit-calendar-prayer-points').value = data.prayer_points || '';
-        
-        // Display current image if available
-        const imagePreview = document.getElementById('edit-calendar-image-preview');
-        if (data.image_url) {
-            imagePreview.src = data.image_url;
-            imagePreview.classList.remove('d-none');
-        } else {
-            imagePreview.classList.add('d-none');
+        // Update local data
+        const userIndex = allUsers.findIndex(user => user.id === userId);
+        if (userIndex >= 0) {
+            allUsers[userIndex].pray_day = selectedDay;
         }
         
-        document.getElementById('edit-calendar-image-name').textContent = 'Current image';
+        // Refresh display
+        filterAndDisplayUsers();
         
-        // Show modal
-        modal.show();
+        showNotification('Success', 'User assigned to day ' + selectedDay, 'success');
         
     } catch (error) {
-        console.error('Error opening edit modal:', error);
-        showNotification('Error', `Failed to load entry details: ${error.message}`);
+        console.error('Error assigning user:', error);
+        showNotification('Error', `Failed to assign user: ${error.message}`);
     }
 }
 
-// Save edited calendar entry
-async function saveCalendarEntry() {
-    const saveBtn = document.getElementById('save-calendar-entry');
-    const originalText = saveBtn.textContent;
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
-    saveBtn.disabled = true;
+// Update the user's months settings
+async function updateUserMonths(userId, months) {
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({ pray_months: months })
+            .eq('id', userId);
+            
+        if (error) throw error;
+        
+        // Update local data
+        const userIndex = allUsers.findIndex(user => user.id === userId);
+        if (userIndex >= 0) {
+            allUsers[userIndex].pray_months = months;
+        }
+        
+        showNotification('Success', 'Month settings updated', 'success');
+        
+    } catch (error) {
+        console.error('Error updating months:', error);
+        showNotification('Error', `Failed to update months: ${error.message}`);
+        
+        // Reset the select element to its previous value
+        const user = allUsers.find(u => u.id === userId);
+        const select = document.querySelector(`.month-selector[data-user-id="${userId}"]`);
+        if (user && select) {
+            select.value = user.pray_months;
+        }
+    }
+}
+
+// Set up event listeners
+function setupEventListeners() {
+    // Search input
+    const searchInput = document.getElementById('member-search');
+    searchInput.addEventListener('input', () => {
+        filterAndDisplayUsers(searchInput.value);
+    });
     
-    try {
-        const entryId = document.getElementById('edit-calendar-id').value;
-        const dayOfMonth = parseInt(document.getElementById('edit-calendar-day').value);
-        const name = document.getElementById('edit-calendar-name').value.trim();
-        const prayerPoints = document.getElementById('edit-calendar-prayer-points').value.trim();
-        
-        if (!name) {
-            throw new Error('Please enter a name');
-        }
-        
-        // Get current entry to check if we need to update the image
-        const { data: currentEntry, error: fetchError } = await supabase
-            .from('prayer_calendar')
-            .select('image_url')
-            .eq('id', entryId)
-            .single();
-            
-        if (fetchError) throw fetchError;
-        
-        let imageUrl = currentEntry.image_url;
-        
-        // Handle image upload if a new image is selected
-        const imageFile = document.getElementById('edit-calendar-image').files[0];
-        if (imageFile) {
-            const fileExt = imageFile.name.split('.').pop();
-            const fileName = `${Date.now()}.${fileExt}`;
-            const filePath = `calendar/${fileName}`;
-            
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('prayer-diary')
-                .upload(filePath, imageFile);
-                
-            if (uploadError) throw uploadError;
-            
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('prayer-diary')
-                .getPublicUrl(filePath);
-                
-            imageUrl = publicUrl;
-        }
-        
-        // Update calendar entry
-        const { data, error } = await supabase
-            .from('prayer_calendar')
-            .update({
-                day_of_month: dayOfMonth,
-                name,
-                image_url: imageUrl,
-                prayer_points: prayerPoints
-            })
-            .eq('id', entryId);
-            
-        if (error) throw error;
-        
-        // Close modal using Bootstrap's Modal API
-        const modalEl = document.getElementById('edit-calendar-modal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
-        
-        // Refresh calendar entries
-        loadCalendarAdmin();
-        
-        showNotification('Success', 'Prayer calendar entry updated successfully.');
-        
-    } catch (error) {
-        console.error('Error updating calendar entry:', error);
-        showNotification('Error', `Failed to update calendar entry: ${error.message}`);
-    } finally {
-        saveBtn.innerHTML = originalText;
-        saveBtn.disabled = false;
-    }
+    // Clear search when switching tabs
+    document.querySelectorAll('#memberListTab button').forEach(tab => {
+        tab.addEventListener('click', () => {
+            searchInput.value = '';
+            filterAndDisplayUsers();
+        });
+    });
 }
 
-// Delete a calendar entry
-async function deleteCalendarEntry(entryId) {
-    try {
-        const { error } = await supabase
-            .from('prayer_calendar')
-            .delete()
-            .eq('id', entryId);
-            
-        if (error) throw error;
-        
-        // Refresh calendar entries
-        loadCalendarAdmin();
-        
-        showNotification('Success', 'Prayer calendar entry deleted successfully.');
-        
-    } catch (error) {
-        console.error('Error deleting calendar entry:', error);
-        showNotification('Error', `Failed to delete calendar entry: ${error.message}`);
-    }
+// Modified loadCalendarAdmin to initialize the new UI
+async function loadCalendarAdmin() {
+    if (!hasPermission('prayer_calendar_editor')) return;
+    
+    // Initialize the new calendar management UI
+    await initCalendarManagement();
 }
