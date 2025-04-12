@@ -4,6 +4,19 @@
 let selectedDay = null;
 let allUsers = [];
 let filteredUsers = [];
+let testDate = null;
+let tapCount = 0;
+
+// Function to format date as DD MMM
+function formatDate(date) {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${date.getDate()} ${months[date.getMonth()]}`;
+}
+
+// Get the effective date (test date or current date)
+function getEffectiveDate() {
+    return testDate || new Date();
+}
 
 // Load prayer calendar entries
 async function loadPrayerCalendar() {
@@ -13,11 +26,14 @@ async function loadPrayerCalendar() {
     container.innerHTML = createLoadingSpinner();
     
     try {
-        // Get current date for determining which users to show based on month
-        const currentDate = new Date();
-        const currentDay = currentDate.getDate();
-        const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
+        // Get current date or test date for determining which users to show
+        const effectiveDate = getEffectiveDate();
+        const currentDay = effectiveDate.getDate();
+        const currentMonth = effectiveDate.getMonth() + 1; // JavaScript months are 0-indexed
         const isOddMonth = currentMonth % 2 === 1;
+        
+        // Update the date display
+        document.getElementById('current-date').textContent = formatDate(effectiveDate);
         
         // Get users with pray_day > 0 who should be shown this month
         const { data, error } = await supabase
@@ -31,9 +47,9 @@ async function loadPrayerCalendar() {
                 pray_months
             `)
             .eq('approval_state', 'Approved')
-            .gt('pray_day', 0)
+            .eq('pray_day', currentDay) // Only get entries for the current day
             .or(`pray_months.eq.0,pray_months.eq.${isOddMonth ? 1 : 2}`)
-            .order('pray_day', { ascending: true });
+            .order('full_name', { ascending: true });
             
         if (error) throw error;
         
@@ -48,19 +64,11 @@ async function loadPrayerCalendar() {
             user_id: user.id
         }));
         
-        // Sort entries so today's entries come first
-        const sortedEntries = [...prayerEntries].sort((a, b) => {
-            // Calculate distance from today (circular)
-            const distA = (a.day_of_month - currentDay + 31) % 31;
-            const distB = (b.day_of_month - currentDay + 31) % 31;
-            return distA - distB;
-        });
-        
-        if (sortedEntries.length === 0) {
+        if (prayerEntries.length === 0) {
             container.innerHTML = `
                 <div class="col-12">
                     <div class="alert alert-info">
-                        No prayer calendar entries found. Please check back later or contact an administrator.
+                        No prayer subjects assigned for ${formatDate(effectiveDate)}. Please check back later or contact an administrator.
                     </div>
                 </div>
             `;
@@ -69,22 +77,11 @@ async function loadPrayerCalendar() {
         
         // Generate HTML for prayer cards
         let html = '';
-        sortedEntries.forEach(entry => {
+        prayerEntries.forEach(entry => {
             html += createPrayerCard(entry);
         });
         
         container.innerHTML = html;
-        
-        // Add event listeners to view prayer card buttons
-        document.querySelectorAll('.view-prayer-card').forEach(button => {
-            button.addEventListener('click', () => {
-                const entryId = button.getAttribute('data-id');
-                const entry = sortedEntries.find(e => e.id === entryId);
-                if (entry) {
-                    showPrayerCardModal(entry);
-                }
-            });
-        });
         
     } catch (error) {
         console.error('Error loading prayer calendar:', error);

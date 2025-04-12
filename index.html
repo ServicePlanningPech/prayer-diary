@@ -149,9 +149,32 @@
         <div id="app-views" class="d-none">
             <!-- Prayer Calendar View -->
             <div id="calendar-view" class="view-content">
-                <h1 class="display-6 mb-4">Daily Prayer Calendar</h1>
+                <h2 class="fw-bold mb-4" id="daily-prayer-title">Daily prayer for <span id="current-date">Today</span></h2>
                 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="prayer-cards-container">
                     <!-- Prayer cards will be dynamically inserted here -->
+                </div>
+            </div>
+            
+            <!-- Date picker modal for testing -->
+            <div class="modal fade" id="date-picker-modal" tabindex="-1" aria-labelledby="date-picker-title" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="date-picker-title">Set Test Date</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="test-date" class="form-label">Select date to test:</label>
+                                <input type="date" class="form-control" id="test-date">
+                            </div>
+                            <p class="text-muted small">This is for testing purposes only. It will allow you to view prayers for any date.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" id="reset-test-date">Reset to Today</button>
+                            <button type="button" class="btn btn-primary" id="set-test-date">Set Date</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

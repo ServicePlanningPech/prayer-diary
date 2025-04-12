@@ -62,8 +62,10 @@ body {
 }
 
 .prayer-card-img-top {
-    height: 200px;
-    object-fit: cover;
+    max-height: 250px;
+    object-fit: contain;
+    padding: 10px;
+    background-color: #f8f9fa;
 }
 
 .prayer-card-title {

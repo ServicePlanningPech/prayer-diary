@@ -8,6 +8,7 @@ function initUI() {
     setupModalClosers();
     setupFileInputs();
     initializeBootstrapComponents();
+    setupDatePickerTrigger();
 }
 
 // Setup navigation between views
@@ -71,6 +72,85 @@ function setupNavigation() {
         showView('test-email-view');
         initEmailTestView();
     });
+}
+
+// Setup the date picker trigger for testing
+function setupDatePickerTrigger() {
+    const titleElement = document.getElementById('daily-prayer-title');
+    if (titleElement) {
+        // Set up tap counter
+        let tapCount = 0;
+        let tapTimer = null;
+        
+        titleElement.addEventListener('click', (e) => {
+            // Only trigger if the user clicked on the word "Daily"
+            const clickTarget = e.target;
+            if (clickTarget.id === 'daily-prayer-title' || clickTarget.tagName === 'H2') {
+                // Increment tap counter
+                tapCount++;
+                
+                // Reset tap counter after 3 seconds
+                clearTimeout(tapTimer);
+                tapTimer = setTimeout(() => {
+                    tapCount = 0;
+                }, 3000);
+                
+                // Check if we've reached 5 taps
+                if (tapCount >= 5) {
+                    // Reset counter
+                    tapCount = 0;
+                    
+                    // Show date picker modal
+                    showDatePickerModal();
+                }
+            }
+        });
+    }
+    
+    // Set up event listeners for the date picker modal
+    document.getElementById('set-test-date').addEventListener('click', () => {
+        const dateInput = document.getElementById('test-date');
+        if (dateInput.value) {
+            testDate = new Date(dateInput.value);
+            
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('date-picker-modal'));
+            if (modal) modal.hide();
+            
+            // Reload the prayer calendar
+            loadPrayerCalendar();
+            
+            // Show confirmation
+            showToast('Test Mode', `Date set to ${formatDate(testDate)}`, 'warning');
+        }
+    });
+    
+    document.getElementById('reset-test-date').addEventListener('click', () => {
+        testDate = null;
+        
+        // Close the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('date-picker-modal'));
+        if (modal) modal.hide();
+        
+        // Reload the prayer calendar
+        loadPrayerCalendar();
+        
+        // Show confirmation
+        showToast('Test Mode', 'Date reset to today', 'success');
+    });
+}
+
+// Show the date picker modal
+function showDatePickerModal() {
+    // Set the current date as default
+    const dateInput = document.getElementById('test-date');
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    dateInput.value = formattedDate;
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('date-picker-modal'));
+    modal.show();
 }
 
 // Function to show a specific view and hide others
@@ -604,9 +684,7 @@ function formatDate(dateString) {
     return date.toLocaleDateString('en-GB', {
         day: 'numeric',
         month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: 'numeric'
     });
 }
 
@@ -623,25 +701,18 @@ function createLoadingSpinner() {
 // Helper function to create a prayer card
 function createPrayerCard(entry) {
     const dayOfMonth = entry.day_of_month;
-    const today = new Date().getDate();
-    const isToday = dayOfMonth === today;
     
     return `
     <div class="col">
-        <div class="card prayer-card h-100 ${isToday ? 'bg-light border-primary' : ''}">
+        <div class="card prayer-card h-100 border-primary">
             <div class="position-relative">
                 <img src="${entry.image_url || 'img/placeholder-profile.png'}" class="card-img-top prayer-card-img-top" alt="${entry.name}">
                 <div class="day-badge">${dayOfMonth}</div>
             </div>
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title prayer-card-title">${entry.name}</h5>
-                <p class="card-text flex-grow-1">
-                    ${entry.prayer_points ? entry.prayer_points.substring(0, 100) + (entry.prayer_points.length > 100 ? '...' : '') : 'No prayer points provided.'}
-                </p>
-                <div class="mt-auto pt-3">
-                    <button class="btn btn-primary w-100 view-prayer-card" data-id="${entry.id}">
-                        View Prayer Card
-                    </button>
+                <div class="card-text flex-grow-1">
+                    ${entry.prayer_points || 'No prayer points provided.'}
                 </div>
             </div>
         </div>
@@ -706,8 +777,6 @@ function createUrgentCard(prayer, isAdmin = false) {
     </div>
     `;
 }
-
-
 
 // Helper function to create a user card
 function createUserCard(user, isPending = true) {

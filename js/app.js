@@ -11,6 +11,9 @@ window.PRAYER_DIARY = {
     devMode: window.PRAYER_DIARY_DEV_MODE || false
 };
 
+// Global variable for test date (used to show prayer cards for a different date)
+window.testDate = null;
+
 // Initialize the app when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
 
