@@ -286,7 +286,7 @@ function openEditUserModal(user) {
     });
 }
 
-// Save user permissions
+// Modification to save user permissions function to add debugging
 async function saveUserPermissions() {
     const saveBtn = document.getElementById('save-user');
     const originalText = saveBtn.textContent;
@@ -307,20 +307,51 @@ async function saveUserPermissions() {
             approvalAdmin = document.getElementById('approval-admin').checked;
         }
         
-        // Update user profile
+        // Log the values being sent to ensure they're correct
+        console.log('Saving user permissions:', {
+            userId,
+            userRole,
+            approvalState,
+            calendarEditor,
+            updateEditor,
+            urgentEditor,
+            approvalAdmin
+        });
+        
+        // Update user profile with explicit true/false values
         const { data, error } = await supabase
             .from('profiles')
             .update({
                 user_role: userRole,
                 approval_state: approvalState,
-                prayer_calendar_editor: calendarEditor,
-                prayer_update_editor: updateEditor,
-                urgent_prayer_editor: urgentEditor,
-                approval_admin: approvalAdmin
+                prayer_calendar_editor: calendarEditor === true,
+                prayer_update_editor: updateEditor === true,
+                urgent_prayer_editor: urgentEditor === true,
+                approval_admin: approvalAdmin === true
             })
             .eq('id', userId);
             
         if (error) throw error;
+        
+        // Log the response to see if the update was successful
+        console.log('Update response:', data);
+        
+        // Verify the update by fetching the user profile again
+        const { data: updatedProfile, error: fetchError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+            
+        if (fetchError) {
+            console.warn('Error verifying update:', fetchError);
+        } else {
+            console.log('Updated profile values:', {
+                prayer_calendar_editor: updatedProfile.prayer_calendar_editor,
+                prayer_update_editor: updatedProfile.prayer_update_editor,
+                urgent_prayer_editor: updatedProfile.urgent_prayer_editor
+            });
+        }
         
         // Close modal using Bootstrap's modal method
         const modal = bootstrap.Modal.getInstance(document.getElementById('edit-user-modal'));
