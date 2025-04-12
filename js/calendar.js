@@ -195,23 +195,25 @@ function displayUserList(users, containerId) {
         
         html += `
         <div class="member-card" data-user-id="${user.id}">
-            <img src="${imgSrc}" alt="${user.full_name}" class="member-img">
-            <div class="member-info">
-                <h5 class="mb-1">${user.full_name}</h5>
-                <div class="d-flex align-items-center">
-                    <div class="me-2 text-muted small">
+            <div class="member-card-top">
+                <img src="${imgSrc}" alt="${user.full_name}" class="member-img">
+                <div class="member-info">
+                    <h6 class="member-name">${user.full_name}</h6>
+                    <div class="text-muted small">
                         ${isAllocated ? `<span class="badge bg-primary">Day ${user.pray_day}</span>` : ''}
                     </div>
-                    <select class="form-select form-select-sm month-selector" data-user-id="${user.id}">
-                        <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
-                        <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
-                        <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
-                    </select>
                 </div>
             </div>
-            <button class="btn btn-primary btn-sm assign-user" data-user-id="${user.id}">
-                ${isAllocated ? 'Reassign' : 'Assign'}
-            </button>
+            <div class="member-card-bottom">
+                <select class="form-select form-select-sm month-selector" data-user-id="${user.id}">
+                    <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
+                    <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
+                    <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
+                </select>
+                <button class="btn btn-primary btn-sm assign-user" data-user-id="${user.id}">
+                    ${isAllocated ? 'Reassign' : 'Assign'}
+                </button>
+            </div>
         </div>
         `;
     });

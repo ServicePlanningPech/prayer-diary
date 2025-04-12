@@ -246,8 +246,12 @@ body {
     border-radius: 4px;
     padding: 12px;
     margin-bottom: 8px;
+}
+
+.member-card-top {
     display: flex;
     align-items: center;
+    margin-bottom: 8px;
 }
 
 .member-img {
@@ -262,9 +266,21 @@ body {
     flex-grow: 1;
 }
 
+.member-name {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.member-card-bottom {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .month-selector {
     width: 140px;
-    margin-right: 10px;
+    flex-grow: 1;
 }
 
 /* For screens smaller than 768px */
@@ -295,7 +311,20 @@ body {
         height: 40px;
     }
     
+    .member-name {
+        font-size: 0.9rem;
+    }
+    
+    .member-card-bottom {
+        flex-wrap: wrap;
+    }
+    
     .month-selector {
-        width: 120px;
+        width: 110px;
+    }
+    
+    .assign-user {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
     }
 }
