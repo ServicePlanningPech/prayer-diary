@@ -1258,8 +1258,8 @@
     <!-- Scripts -->
     <!-- Production Mode Setting -->
     <script>
-        // Global development mode flag - disabled for production
-        window.PRAYER_DIARY_DEV_MODE = false;
+        // Global development mode flag - enabled for development, set to false in production
+        window.PRAYER_DIARY_DEV_MODE = true;
     </script>
     
     <!-- First import Supabase JS -->
@@ -1301,6 +1301,12 @@
         // loadScript("js/emergency-fix.js"); // Add emergency fix for auth issues
         // loadScript("js/troubleshoot.js"); // Troubleshooting tool removed
         loadScript("js/app.js");
+        
+        // Load mobile debug panel only in development mode
+        if (window.PRAYER_DIARY_DEV_MODE === true) {
+            console.log("Loading debug panel for mobile devices");
+            loadScript("js/debug-panel.js");
+        }
     </script>
     
     <!-- Service Worker Registration - Production Mode with update checking -->
