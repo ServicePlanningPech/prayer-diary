@@ -203,20 +203,18 @@ function displayUserList(users, containerId, isAllocated) {
                         <div class="member-name">${user.full_name}</div>
                     </div>
                 </div>
+                <div class="member-badge-row">
+                    <span class="badge bg-primary day-badge-inline">Day ${user.pray_day}</span>
+                </div>
                 <div class="member-bottom-row">
-                    <div class="member-img-container">
-                        <span class="badge bg-primary">Day ${user.pray_day}</span>
-                    </div>
-                    <div class="member-controls">
-                        <select class="form-select form-select-sm month-selector" data-user-id="${user.id}">
-                            <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
-                            <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
-                            <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
-                        </select>
-                        <button class="btn btn-primary btn-sm assign-user" data-user-id="${user.id}">
-                            Reassign
-                        </button>
-                    </div>
+                    <select class="form-select month-selector" data-user-id="${user.id}">
+                        <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
+                        <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
+                        <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
+                    </select>
+                    <button class="btn btn-primary assign-user" data-user-id="${user.id}">
+                        Reassign
+                    </button>
                 </div>
             </div>
             `;
@@ -233,19 +231,14 @@ function displayUserList(users, containerId, isAllocated) {
                     </div>
                 </div>
                 <div class="member-bottom-row">
-                    <div class="member-img-container">
-                        <!-- Placeholder space to keep alignment with assigned members -->
-                    </div>
-                    <div class="member-controls">
-                        <select class="form-select form-select-sm month-selector" data-user-id="${user.id}">
-                            <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
-                            <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
-                            <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
-                        </select>
-                        <button class="btn btn-primary btn-sm assign-user" data-user-id="${user.id}">
-                            Assign
-                        </button>
-                    </div>
+                    <select class="form-select month-selector" data-user-id="${user.id}">
+                        <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
+                        <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
+                        <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
+                    </select>
+                    <button class="btn btn-primary assign-user" data-user-id="${user.id}">
+                        Assign
+                    </button>
                 </div>
             </div>
             `;
