@@ -402,18 +402,18 @@
 
             <!-- Manage Prayer Calendar View -->
             <div id="manage-calendar-view" class="view-content d-none">
-                <h1 class="display-6 mb-4">Manage Prayer Calendar</h1>
+                <h2 class="fw-bold mb-4">Manage Prayer Calendar</h2>
                 
                 <ul class="nav nav-tabs mb-4" id="calendarTab" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="members-tab" data-bs-toggle="tab" 
                                 data-bs-target="#members-content" type="button" role="tab" 
-                                aria-controls="members-content" aria-selected="true">Add Members</button>
+                                aria-controls="members-content" aria-selected="true">Assign Members</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="other-tab" data-bs-toggle="tab" 
                                 data-bs-target="#other-content" type="button" role="tab" 
-                                aria-controls="other-content" aria-selected="false">Add Other Items</button>
+                                aria-controls="other-content" aria-selected="false">Assign Other</button>
                     </li>
                 </ul>
                 
@@ -424,8 +424,8 @@
                             <!-- Days selection in calendar format -->
                             <div class="col-md-6 mb-4">
                                 <div class="card shadow">
-                                    <div class="card-header bg-primary text-white py-3">
-                                        <h4 class="card-title mb-0">Select Day for Prayer</h4>
+                                    <div class="card-header bg-primary text-white py-2">
+                                        <h5 class="card-title mb-0">Select Day for Prayer</h5>
                                     </div>
                                     <div class="card-body">
                                         <p class="mb-3">Click on a day to select it for member allocation:</p>
@@ -447,8 +447,8 @@
                             <!-- Member lists -->
                             <div class="col-md-6">
                                 <div class="card shadow">
-                                    <div class="card-header bg-primary text-white py-3">
-                                        <h4 class="card-title mb-0">Assign Members to Prayer Calendar</h4>
+                                    <div class="card-header bg-primary text-white py-2">
+                                        <h5 class="card-title mb-0">Assign Members to Prayer Calendar</h5>
                                     </div>
                                     <div class="card-body">
                                         <!-- Search box -->
@@ -461,12 +461,12 @@
                                             <li class="nav-item" role="presentation">
                                                 <button class="nav-link active" id="unallocated-tab" data-bs-toggle="tab" 
                                                        data-bs-target="#unallocated-members" type="button" role="tab" 
-                                                       aria-controls="unallocated-members" aria-selected="true">Unallocated Members</button>
+                                                       aria-controls="unallocated-members" aria-selected="true">Unassigned</button>
                                             </li>
                                             <li class="nav-item" role="presentation">
                                                 <button class="nav-link" id="allocated-tab" data-bs-toggle="tab" 
                                                        data-bs-target="#allocated-members" type="button" role="tab" 
-                                                       aria-controls="allocated-members" aria-selected="false">Allocated Members</button>
+                                                       aria-controls="allocated-members" aria-selected="false">Assigned</button>
                                             </li>
                                         </ul>
                                         
