@@ -248,39 +248,61 @@ body {
     margin-bottom: 8px;
 }
 
-.member-card-top {
+.member-layout {
     display: flex;
-    align-items: center;
-    margin-bottom: 8px;
+}
+
+.member-left {
+    width: 50px;
+    margin-right: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.member-right {
+    flex-grow: 1;
+    display: flex;
+    align-items: flex-start;
+}
+
+.member-img-container {
+    margin-bottom: 6px;
 }
 
 .member-img {
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     object-fit: cover;
-    margin-right: 12px;
 }
 
-.member-info {
-    flex-grow: 1;
+.member-day-badge {
+    margin-bottom: 6px;
+    text-align: center;
 }
 
-.member-name {
-    font-size: 1rem;
-    margin-bottom: 0.25rem;
-    font-weight: 600;
-}
-
-.member-card-bottom {
+.member-controls {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    margin-top: 2px;
 }
 
 .month-selector {
-    width: 140px;
-    flex-grow: 1;
+    width: 120px;
+    margin-right: 6px;
+    flex-shrink: 1;
+    font-size: 0.85rem;
+}
+
+.member-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.1;
+    margin-top: 5px;
+}
+
+.assign-user {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
 }
 
 /* For screens smaller than 768px */
@@ -312,19 +334,30 @@ body {
     }
     
     .member-name {
-        font-size: 0.9rem;
-    }
-    
-    .member-card-bottom {
-        flex-wrap: wrap;
+        font-size: 0.8rem;
     }
     
     .month-selector {
-        width: 110px;
+        width: 90px;
+        font-size: 0.75rem;
     }
     
     .assign-user {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.75rem;
+        padding: 0.2rem 0.35rem;
+        font-size: 0.7rem;
+    }
+    
+    .member-left {
+        width: 40px;
+        margin-right: 8px;
+    }
+    
+    .member-controls {
+        flex-direction: column;
+    }
+    
+    .month-selector {
+        margin-right: 0;
+        margin-bottom: 4px;
     }
 }
