@@ -248,25 +248,22 @@ body {
     margin-bottom: 8px;
 }
 
-.member-layout {
+/* New layout styles */
+.member-top-row {
     display: flex;
+    margin-bottom: 8px;
 }
 
-.member-left {
-    width: 50px;
-    margin-right: 12px;
+.member-bottom-row {
     display: flex;
-    flex-direction: column;
-}
-
-.member-right {
-    flex-grow: 1;
-    display: flex;
-    align-items: flex-start;
 }
 
 .member-img-container {
-    margin-bottom: 6px;
+    width: 50px;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .member-img {
@@ -276,33 +273,34 @@ body {
     object-fit: cover;
 }
 
-.member-day-badge {
-    margin-bottom: 6px;
-    text-align: center;
-}
-
-.member-controls {
+.member-name-container {
+    flex-grow: 1;
     display: flex;
-    margin-top: 2px;
-}
-
-.month-selector {
-    width: 120px;
-    margin-right: 6px;
-    flex-shrink: 1;
-    font-size: 0.85rem;
+    align-items: center;
 }
 
 .member-name {
     font-size: 0.9rem;
     font-weight: 600;
-    line-height: 1.1;
-    margin-top: 5px;
+    line-height: 1.2;
+}
+
+.member-controls {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+}
+
+.month-selector {
+    width: 140px;
+    margin-right: 10px;
+    font-size: 0.9rem;
 }
 
 .assign-user {
-    padding: 0.2rem 0.4rem;
-    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
 }
 
 /* For screens smaller than 768px */
@@ -333,31 +331,21 @@ body {
         height: 40px;
     }
     
+    .member-img-container {
+        width: 40px;
+    }
+    
     .member-name {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
     }
     
     .month-selector {
-        width: 90px;
-        font-size: 0.75rem;
-    }
-    
-    .assign-user {
-        padding: 0.2rem 0.35rem;
-        font-size: 0.7rem;
-    }
-    
-    .member-left {
-        width: 40px;
+        width: 120px;
         margin-right: 8px;
     }
     
-    .member-controls {
-        flex-direction: column;
-    }
-    
-    .month-selector {
-        margin-right: 0;
-        margin-bottom: 4px;
+    .assign-user {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
     }
 }

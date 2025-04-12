@@ -195,25 +195,27 @@ function displayUserList(users, containerId, isAllocated) {
             // Template for assigned users
             html += `
             <div class="member-card" data-user-id="${user.id}">
-                <div class="member-layout">
-                    <div class="member-left">
-                        <div class="member-img-container">
-                            <img src="${imgSrc}" alt="${user.full_name}" class="member-img">
-                        </div>
-                        <div class="member-day-badge">
-                            <span class="badge bg-primary">Day ${user.pray_day}</span>
-                        </div>
-                        <div class="member-controls">
-                            <select class="form-select form-select-sm month-selector" data-user-id="${user.id}">
-                                <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
-                                <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
-                                <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
-                            </select>
-                            <button class="btn btn-primary btn-sm assign-user" data-user-id="${user.id}">Reassign</button>
-                        </div>
+                <div class="member-top-row">
+                    <div class="member-img-container">
+                        <img src="${imgSrc}" alt="${user.full_name}" class="member-img">
                     </div>
-                    <div class="member-right">
+                    <div class="member-name-container">
                         <div class="member-name">${user.full_name}</div>
+                    </div>
+                </div>
+                <div class="member-bottom-row">
+                    <div class="member-img-container">
+                        <span class="badge bg-primary">Day ${user.pray_day}</span>
+                    </div>
+                    <div class="member-controls">
+                        <select class="form-select form-select-sm month-selector" data-user-id="${user.id}">
+                            <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
+                            <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
+                            <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm assign-user" data-user-id="${user.id}">
+                            Reassign
+                        </button>
                     </div>
                 </div>
             </div>
@@ -222,22 +224,27 @@ function displayUserList(users, containerId, isAllocated) {
             // Template for unassigned users
             html += `
             <div class="member-card" data-user-id="${user.id}">
-                <div class="member-layout">
-                    <div class="member-left">
-                        <div class="member-img-container">
-                            <img src="${imgSrc}" alt="${user.full_name}" class="member-img">
-                        </div>
-                        <div class="member-controls">
-                            <select class="form-select form-select-sm month-selector" data-user-id="${user.id}">
-                                <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
-                                <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
-                                <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
-                            </select>
-                            <button class="btn btn-primary btn-sm assign-user" data-user-id="${user.id}">Assign</button>
-                        </div>
+                <div class="member-top-row">
+                    <div class="member-img-container">
+                        <img src="${imgSrc}" alt="${user.full_name}" class="member-img">
                     </div>
-                    <div class="member-right">
+                    <div class="member-name-container">
                         <div class="member-name">${user.full_name}</div>
+                    </div>
+                </div>
+                <div class="member-bottom-row">
+                    <div class="member-img-container">
+                        <!-- Placeholder space to keep alignment with assigned members -->
+                    </div>
+                    <div class="member-controls">
+                        <select class="form-select form-select-sm month-selector" data-user-id="${user.id}">
+                            <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
+                            <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
+                            <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm assign-user" data-user-id="${user.id}">
+                            Assign
+                        </button>
                     </div>
                 </div>
             </div>
