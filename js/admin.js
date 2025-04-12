@@ -252,8 +252,8 @@ function openEditUserModal(user) {
     document.getElementById('user-role').value = user.user_role;
     document.getElementById('approval-state').value = user.approval_state;
     document.getElementById('calendar-editor').checked = user.prayer_calendar_editor;
-    document.getElementById('update-editor').checked = user.prayer_update_editor;
-    document.getElementById('urgent-editor').checked = user.urgent_prayer_editor;
+    document.getElementById('user-update-editor').checked = user.prayer_update_editor;
+    document.getElementById('user-urgent-editor').checked = user.urgent_prayer_editor;
     
     // Handle approval admin checkbox
     const approvalAdminField = document.querySelector('.admin-permission-field');
@@ -298,8 +298,8 @@ async function saveUserPermissions() {
         const userRole = document.getElementById('user-role').value;
         const approvalState = document.getElementById('approval-state').value;
         const calendarEditor = document.getElementById('calendar-editor').checked;
-        const updateEditor = document.getElementById('update-editor').checked;
-        const urgentEditor = document.getElementById('urgent-editor').checked;
+        const updateEditor = document.getElementById('user-update-editor').checked;
+        const urgentEditor = document.getElementById('user-urgent-editor').checked;
         
         // Get approval_admin value (only applies to Administrators)
         let approvalAdmin = false;
