@@ -209,16 +209,51 @@ function handleProfileImageChange() {
     const previewImage = document.getElementById('profile-image-preview');
     
     if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        
+        // Debug image characteristics - useful for troubleshooting iOS issues
+        console.log('Selected image details:', {
+            name: file.name,
+            type: file.type,
+            size: file.size + ' bytes (' + Math.round(file.size/1024) + ' KB)',
+            lastModified: new Date(file.lastModified).toISOString()
+        });
+        
+        // Check if it's potentially from an iOS device camera
+        const isIOSCamera = /iPhone|iPad|iPod/i.test(navigator.userAgent) && 
+                            (file.type === 'image/heic' || 
+                             file.type === 'image/heif' || 
+                             file.size > 5000000); // Over 5MB is suspicious
+        
+        if (isIOSCamera) {
+            console.warn('⚠️ Detected likely iOS camera image. These can cause issues due to size/format.');
+            console.log('Consider adding image resizing for iOS camera photos');
+        }
+        
         const reader = new FileReader();
         
         reader.onload = function(e) {
+            console.log('Image loaded in memory successfully');
             previewImage.src = e.target.result;
             
             // Also update the card preview
             document.getElementById('preview-profile-image').src = e.target.result;
         };
         
-        reader.readAsDataURL(fileInput.files[0]);
+        reader.onerror = function(e) {
+            console.error('Error reading image file:', e);
+            // Set to placeholder if there's an error
+            previewImage.src = 'img/placeholder-profile.png';
+            document.getElementById('preview-profile-image').src = 'img/placeholder-profile.png';
+        };
+        
+        // Start reading the image
+        try {
+            console.log('Starting to read image file...');
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error('Exception when reading image:', err);
+        }
     }
 }
 
@@ -480,9 +515,49 @@ let profileDataToSave = null;
 let profileSubmitButton = null;
 let gdprModal = null;
 
+// Image processing utilities for iOS
+function createImageProcessingStatus() {
+    // Create a temporary processing indicator for slow operations
+    const statusDiv = document.createElement('div');
+    statusDiv.id = 'image-processing-status';
+    statusDiv.style.cssText = `
+        position: fixed;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 9999;
+        font-size: 14px;
+        text-align: center;
+        max-width: 90%;
+    `;
+    
+    // Add it to the document
+    document.body.appendChild(statusDiv);
+    
+    return {
+        update: (message) => {
+            console.log('Image processing status:', message);
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+        },
+        remove: () => {
+            statusDiv.style.display = 'none';
+            if (statusDiv.parentNode) {
+                statusDiv.parentNode.removeChild(statusDiv);
+            }
+        }
+    };
+}
+
 // Save the user's profile
 async function saveProfile(e) {
     e.preventDefault();
+    
+    console.log('🔄 Profile save started');
     
     // Ensure no hidden form fields have required attribute
     disableHiddenRequiredFields();
@@ -642,116 +717,253 @@ function showGdprConsentModal() {
 // Complete profile save after GDPR check
 async function completeProfileSave(data) {
     try {
+        console.log('🔄 Starting profile save process');
+        
         // Handle profile image upload
         let profileImageUrl = userProfile.profile_image_url;
         const profileImage = document.getElementById('profile-image').files[0];
         
         if (profileImage) {
             try {
-                console.log('Uploading profile image...');
-                const fileExt = profileImage.name.split('.').pop();
+                console.log('🖼️ Profile image detected, starting upload process');
+                console.log(`📊 Image: ${profileImage.name}, ${profileImage.size} bytes, type: ${profileImage.type}`);
+                
+                // Create an indicator for long-running operations
+                const status = createImageProcessingStatus();
+                status.update("Preparing image for upload...");
+                
+                // Check for large iOS images that might need special handling
+                const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                const needsResizing = profileImage.size > 1000000; // > 1MB
+                
+                let imageToUpload = profileImage;
+                let resizedSuccessfully = false;
+                
+                // For iOS or large images, try to resize to reduce issues
+                if (isIOSDevice || needsResizing) {
+                    status.update("Processing large image... (iOS resizing)");
+                    console.log(`⚠️ Large image detected (${Math.round(profileImage.size/1024)} KB), attempting to resize`);
+                    
+                    try {
+                        // Create an offscreen canvas to resize the image
+                        const img = new Image();
+                        
+                        // Create a promise to handle the image loading
+                        const imageLoaded = new Promise((resolve, reject) => {
+                            img.onload = () => resolve();
+                            img.onerror = () => reject(new Error("Failed to load image for resizing"));
+                            
+                            // Read the image using an object URL
+                            img.src = URL.createObjectURL(profileImage);
+                        });
+                        
+                        try {
+                            // Wait for image to load
+                            await imageLoaded;
+                            status.update("Resizing image...");
+                            
+                            // Calculate new dimensions - max 1200px width/height
+                            const MAX_SIZE = 1200;
+                            let width = img.width;
+                            let height = img.height;
+                            
+                            if (width > MAX_SIZE || height > MAX_SIZE) {
+                                if (width > height) {
+                                    height = Math.round(height * (MAX_SIZE / width));
+                                    width = MAX_SIZE;
+                                } else {
+                                    width = Math.round(width * (MAX_SIZE / height));
+                                    height = MAX_SIZE;
+                                }
+                            }
+                            
+                            // Create canvas for resizing
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            
+                            status.update("Converting image...");
+                            
+                            // Convert to a reasonable quality JPEG
+                            const resizedBlob = await new Promise(resolve => {
+                                canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
+                            });
+                            
+                            if (resizedBlob) {
+                                console.log(`✅ Image resized successfully: ${Math.round(resizedBlob.size/1024)} KB (was ${Math.round(profileImage.size/1024)} KB)`);
+                                
+                                // Create a File object from the Blob
+                                imageToUpload = new File([resizedBlob], profileImage.name.replace(/\.[^.]+$/, '.jpg'), {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                
+                                resizedSuccessfully = true;
+                            } else {
+                                console.error('❌ Resizing failed: Could not create blob');
+                            }
+                        } catch (resizeError) {
+                            console.error('❌ Error during image resize:', resizeError);
+                        } finally {
+                            // Clean up object URL
+                            URL.revokeObjectURL(img.src);
+                        }
+                    } catch (err) {
+                        console.error('❌ Exception during image processing:', err);
+                    }
+                }
+                
+                // Update status
+                status.update(resizedSuccessfully ? 
+                    "Image processed, uploading..." :
+                    "Uploading original image...");
+                
+                // Prepare file name and path
+                const fileExt = resizedSuccessfully ? 'jpg' : imageToUpload.name.split('.').pop();
                 const fileName = `${getUserId()}_${Date.now()}.${fileExt}`;
                 const filePath = `profiles/${fileName}`;
                 
-                console.log('Storage upload parameters:', {
+                // Log upload details
+                console.log('📤 Storage upload parameters:', {
                     userId: getUserId(),
                     fileName: fileName,
                     filePath: filePath,
-                    fileSize: profileImage.size,
-                    fileType: profileImage.type
+                    fileSize: imageToUpload.size,
+                    fileType: imageToUpload.type,
+                    resized: resizedSuccessfully
                 });
                 
                 // Detailed logging for debugging
-                console.log('Current user:', currentUser);
-                console.log('Auth JWT:', await supabase.auth.getSession().then(d => d.data.session?.access_token?.substring(0, 20) + '...'));
+                console.log('👤 Current user:', {
+                    id: currentUser.id,
+                    email: currentUser.email
+                });
+                
+                // Check if we have token access
+                try {
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    console.log('🔐 Auth session available:', !!sessionData.session);
+                    // Don't log the actual token for security
+                } catch (sessionError) {
+                    console.error('❌ Error checking auth session:', sessionError);
+                }
                 
                 // First check if bucket exists and is accessible
                 try {
+                    status.update("Checking storage access...");
                     const { data: bucketData, error: bucketError } = await supabase.storage
                         .getBucket('prayer-diary');
                     
-                    console.log('Bucket check result:', bucketError ? 'Error' : 'Success', 
-                        bucketError ? bucketError : bucketData);
+                    console.log('📦 Bucket check result:', bucketError ? '❌ Error' : '✅ Success');
+                    if (bucketError) {
+                        console.error('Details:', bucketError);
+                    }
                 } catch (bucketCheckError) {
-                    console.error('Error checking bucket:', bucketCheckError);
+                    console.error('❌ Error checking bucket:', bucketCheckError);
                 }
                 
-                // Attempt upload with detailed error handling
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('prayer-diary')
-                    .upload(filePath, profileImage, {
-                        cacheControl: 'no-cache',
-                        upsert: true
-                    });
-                    
-                if (uploadError) {
-                    console.error('Profile image upload error:', uploadError);
-                    console.error('Error details:', {
-                        message: uploadError.message,
-                        statusCode: uploadError.statusCode,
-                        error: uploadError.error
-                    });
-                    
-                    // Provide a user-friendly error message based on the error type
-                    if (uploadError.statusCode === 403) {
-                        throw new Error('Permission denied when uploading image. Your account may need approval first.');
-                    } else {
-                        throw uploadError;
-                    }
-                }
-                
-                console.log('Profile image uploaded successfully:', uploadData);
-                
-                // Get public URL - try using createSignedUrl instead since we're having issues with getPublicUrl
                 try {
-                    // Only use signed URLs for authenticated-only access
-                    // This ensures the images are only accessible to logged-in users
-                    const { data: signedData, error: signedError } = await supabase.storage
+                    // Attempt upload with detailed error handling
+                    status.update("Uploading image to server...");
+                    
+                    const uploadStartTime = Date.now();
+                    const { data: uploadData, error: uploadError } = await supabase.storage
                         .from('prayer-diary')
-                        .createSignedUrl(filePath, 86400); // 24-hour expiry - balance between security and convenience
+                        .upload(filePath, imageToUpload, {
+                            cacheControl: 'no-cache',
+                            upsert: true
+                        });
+                    const uploadDuration = Date.now() - uploadStartTime;
                     
-                    if (signedError) {
-                        console.error('Error creating signed URL:', signedError);
-                        throw signedError;
+                    console.log(`⏱️ Upload took ${uploadDuration}ms`);
+                        
+                    if (uploadError) {
+                        console.error('❌ Profile image upload error:', uploadError);
+                        console.error('Error details:', {
+                            message: uploadError.message,
+                            statusCode: uploadError.statusCode,
+                            error: uploadError.error
+                        });
+                        
+                        status.update("Upload failed! See console for details.");
+                        
+                        // Provide a user-friendly error message based on the error type
+                        if (uploadError.statusCode === 403) {
+                            throw new Error('Permission denied when uploading image. Your account may need approval first.');
+                        } else {
+                            throw uploadError;
+                        }
                     }
                     
-                    profileImageUrl = signedData.signedUrl;
-                    console.log('Using signed URL (24-hour validity):', profileImageUrl);
+                    console.log('✅ Profile image uploaded successfully:', uploadData);
+                    status.update("Upload complete! Generating secure URL...");
                     
-                    // Immediately test if this URL works
-                    const testImg = new Image();
-                    testImg.onload = function() {
-                        console.log('✅ Upload image URL works immediately:', profileImageUrl);
-                        // Immediately update all profile images in the UI with working URL
-                        updateAllProfileImages(profileImageUrl);
-                    };
-                    testImg.onerror = function() {
-                        console.log('❌ Upload image URL failed immediate test, trying cleaned version');
-                        // Try without query parameters
-                        if (profileImageUrl.includes('?')) {
-                            const cleanUrl = profileImageUrl.split('?')[0];
-                            updateAllProfileImages(cleanUrl);
+                    // Get public URL - try using createSignedUrl instead since we're having issues with getPublicUrl
+                    try {
+                        // Only use signed URLs for authenticated-only access
+                        // This ensures the images are only accessible to logged-in users
+                        const { data: signedData, error: signedError } = await supabase.storage
+                            .from('prayer-diary')
+                            .createSignedUrl(filePath, 86400); // 24-hour expiry - balance between security and convenience
+                        
+                        if (signedError) {
+                            console.error('❌ Error creating signed URL:', signedError);
+                            status.update("Error creating signed URL. Trying alternate method...");
+                            throw signedError;
                         }
-                    };
-                    testImg.src = profileImageUrl;
+                        
+                        profileImageUrl = signedData.signedUrl;
+                        console.log('✅ Using signed URL (24-hour validity):', profileImageUrl);
+                        status.update("URL generated successfully, continuing...");
+                        
+                        // Immediately test if this URL works
+                        const testImg = new Image();
+                        testImg.onload = function() {
+                            console.log('✅ Upload image URL works immediately:', profileImageUrl);
+                            // Immediately update all profile images in the UI with working URL
+                            updateAllProfileImages(profileImageUrl);
+                        };
+                        testImg.onerror = function() {
+                            console.log('❌ Upload image URL failed immediate test, trying cleaned version');
+                            // Try without query parameters
+                            if (profileImageUrl.includes('?')) {
+                                const cleanUrl = profileImageUrl.split('?')[0];
+                                updateAllProfileImages(cleanUrl);
+                            }
+                        };
+                        testImg.src = profileImageUrl;
+                        
+                    } catch (urlError) {
+                        console.error('❌ Error getting URLs:', urlError);
+                        
+                        // Last resort - manually construct URL
+                        profileImageUrl = `${supabase.storageUrl}/object/public/prayer-diary/${filePath}`;
+                        console.log('ℹ️ Using manually constructed URL (last resort):', profileImageUrl);
+                        status.update("Using fallback URL method...");
+                    }
                     
-                } catch (urlError) {
-                    console.error('Error getting URLs:', urlError);
+                    // Test the URL before using it
+                    try {
+                        status.update("Testing image URL...");
+                        const testResult = await fetch(profileImageUrl, { method: 'HEAD' });
+                        console.log('🧪 URL test result:', testResult.status, testResult.ok ? '✅' : '❌');
+                    } catch (urlTestError) {
+                        console.error('❌ Error testing URL:', urlTestError);
+                    }
+                } catch (uploadErr) {
+                    console.error('❌ Error in image upload process:', uploadErr);
+                    status.update("Upload failed: " + uploadErr.message);
                     
-                    // Last resort - manually construct URL
-                    profileImageUrl = `${supabase.storageUrl}/object/public/prayer-diary/${filePath}`;
-                    console.log('Using manually constructed URL (last resort):', profileImageUrl);
-                }
-                
-                // Test the URL before using it
-                try {
-                    const testResult = await fetch(profileImageUrl, { method: 'HEAD' });
-                    console.log('URL test result:', testResult.status, testResult.ok);
-                } catch (urlTestError) {
-                    console.error('Error testing URL:', urlTestError);
+                    // Continue with profile update even if image upload fails
+                    showNotification('Warning', `Profile saved, but image upload failed: ${uploadErr.message}`);
+                } finally {
+                    // Remove status indicator
+                    status.remove();
                 }
             } catch (uploadErr) {
-                console.error('Error in image upload process:', uploadErr);
+                console.error('❌ Error in image upload process:', uploadErr);
                 // Continue with profile update even if image upload fails
                 showNotification('Warning', `Profile saved, but image upload failed: ${uploadErr.message}`);
             }
@@ -759,6 +971,8 @@ async function completeProfileSave(data) {
         
         // Determine if GDPR was accepted in this save
         const gdprAccepted = data.gdprAccepted === true ? true : userProfile.gdpr_accepted || false;
+        
+        console.log('📝 Saving profile data to database...');
         
         // Update the profile
         const { data: updateData, error } = await supabase
@@ -778,9 +992,12 @@ async function completeProfileSave(data) {
             })
             .eq('id', getUserId());
             
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Database update error:', error);
+            throw error;
+        }
         
-        console.log('Profile updated successfully and marked as set');
+        console.log('✅ Profile updated successfully and marked as set');
         
         // Refresh user profile
         await fetchUserProfile();
@@ -788,10 +1005,11 @@ async function completeProfileSave(data) {
         showNotification('Success', 'Profile saved successfully!');
         
     } catch (error) {
-        console.error('Error saving profile:', error);
+        console.error('❌ Error saving profile:', error);
         showNotification('Error', `Failed to save profile: ${error.message}`);
     } finally {
         data.submitBtn.textContent = data.originalText;
         data.submitBtn.disabled = false;
+        console.log('🏁 Profile save process completed');
     }
 }
