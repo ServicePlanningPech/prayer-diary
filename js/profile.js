@@ -29,64 +29,11 @@ async function loadUserProfile() {
             "profile_image_url": userProfile.profile_image_url
         });
         
-        // Initialize profile image properly with a signed URL
+        // Simply use the stored profile image URL directly - no regeneration needed
         if (userProfile.profile_image_url) {
-            // Start with placeholder while we generate the signed URL
-            const previewImage = document.getElementById('preview-profile-image');
-            if (previewImage) {
-                previewImage.src = 'img/placeholder-profile.png';
-            }
-            
-            // Extract the path from the stored profile_image_url
-            let imagePath = '';
-            const originalUrl = userProfile.profile_image_url;
-            
-            if (originalUrl.includes('/storage/v1/object/public/')) {
-                // It's a public URL format - extract the path
-                const pathStart = originalUrl.indexOf('/prayer-diary/');
-                if (pathStart > -1) {
-                    imagePath = originalUrl.substring(pathStart + '/prayer-diary/'.length);
-                    // Remove any query params
-                    if (imagePath.includes('?')) {
-                        imagePath = imagePath.split('?')[0];
-                    }
-                }
-            } else if (originalUrl.includes('/storage/v1/object/sign/')) {
-                // It's already a signed URL - extract the path
-                const match = originalUrl.match(/\/prayer-diary\/([^?]+)/);
-                if (match && match[1]) {
-                    imagePath = match[1];
-                }
-            } else {
-                // Try to extract from any URL format
-                const match = originalUrl.match(/\/prayer-diary\/([^?]+)/);
-                if (match && match[1]) {
-                    imagePath = match[1];
-                }
-            }
-            
-            console.log("Extracted image path:", imagePath);
-            
-            if (imagePath) {
-                try {
-                    const { data, error } = await supabase.storage
-                        .from('prayer-diary')
-                        .createSignedUrl(imagePath, 630720000); // Dont expire (at least not for 20 years
-                    
-                    if (error) {
-                        console.error('Error creating signed URL for profile image:', error);
-                    } else {
-                        console.log("Setting profile image to signed URL:", data.signedUrl);
-                        
-                        // Update all profile images with the signed URL
-                        updateAllProfileImages(data.signedUrl);
-                    }
-                } catch (e) {
-                    console.error('Exception generating signed URL:', e);
-                }
-            } else {
-                console.warn('Could not extract image path from profile URL:', originalUrl);
-            }
+            // Update all profile images with the stored URL
+            console.log("Using stored profile image URL:", userProfile.profile_image_url);
+            updateAllProfileImages(userProfile.profile_image_url);
         }
         
         // Get the name from the most reliable source
@@ -150,25 +97,6 @@ async function loadUserProfile() {
             
             // Add debugging for images
             addImageDebugHandlers();
-            
-            // Log profile image URL for debugging
-            console.log('Profile image URL:', userProfile.profile_image_url);
-            
-            // Skip image validation and directly use the signed URL
-            if (userProfile.profile_image_url) {
-                console.log('Using signed URL directly for profile image');
-                
-                // Directly use the URL we got from createSignedUrl earlier
-                // This is the same approach used in admin.js that works reliably
-                if (data && data.signedUrl) {
-                    console.log('Using verified signed URL for profile image');
-                    updateAllProfileImages(data.signedUrl);
-                } else if (userProfile.profile_image_url) {
-                    // Fallback to the original URL if we don't have a signed URL
-                    console.log('Using original profile URL');
-                    updateAllProfileImages(userProfile.profile_image_url);
-                }
-            }
         }, 100);
         
         // Update approval status message
@@ -479,17 +407,8 @@ function updateAllProfileImages(imageUrl) {
             console.log('Updating image element:', img.id);
             img.src = imageUrl;
             img.style.border = ''; // Clear any error borders
-            
-            // Force browser to reload the image
-            img.setAttribute('data-timestamp', Date.now());
         }
     });
-    
-    // Also store this URL for future use
-    if (userProfile && imageUrl !== 'img/placeholder-profile.png') {
-        // Update the working URL in memory
-        userProfile._workingImageUrl = imageUrl;
-    }
 }
 
 // Update the profile preview card
@@ -835,35 +754,6 @@ async function completeProfileSave(data) {
                     resized: resizedSuccessfully
                 });
                 
-                // Detailed logging for debugging
-                console.log('👤 Current user:', {
-                    id: currentUser.id,
-                    email: currentUser.email
-                });
-                
-                // Check if we have token access
-                try {
-                    const { data: sessionData } = await supabase.auth.getSession();
-                    console.log('🔐 Auth session available:', !!sessionData.session);
-                    // Don't log the actual token for security
-                } catch (sessionError) {
-                    console.error('❌ Error checking auth session:', sessionError);
-                }
-                
-                // First check if bucket exists and is accessible
-                try {
-                    status.update("Checking storage access...");
-                    const { data: bucketData, error: bucketError } = await supabase.storage
-                        .getBucket('prayer-diary');
-                    
-                    console.log('📦 Bucket check result:', bucketError ? '❌ Error' : '✅ Success');
-                    if (bucketError) {
-                        console.error('Details:', bucketError);
-                    }
-                } catch (bucketCheckError) {
-                    console.error('❌ Error checking bucket:', bucketCheckError);
-                }
-                
                 try {
                     // Attempt upload with detailed error handling
                     status.update("Uploading image to server...");
@@ -881,76 +771,36 @@ async function completeProfileSave(data) {
                         
                     if (uploadError) {
                         console.error('❌ Profile image upload error:', uploadError);
-                        console.error('Error details:', {
-                            message: uploadError.message,
-                            statusCode: uploadError.statusCode,
-                            error: uploadError.error
-                        });
-                        
                         status.update("Upload failed! See console for details.");
-                        
-                        // Provide a user-friendly error message based on the error type
-                        if (uploadError.statusCode === 403) {
-                            throw new Error('Permission denied when uploading image. Your account may need approval first.');
-                        } else {
-                            throw uploadError;
-                        }
+                        throw uploadError;
                     }
                     
                     console.log('✅ Profile image uploaded successfully:', uploadData);
-                    status.update("Upload complete! Generating secure URL...");
+                    status.update("Upload complete! Generating permanent URL...");
                     
-                    // Get public URL - try using createSignedUrl instead since we're having issues with getPublicUrl
+                    // Generate a permanent signed URL with 20-year expiry
                     try {
-                        // Only use signed URLs for authenticated-only access
-                        // This ensures the images are only accessible to logged-in users
                         const { data: signedData, error: signedError } = await supabase.storage
                             .from('prayer-diary')
                             .createSignedUrl(filePath, 630720000); // 20 year expiry
                         
                         if (signedError) {
                             console.error('❌ Error creating signed URL:', signedError);
-                            status.update("Error creating signed URL. Trying alternate method...");
+                            status.update("Error creating signed URL.");
                             throw signedError;
                         }
                         
+                        // Store this final URL - this will be the permanent link used everywhere
                         profileImageUrl = signedData.signedUrl;
-                        console.log('✅ Using signed URL (24-hour validity):', profileImageUrl);
-                        status.update("URL generated successfully, continuing...");
+                        console.log('✅ Generated permanent signed URL with long expiry:', profileImageUrl);
+                        status.update("URL generated successfully!");
                         
-                        // Immediately test if this URL works
-                        const testImg = new Image();
-                        testImg.onload = function() {
-                            console.log('✅ Upload image URL works immediately:', profileImageUrl);
-                            // Immediately update all profile images in the UI with working URL
-                            updateAllProfileImages(profileImageUrl);
-                        };
-                        testImg.onerror = function() {
-                            console.log('❌ Upload image URL failed immediate test, trying cleaned version');
-                            // Try without query parameters
-                            if (profileImageUrl.includes('?')) {
-                                const cleanUrl = profileImageUrl.split('?')[0];
-                                updateAllProfileImages(cleanUrl);
-                            }
-                        };
-                        testImg.src = profileImageUrl;
+                        // Update UI with the new URL
+                        updateAllProfileImages(profileImageUrl);
                         
                     } catch (urlError) {
-                        console.error('❌ Error getting URLs:', urlError);
-                        
-                        // Last resort - manually construct URL
-                        profileImageUrl = `${supabase.storageUrl}/object/public/prayer-diary/${filePath}`;
-                        console.log('ℹ️ Using manually constructed URL (last resort):', profileImageUrl);
-                        status.update("Using fallback URL method...");
-                    }
-                    
-                    // Test the URL before using it
-                    try {
-                        status.update("Testing image URL...");
-                        const testResult = await fetch(profileImageUrl, { method: 'HEAD' });
-                        console.log('🧪 URL test result:', testResult.status, testResult.ok ? '✅' : '❌');
-                    } catch (urlTestError) {
-                        console.error('❌ Error testing URL:', urlTestError);
+                        console.error('❌ Error generating signed URL:', urlError);
+                        throw new Error('Failed to generate image URL. Please try again.');
                     }
                 } catch (uploadErr) {
                     console.error('❌ Error in image upload process:', uploadErr);

@@ -3,45 +3,11 @@
 // Global state variable to track approval operations
 let isApprovalInProgress = false;
 
-// Helper function to generate signed URLs for profile images
-async function getSignedProfileImageUrl(imagePath, expirySeconds = 630720000) {
+// Helper function to simply return the stored URL - no regeneration needed
+async function getSignedProfileImageUrl(imagePath) {
     if (!imagePath) return null;
-    
-    // Extract just the path part if it's a full URL
-    let path = imagePath;
-    
-    try {
-        // Handle different URL formats
-        if (imagePath.includes('/storage/v1/object/')) {
-            const match = imagePath.match(/\/prayer-diary\/([^?]+)/);
-            if (match && match[1]) {
-                path = match[1];
-            } else {
-                console.warn('Could not extract path from URL:', imagePath);
-                return null;
-            }
-        } else if (imagePath.startsWith('profiles/')) {
-            // Path is already in correct format
-            path = imagePath;
-        } else if (!imagePath.includes('/')) {
-            // Just a filename, assume it's in profiles folder
-            path = `profiles/${imagePath}`;
-        }
-        
-        const { data, error } = await supabase.storage
-            .from('prayer-diary')
-            .createSignedUrl(path, expirySeconds);
-        
-        if (error) {
-            console.error('Error creating signed URL:', error);
-            return null;
-        }
-        
-        return data.signedUrl;
-    } catch (e) {
-        console.error('Exception generating signed URL:', e, 'for path:', path);
-        return null;
-    }
+    console.log("Using stored profile image URL directly:", imagePath);
+    return imagePath;
 }
 
 // Load users for admin view - SIMPLIFIED VERSION
@@ -100,19 +66,12 @@ async function loadUsers() {
         
         console.log(`Found ${pendingUsers.length} pending users and ${approvedUsers.length} approved users`);
         
-        // Generate signed URLs for profile images
-        console.log('Generating signed URLs for profile images...');
+        // No need to regenerate signed URLs - just use the stored URLs directly
+        console.log('Using profile image URLs as stored in database');
         for (const user of [...pendingUsers, ...approvedUsers]) {
             if (user.profile_image_url) {
-                try {
-                    const signedUrl = await getSignedProfileImageUrl(user.profile_image_url);
-                    if (signedUrl) {
-                        user.signed_image_url = signedUrl;
-                        console.log(`Generated signed URL for user ${user.full_name}`);
-                    }
-                } catch (error) {
-                    console.warn(`Failed to generate signed URL for user ${user.full_name}:`, error);
-                }
+                // Simply assign the stored URL (already a long-expiry signed URL)
+                user.signed_image_url = user.profile_image_url;
             }
         }
         
