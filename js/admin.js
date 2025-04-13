@@ -4,7 +4,7 @@
 let isApprovalInProgress = false;
 
 // Helper function to generate signed URLs for profile images
-async function getSignedProfileImageUrl(imagePath, expirySeconds = 3600) {
+async function getSignedProfileImageUrl(imagePath, expirySeconds = 630720000) {
     if (!imagePath) return null;
     
     // Extract just the path part if it's a full URL

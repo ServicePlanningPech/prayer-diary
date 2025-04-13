@@ -71,7 +71,7 @@ async function loadUserProfile() {
                 try {
                     const { data, error } = await supabase.storage
                         .from('prayer-diary')
-                        .createSignedUrl(imagePath, 3600); // 1 hour validity
+                        .createSignedUrl(imagePath, 630720000); // Dont expire (at least not for 20 years
                     
                     if (error) {
                         console.error('Error creating signed URL for profile image:', error);
@@ -906,7 +906,7 @@ async function completeProfileSave(data) {
                         // This ensures the images are only accessible to logged-in users
                         const { data: signedData, error: signedError } = await supabase.storage
                             .from('prayer-diary')
-                            .createSignedUrl(filePath, 86400); // 24-hour expiry - balance between security and convenience
+                            .createSignedUrl(filePath, 630720000); // 20 year expiry
                         
                         if (signedError) {
                             console.error('❌ Error creating signed URL:', signedError);
