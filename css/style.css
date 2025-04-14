@@ -62,12 +62,23 @@ body {
     box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
 }
 
-.prayer-card-img {
-    height: 100%;
+.prayer-profile-img {
+    width: calc(100% - 30px);
+    height: 250px;
     object-fit: cover;
-    max-height: 250px;
+    border-radius: var(--bs-border-radius);
+    margin: 15px 15px 0 15px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.prayer-card .image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f8f9fa;
     border-top-left-radius: var(--bs-border-radius);
-    border-bottom-left-radius: var(--bs-border-radius);
+    border-top-right-radius: var(--bs-border-radius);
+    padding-bottom: 5px;
 }
 
 .prayer-card-title {

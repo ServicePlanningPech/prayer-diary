@@ -713,18 +713,14 @@ function createPrayerCard(entry) {
     return `
     <div class="col mb-4">
         <div class="card prayer-card h-100 shadow-sm">
-            <div class="row g-0">
-                <div class="col-md-4">
-                    <img src="${entry.image_url || 'img/placeholder-profile.png'}" 
-                         class="img-fluid rounded prayer-card-img" 
-                         alt="${entry.name}">
-                </div>
-                <div class="col-md-8">
-                    <div class="card-body d-flex flex-column">
-                        <h4 class="card-title prayer-card-title fw-bold">${entry.name}</h4>
-                        ${prayerPointsContent}
-                    </div>
-                </div>
+            <div class="image-container">
+                <img src="${entry.image_url || 'img/placeholder-profile.png'}" 
+                     class="card-img-top prayer-profile-img" 
+                     alt="${entry.name}">
+            </div>
+            <div class="card-body d-flex flex-column">
+                <h4 class="card-title prayer-card-title fw-bold">${entry.name}</h4>
+                ${prayerPointsContent}
             </div>
             <div class="card-footer bg-transparent border-top border-light pt-0">
                 <!-- Empty footer for visual separation -->
