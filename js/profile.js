@@ -451,6 +451,249 @@ function createImageProcessingStatus() {
     };
 }
 
+// Function to reliably upload a profile image from any device
+async function uploadProfileImage(imageFile, userId, oldImageUrl) {
+    // Create a status display for user feedback
+    const status = createImageProcessingStatus();
+    status.update("Preparing image...");
+    
+    try {
+        // Detect iOS device
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isIOS) {
+            console.log("iOS device detected - using optimized upload flow");
+            status.update("iOS device detected - optimizing...");
+        }
+        
+        // First, try to delete the old image if it exists, but with proper timeout handling
+        if (oldImageUrl) {
+            status.update("Checking old image...");
+            
+            try {
+                // Extract the filepath from the URL using a more reliable approach
+                console.log('🗑️ Attempting to delete old profile image');
+                let oldFilePath = '';
+                
+                // First check if it's a signed URL (contains 'sign' in the path)
+                if (oldImageUrl.includes('/sign/')) {
+                    // Extract path between '/sign/prayer-diary/' and the query string
+                    const pathMatch = oldImageUrl.match(/\/sign\/prayer-diary\/([^?]+)/);
+                    if (pathMatch && pathMatch[1]) {
+                        oldFilePath = pathMatch[1];
+                    }
+                } else if (oldImageUrl.includes('/public/prayer-diary/')) {
+                    // Extract path between '/public/prayer-diary/' and the end or query string
+                    const pathMatch = oldImageUrl.match(/\/public\/prayer-diary\/([^?]+)/);
+                    if (pathMatch && pathMatch[1]) {
+                        oldFilePath = pathMatch[1];
+                    }
+                }
+                
+                // If we found a valid path, delete the file with timeout protection
+                if (oldFilePath) {
+                    console.log(`🗑️ Deleting old profile image: ${oldFilePath}`);
+                    
+                    // Set a 3-second timeout for deletion - if it takes longer, continue anyway
+                    const deletePromise = supabase.storage
+                        .from('prayer-diary')
+                        .remove([oldFilePath]);
+                        
+                    const deleteResult = await Promise.race([
+                        deletePromise,
+                        new Promise(resolve => setTimeout(() => {
+                            console.warn('⚠️ Old image deletion timed out, continuing with upload');
+                            resolve({ error: { message: 'Deletion timed out' }});
+                        }, 3000)) // 3 second timeout
+                    ]);
+                    
+                    if (deleteResult.error) {
+                        console.warn('⚠️ Could not delete old profile image:', deleteResult.error);
+                        // Continue with upload even if delete fails
+                    } else {
+                        console.log('✅ Old profile image deleted successfully');
+                    }
+                } else {
+                    console.warn('⚠️ Could not parse old image URL for deletion:', oldImageUrl);
+                }
+            } catch (deleteError) {
+                console.warn('⚠️ Error deleting old profile image:', deleteError);
+                // Continue with upload even if delete fails
+            }
+        }
+        
+        // Step 1: Process the image to ensure it's in a web-friendly format
+        let processedImage = imageFile;
+        const targetSize = 800; // Target dimension for the largest side
+        
+        try {
+            status.update("Processing image...");
+            
+            // Create a promise to load and resize the image
+            const processedImageBlob = await new Promise((resolve, reject) => {
+                const img = new Image();
+                
+                // Set up image load handlers
+                img.onload = () => {
+                    try {
+                        // Determine dimensions while maintaining aspect ratio
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > targetSize || height > targetSize) {
+                            if (width > height) {
+                                height = Math.round(height * (targetSize / width));
+                                width = targetSize;
+                            } else {
+                                width = Math.round(width * (targetSize / height));
+                                height = targetSize;
+                            }
+                        }
+                        
+                        // Create a canvas to resize the image
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Convert to a more compatible format (JPEG)
+                        canvas.toBlob(
+                            blob => {
+                                // Clean up the object URL
+                                URL.revokeObjectURL(img.src);
+                                
+                                if (blob) {
+                                    resolve(blob);
+                                } else {
+                                    reject(new Error("Failed to create image blob"));
+                                }
+                            },
+                            'image/jpeg',
+                            0.85 // Good quality but smaller file size
+                        );
+                    } catch (err) {
+                        URL.revokeObjectURL(img.src);
+                        reject(err);
+                    }
+                };
+                
+                img.onerror = (e) => {
+                    URL.revokeObjectURL(img.src);
+                    reject(new Error("Failed to load image"));
+                };
+                
+                // Load the image using an object URL
+                const objectUrl = URL.createObjectURL(imageFile);
+                img.src = objectUrl;
+                
+                // Set a timeout to prevent hanging
+                setTimeout(() => {
+                    URL.revokeObjectURL(img.src);
+                    reject(new Error("Image processing timed out"));
+                }, 20000); // 20 second timeout
+            });
+            
+            // Create a File object from the blob
+            processedImage = new File(
+                [processedImageBlob],
+                `${userId}_${Date.now()}.jpg`,
+                { type: 'image/jpeg', lastModified: Date.now() }
+            );
+            
+            console.log(`✅ Image processed successfully: ${Math.round(processedImageBlob.size/1024)}KB`);
+            status.update("Image processed successfully!");
+            
+        } catch (err) {
+            console.error("❌ Image processing failed:", err);
+            status.update("Using original image format...");
+            // Continue with the original image
+        }
+        
+        // Step 2: Define the path for storage
+        const fileName = `${userId}_${Date.now()}.jpg`;
+        const filePath = `profiles/${fileName}`;
+        
+        // Step 3: Upload the image with robust error handling
+        status.update("Uploading image...");
+        
+        let uploadAttempts = 0;
+        const maxAttempts = isIOS ? 5 : 3; // More retries for iOS
+        
+        while (uploadAttempts < maxAttempts) {
+            uploadAttempts++;
+            status.update(`Uploading (attempt ${uploadAttempts}/${maxAttempts})...`);
+            
+            try {
+                // Try the upload with a timeout
+                const { data, error } = await Promise.race([
+                    supabase.storage
+                        .from('prayer-diary')
+                        .upload(filePath, processedImage, {
+                            cacheControl: 'no-cache',
+                            upsert: true
+                        }),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Upload timed out')), 30000)
+                    )
+                ]);
+                
+                if (error) {
+                    console.error(`Upload attempt ${uploadAttempts} failed:`, error);
+                    
+                    if (uploadAttempts < maxAttempts) {
+                        // Wait before retry with exponential backoff
+                        const delay = Math.min(2000 * Math.pow(1.5, uploadAttempts - 1), 10000);
+                        status.update(`Retry in ${Math.ceil(delay/1000)}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        throw error; // Last attempt failed
+                    }
+                } else {
+                    // Upload succeeded
+                    console.log('Image uploaded successfully:', data);
+                    
+                    // Step 4: Generate a public URL for the image
+                    status.update("Generating image URL...");
+                    
+                    const { data: urlData, error: urlError } = await supabase.storage
+                        .from('prayer-diary')
+                        .createSignedUrl(filePath, 157680000); // 5-year expiry
+                    
+                    if (urlError) {
+                        throw urlError;
+                    }
+                    
+                    status.update("Upload complete!");
+                    console.log('Image URL generated successfully');
+                    
+                    // Return the URL
+                    return urlData.signedUrl;
+                }
+            } catch (error) {
+                console.error(`Upload attempt ${uploadAttempts} exception:`, error);
+                
+                if (uploadAttempts < maxAttempts) {
+                    // Wait before retry
+                    const delay = Math.min(2000 * Math.pow(2, uploadAttempts - 1), 10000);
+                    status.update(`Retry in ${Math.ceil(delay/1000)}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } else {
+                    throw error; // Rethrow after all attempts
+                }
+            }
+        }
+        
+        throw new Error("All upload attempts failed");
+        
+    } catch (error) {
+        console.error('Profile image upload failed:', error);
+        throw error;
+    } finally {
+        // Always remove the status element
+        status.remove();
+    }
+}
+
 // Save the user's profile
 async function saveProfile(e) {
     e.preventDefault();
@@ -617,325 +860,34 @@ async function completeProfileSave(data) {
     try {
         console.log('🔄 Starting profile save process');
         
-        // Handle profile image upload
+        // Get current profile image URL (fallback)
         let profileImageUrl = userProfile.profile_image_url;
         const profileImage = document.getElementById('profile-image').files[0];
         
+        // Only process image upload if a new image was selected
         if (profileImage) {
             try {
                 console.log('🖼️ Profile image detected, starting upload process');
                 console.log(`📊 Image: ${profileImage.name}, ${profileImage.size} bytes, type: ${profileImage.type}`);
                 
-                // Delete the old profile image if it exists
-                if (profileImageUrl) {
-                    try {
-                        console.log('🗑️ Attempting to delete old profile image');
-                        
-                        // Extract the filepath from the URL
-                        // The URL format is typically like: https://xxx.supabase.co/storage/v1/object/public/prayer-diary/profiles/filename.jpg
-                        // Or with a signed URL: https://xxx.supabase.co/storage/v1/object/sign/prayer-diary/profiles/filename.jpg?token=xxx
-                        let oldFilePath = '';
-                        
-                        // First check if it's a signed URL (contains 'sign' in the path)
-                        if (profileImageUrl.includes('/sign/')) {
-                            // Extract path between '/sign/prayer-diary/' and the query string
-                            const pathMatch = profileImageUrl.match(/\/sign\/prayer-diary\/([^?]+)/);
-                            if (pathMatch && pathMatch[1]) {
-                                oldFilePath = pathMatch[1];
-                            }
-                        } else if (profileImageUrl.includes('/public/prayer-diary/')) {
-                            // Extract path between '/public/prayer-diary/' and the end or query string
-                            const pathMatch = profileImageUrl.match(/\/public\/prayer-diary\/([^?]+)/);
-                            if (pathMatch && pathMatch[1]) {
-                                oldFilePath = pathMatch[1];
-                            }
-                        }
-                        
-                        // If we found a valid path, delete the file
-                        if (oldFilePath) {
-                            console.log(`🗑️ Deleting old profile image: ${oldFilePath}`);
-                            const { error: deleteError } = await supabase.storage
-                                .from('prayer-diary')
-                                .remove([oldFilePath]);
-                                
-                            if (deleteError) {
-                                console.warn('⚠️ Could not delete old profile image:', deleteError);
-                                // Continue with upload even if delete fails
-                            } else {
-                                console.log('✅ Old profile image deleted successfully');
-                            }
-                        } else {
-                            console.warn('⚠️ Could not parse old image URL for deletion:', profileImageUrl);
-                        }
-                    } catch (deleteError) {
-                        console.warn('⚠️ Error deleting old profile image:', deleteError);
-                        // Continue with upload even if delete fails
-                    }
-                }
+                // Use our robust upload function and pass the old image URL for deletion
+                profileImageUrl = await uploadProfileImage(profileImage, getUserId(), userProfile.profile_image_url);
                 
-                // Create an indicator for long-running operations
-                const status = createImageProcessingStatus();
-                status.update("Preparing image for upload...");
+                // Update UI with the new image URL
+                updateAllProfileImages(profileImageUrl);
                 
-                // Check for large iOS images that might need special handling
-                const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-                const needsResizing = profileImage.size > 1000000; // > 1MB
-                
-                let imageToUpload = profileImage;
-                let resizedSuccessfully = false;
-                
-                // For iOS or large images, try to resize to reduce issues
-                if (isIOSDevice || needsResizing) {
-                    status.update("Processing large image... (iOS resizing)");
-                    console.log(`⚠️ Large image detected (${Math.round(profileImage.size/1024)} KB), attempting to resize`);
-                    
-                    try {
-                        // Use a more robust approach for image loading and resizing
-                        status.update("Loading image for resizing...");
-                        
-                        // Create an offscreen canvas to resize the image
-                        const img = new Image();
-                        
-                        // Create a promise with timeout to handle the image loading
-                        const imageLoaded = new Promise((resolve, reject) => {
-                            // Set a timeout to catch hanging loads
-                            const timeout = setTimeout(() => {
-                                reject(new Error("Image load timeout - taking too long"));
-                            }, 15000); // 15 second timeout
-                            
-                            img.onload = () => {
-                                clearTimeout(timeout);
-                                resolve();
-                            };
-                            
-                            img.onerror = (e) => {
-                                clearTimeout(timeout);
-                                console.error("Image load error:", e);
-                                reject(new Error("Failed to load image for resizing"));
-                            };
-                            
-                            // Try to read the image using a safe approach
-                            try {
-                                const objectUrl = URL.createObjectURL(profileImage);
-                                img.src = objectUrl;
-                                console.log("Created object URL for image:", objectUrl);
-                            } catch (urlError) {
-                                clearTimeout(timeout);
-                                console.error("Error creating object URL:", urlError);
-                                reject(urlError);
-                            }
-                        });
-                        
-                        try {
-                            // Wait for image to load with timeout protection
-                            await Promise.race([
-                                imageLoaded,
-                                new Promise((_, reject) => 
-                                    setTimeout(() => reject(new Error("Image load timed out")), 20000)
-                                )
-                            ]);
-                            
-                            status.update("Resizing image...");
-                            console.log(`Image loaded successfully. Original dimensions: ${img.width}x${img.height}`);
-                            
-                            // Calculate new dimensions - max 1200px width/height
-                            const MAX_SIZE = 1200;
-                            let width = img.width;
-                            let height = img.height;
-                            
-                            if (width > MAX_SIZE || height > MAX_SIZE) {
-                                if (width > height) {
-                                    height = Math.round(height * (MAX_SIZE / width));
-                                    width = MAX_SIZE;
-                                } else {
-                                    width = Math.round(width * (MAX_SIZE / height));
-                                    height = MAX_SIZE;
-                                }
-                            }
-                            
-                            // Create canvas for resizing
-                            const canvas = document.createElement('canvas');
-                            canvas.width = width;
-                            canvas.height = height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, width, height);
-                            
-                            status.update("Converting image...");
-                            
-                            // Convert to a reasonable quality JPEG
-                            const resizedBlob = await new Promise(resolve => {
-                                canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
-                            });
-                            
-                            if (resizedBlob) {
-                                console.log(`✅ Image resized successfully: ${Math.round(resizedBlob.size/1024)} KB (was ${Math.round(profileImage.size/1024)} KB)`);
-                                
-                                // Create a File object from the Blob
-                                imageToUpload = new File([resizedBlob], profileImage.name.replace(/\.[^.]+$/, '.jpg'), {
-                                    type: 'image/jpeg',
-                                    lastModified: Date.now()
-                                });
-                                
-                                resizedSuccessfully = true;
-                            } else {
-                                console.error('❌ Resizing failed: Could not create blob');
-                            }
-                        } catch (resizeError) {
-                            console.error('❌ Error during image resize:', resizeError);
-                        } finally {
-                            // Clean up object URL
-                            URL.revokeObjectURL(img.src);
-                        }
-                    } catch (err) {
-                        console.error('❌ Exception during image processing:', err);
-                    }
-                }
-                
-                // Update status
-                status.update(resizedSuccessfully ? 
-                    "Image processed, uploading..." :
-                    "Uploading original image...");
-                
-                // Prepare file name and path
-                const fileExt = resizedSuccessfully ? 'jpg' : imageToUpload.name.split('.').pop();
-                const fileName = `${getUserId()}_${Date.now()}.${fileExt}`;
-                const filePath = `profiles/${fileName}`;
-                
-                // Log upload details
-                console.log('📤 Storage upload parameters:', {
-                    userId: getUserId(),
-                    fileName: fileName,
-                    filePath: filePath,
-                    fileSize: imageToUpload.size,
-                    fileType: imageToUpload.type,
-                    resized: resizedSuccessfully
-                });
-                
-                try {
-                    // Attempt upload with retry logic and better error handling
-                    status.update("Uploading image to server...");
-
-                    let uploadAttempts = 0;
-                    const maxAttempts = 3;
-                    let uploadData = null;
-                    let uploadError = null;
-                    let uploadDuration = 0;
-
-                    while (uploadAttempts < maxAttempts) {
-                        uploadAttempts++;
-                        
-                        try {
-                            console.log(`📤 Upload attempt ${uploadAttempts} of ${maxAttempts}...`);
-                            status.update(`Uploading image to server (attempt ${uploadAttempts})...`);
-                            
-                            const uploadStartTime = Date.now();
-                            
-                            // Set a timeout to detect stalled uploads
-                            const uploadPromise = supabase.storage
-                                .from('prayer-diary')
-                                .upload(filePath, imageToUpload, {
-                                    cacheControl: 'no-cache',
-                                    upsert: true
-                                });
-                                
-                            // Race the upload against a timeout
-                            const uploadResult = await Promise.race([
-                                uploadPromise,
-                                new Promise((_, reject) => 
-                                    setTimeout(() => reject(new Error('Upload timeout - server not responding')), 30000)
-                                )
-                            ]);
-                            
-                            uploadData = uploadResult.data;
-                            uploadError = uploadResult.error;
-                            uploadDuration = Date.now() - uploadStartTime;
-                            
-                            console.log(`⏱️ Upload attempt ${uploadAttempts} took ${uploadDuration}ms`);
-                            
-                            if (!uploadError) {
-                                console.log('✅ Profile image uploaded successfully:', uploadData);
-                                status.update("Upload successful! Generating URL...");
-                                break; // Success - exit the retry loop
-                            } else {
-                                console.error(`❌ Upload attempt ${uploadAttempts} failed:`, uploadError);
-                                
-                                if (uploadAttempts < maxAttempts) {
-                                    // Wait before retrying (500ms, then 1500ms, then more if we add more retries)
-                                    const delay = Math.min(500 * Math.pow(3, uploadAttempts - 1), 10000);
-                                    status.update(`Upload failed, retrying in ${delay/1000} seconds...`);
-                                    await new Promise(resolve => setTimeout(resolve, delay));
-                                }
-                            }
-                        } catch (e) {
-                            console.error(`❌ Exception during upload attempt ${uploadAttempts}:`, e);
-                            uploadError = e;
-                            
-                            if (uploadAttempts < maxAttempts) {
-                                // Wait before retrying
-                                const delay = Math.min(500 * Math.pow(2, uploadAttempts - 1), 10000);
-                                status.update(`Upload error, retrying in ${delay/1000} seconds...`);
-                                await new Promise(resolve => setTimeout(resolve, delay));
-                            }
-                        }
-                    }
-
-                    // After all attempts, check if we succeeded
-                    if (uploadError) {
-                        console.error('❌ All upload attempts failed:', uploadError);
-                        status.update("Upload failed after multiple attempts!");
-                        
-                        // Instead of throwing, we'll show a warning and continue with profile update
-                        showNotification('Warning', `Could not upload profile image after ${maxAttempts} attempts. Your profile will still be saved without the new image.`);
-                    } else {
-                        console.log('✅ Profile image uploaded successfully:', uploadData);
-                        status.update("Upload complete! Generating permanent URL...");
-                        
-                        // Generate a permanent signed URL with 20-year expiry
-                        try {
-                            const { data: signedData, error: signedError } = await supabase.storage
-                                .from('prayer-diary')
-                                .createSignedUrl(filePath, 630720000); // 20 year expiry
-                            
-                            if (signedError) {
-                                console.error('❌ Error creating signed URL:', signedError);
-                                status.update("Error creating signed URL.");
-                                throw signedError;
-                            }
-                            
-                            // Store this final URL - this will be the permanent link used everywhere
-                            profileImageUrl = signedData.signedUrl;
-                            console.log('✅ Generated permanent signed URL with long expiry:', profileImageUrl);
-                            status.update("URL generated successfully!");
-                            
-                            // Update UI with the new URL
-                            updateAllProfileImages(profileImageUrl);
-                            
-                        } catch (urlError) {
-                            console.error('❌ Error generating signed URL:', urlError);
-                            throw new Error('Failed to generate image URL. Please try again.');
-                        }
-                    }
-                } catch (uploadErr) {
-                    console.error('❌ Error in image upload process:', uploadErr);
-                    status.update("Upload failed: " + uploadErr.message);
-                    
-                    // Continue with profile update even if image upload fails
-                    showNotification('Warning', `Profile saved, but image upload failed: ${uploadErr.message}`);
-                } finally {
-                    // Remove status indicator
-                    status.remove();
-                }
-            } catch (uploadErr) {
-                console.error('❌ Error in image upload process:', uploadErr);
-                // Continue with profile update even if image upload fails
-                showNotification('Warning', `Profile saved, but image upload failed: ${uploadErr.message}`);
+            } catch (uploadError) {
+                console.error('❌ Error in image upload process:', uploadError);
+                showNotification('Warning', `Profile will be saved without the new image. Error: ${uploadError.message}`);
+                // Keep using the existing image URL if upload failed
             }
         }
         
+        // Save profile data regardless of image upload success
+        console.log('📝 Saving profile data to database...');
+        
         // Determine if GDPR was accepted in this save
         const gdprAccepted = data.gdprAccepted === true ? true : userProfile.gdpr_accepted || false;
-        
-        console.log('📝 Saving profile data to database...');
         
         // Update the profile
         const { data: updateData, error } = await supabase
@@ -945,7 +897,7 @@ async function completeProfileSave(data) {
                 prayer_points: data.prayerPoints,
                 profile_image_url: profileImageUrl,
                 phone_number: data.phoneNumber,
-                whatsapp_number: data.whatsappNumber || data.phoneNumber, // Use phone number as default if WhatsApp not provided
+                whatsapp_number: data.whatsappNumber || data.phoneNumber, 
                 prayer_update_notification_method: data.prayerUpdateNotification,
                 urgent_prayer_notification_method: data.urgentPrayerNotification,
                 notification_push: data.notifyPush,
