@@ -626,6 +626,53 @@ async function completeProfileSave(data) {
                 console.log('🖼️ Profile image detected, starting upload process');
                 console.log(`📊 Image: ${profileImage.name}, ${profileImage.size} bytes, type: ${profileImage.type}`);
                 
+                // Delete the old profile image if it exists
+                if (profileImageUrl) {
+                    try {
+                        console.log('🗑️ Attempting to delete old profile image');
+                        
+                        // Extract the filepath from the URL
+                        // The URL format is typically like: https://xxx.supabase.co/storage/v1/object/public/prayer-diary/profiles/filename.jpg
+                        // Or with a signed URL: https://xxx.supabase.co/storage/v1/object/sign/prayer-diary/profiles/filename.jpg?token=xxx
+                        let oldFilePath = '';
+                        
+                        // First check if it's a signed URL (contains 'sign' in the path)
+                        if (profileImageUrl.includes('/sign/')) {
+                            // Extract path between '/sign/prayer-diary/' and the query string
+                            const pathMatch = profileImageUrl.match(/\/sign\/prayer-diary\/([^?]+)/);
+                            if (pathMatch && pathMatch[1]) {
+                                oldFilePath = pathMatch[1];
+                            }
+                        } else if (profileImageUrl.includes('/public/prayer-diary/')) {
+                            // Extract path between '/public/prayer-diary/' and the end or query string
+                            const pathMatch = profileImageUrl.match(/\/public\/prayer-diary\/([^?]+)/);
+                            if (pathMatch && pathMatch[1]) {
+                                oldFilePath = pathMatch[1];
+                            }
+                        }
+                        
+                        // If we found a valid path, delete the file
+                        if (oldFilePath) {
+                            console.log(`🗑️ Deleting old profile image: ${oldFilePath}`);
+                            const { error: deleteError } = await supabase.storage
+                                .from('prayer-diary')
+                                .remove([oldFilePath]);
+                                
+                            if (deleteError) {
+                                console.warn('⚠️ Could not delete old profile image:', deleteError);
+                                // Continue with upload even if delete fails
+                            } else {
+                                console.log('✅ Old profile image deleted successfully');
+                            }
+                        } else {
+                            console.warn('⚠️ Could not parse old image URL for deletion:', profileImageUrl);
+                        }
+                    } catch (deleteError) {
+                        console.warn('⚠️ Error deleting old profile image:', deleteError);
+                        // Continue with upload even if delete fails
+                    }
+                }
+                
                 // Create an indicator for long-running operations
                 const status = createImageProcessingStatus();
                 status.update("Preparing image for upload...");
