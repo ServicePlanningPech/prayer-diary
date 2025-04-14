@@ -1,8 +1,19 @@
 // User Profile Module
 
+// Flag to prevent multiple simultaneous profile loads
+let profileLoadInProgress = false;
+
 // Load and display the user's profile
 async function loadUserProfile() {
     if (!isLoggedIn()) return;
+    
+    // Prevent multiple simultaneous calls
+    if (profileLoadInProgress) {
+        console.log('Profile load already in progress, skipping duplicate call');
+        return;
+    }
+    
+    profileLoadInProgress = true;
     
     try {
         // Refresh user profile from database
@@ -30,8 +41,6 @@ async function loadUserProfile() {
                         (currentUser.user_metadata ? currentUser.user_metadata.full_name : null) || 
                         currentUser.email || 
                         "Unknown User";
-                        
-        console.log("Setting profile name field to:", userName);
         
         // Explicitly set the value
         const nameField = document.getElementById('profile-name');
@@ -111,6 +120,9 @@ async function loadUserProfile() {
     } catch (error) {
         console.error('Error loading profile:', error);
         showNotification('Error', `Unable to load your profile: ${error.message}`);
+    } finally {
+        // Reset the flag to allow future profile loads
+        profileLoadInProgress = false;
     }
 }
 
@@ -183,7 +195,7 @@ function setupProfileImageButton() {
             fileInput.click();
         });
         
-        console.log('Profile image button setup complete');
+        // Button setup complete
     }
 }
 
@@ -238,7 +250,7 @@ function setupNotificationMethodHandlers() {
     // Setup the profile image button
     setupProfileImageButton();
     
-    console.log('Notification method handlers setup complete');
+    // Notification handlers are now set up
 }
 
 // Helper function to ensure no hidden fields have required attribute
