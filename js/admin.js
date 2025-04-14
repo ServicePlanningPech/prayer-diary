@@ -11,7 +11,17 @@ async function getSignedProfileImageUrl(imagePath) {
 }
 
 // Load users for admin view - SIMPLIFIED VERSION
+// Avoid multiple calls to loadUsers() at the same time
+let loadUsersInProgress = false;
+
 async function loadUsers() {
+    // Prevent multiple simultaneous calls
+    if (loadUsersInProgress) {
+        console.log('loadUsers already in progress, ignoring duplicate call');
+        return;
+    }
+    
+    loadUsersInProgress = true;
     console.log('Starting loadUsers function');
     
     if (!isAdmin()) {
@@ -80,11 +90,19 @@ async function loadUsers() {
             pendingContainer.innerHTML = `
                 <div class="alert alert-info">
                     No pending users awaiting approval.
-                    <button class="btn btn-sm btn-primary float-end" onclick="loadUsers()">
+                    <button class="btn btn-sm btn-primary float-end" id="refresh-users-button">
                         <i class="bi bi-arrow-clockwise"></i> Refresh
                     </button>
                 </div>
             `;
+            
+            // Add event listener to the refresh button
+            setTimeout(() => {
+                const refreshButton = document.getElementById('refresh-users-button');
+                if (refreshButton) {
+                    refreshButton.addEventListener('click', loadUsers);
+                }
+            }, 0);
             
             // Reset the Approve All button when no pending users exist
             const approveAllBtn = document.getElementById('approve-all-users');
@@ -96,7 +114,7 @@ async function loadUsers() {
             let pendingHtml = `
                 <div class="alert alert-primary mb-3">
                     <strong>${pendingUsers.length}</strong> user${pendingUsers.length !== 1 ? 's' : ''} awaiting approval
-                    <button class="btn btn-sm btn-primary float-end" onclick="loadUsers()">
+                    <button class="btn btn-sm btn-primary float-end" id="refresh-users-button">
                         <i class="bi bi-arrow-clockwise"></i> Refresh
                     </button>
                 </div>
@@ -190,17 +208,36 @@ async function loadUsers() {
         pendingContainer.innerHTML = `
             <div class="alert alert-danger">
                 Error loading users: ${error.message}
-                <button class="btn btn-sm btn-primary float-end" onclick="loadUsers()">
+                <button class="btn btn-sm btn-primary float-end" id="refresh-users-error-button">
                     <i class="bi bi-arrow-clockwise"></i> Refresh
                 </button>
             </div>
         `;
+        
+        // Add event listener to the refresh button
+        setTimeout(() => {
+            const refreshButton = document.getElementById('refresh-users-error-button');
+            if (refreshButton) {
+                refreshButton.addEventListener('click', loadUsers);
+            }
+        }, 0);
         
         approvedContainer.innerHTML = `
             <div class="alert alert-danger">
                 Error loading users: ${error.message}
             </div>
         `;
+    } finally {
+        // Attach event listener to the refresh button if it exists
+        setTimeout(() => {
+            const refreshButton = document.getElementById('refresh-users-button');
+            if (refreshButton) {
+                refreshButton.addEventListener('click', loadUsers);
+            }
+        }, 0);
+        
+        // Reset the flag to allow future calls
+        loadUsersInProgress = false;
     }
 }
 
@@ -316,10 +353,12 @@ async function saveUserPermissions() {
         const modal = bootstrap.Modal.getInstance(document.getElementById('edit-user-modal'));
         modal.hide();
         
-        // Reload users
-        loadUsers();
-        
+        // Show success notification - no need to reload users as modal is closing
         showToast('Success', 'User permissions updated successfully.', 'success');
+        
+        // Instead of calling loadUsers() which causes redundancy,
+        // update the UI to reflect changes to the edited user
+        updateUserCardInUI(userId, userRole, approvalState);
         
     } catch (error) {
         console.error('Error saving user permissions:', error);
@@ -356,9 +395,7 @@ async function updateUserApproval(userId, state) {
         // Show success notification
         showToast('Success', `User ${state.toLowerCase()} successfully.`, 'success');
         
-        // Reload users
-        loadUsers();
-        
+        // No need to reload all users, we'll update the UI directly
     } catch (error) {
         console.error('Error updating user approval:', error);
         showToast('Error', `Failed to update user approval: ${error.message}`, 'error');
@@ -424,9 +461,8 @@ async function deleteUser(userId) {
         // Show success notification
         showToast('Success', `User ${userData ? userData.full_name : ''} has been deleted successfully.`, 'success');
         
-        // Reload the users list
-        loadUsers();
-        
+        // No need to reload the entire user list
+        // The user card will be removed via DOM manipulation
     } catch (error) {
         console.error('Error deleting user:', error);
         showToast('Error', `Failed to delete user: ${error.message}`, 'error');
@@ -498,9 +534,7 @@ async function approveAllPendingUsers(pendingUsers) {
         // Reset global state flag
         isApprovalInProgress = false;
         
-        // Reload users list
-        loadUsers();
-        
+        // Instead of reloading users, we'll manually update the UI
     } catch (error) {
         console.error('Error in bulk approval:', error);
         showToast('Error', `Failed to complete bulk approval: ${error.message}`, 'error');
@@ -548,5 +582,129 @@ async function sendApprovalEmail(userId) {
         
     } catch (error) {
         console.error('Error sending approval email:', error);
+    }
+}
+
+// Update a user card in the UI without reloading all users
+function updateUserCardInUI(userId, userRole, approvalState) {
+    try {
+        // Find the user card in the DOM
+        const userCard = document.querySelector(`.user-card [data-id="${userId}"]`).closest('.user-card');
+        
+        if (!userCard) {
+            console.warn('User card not found in the DOM for user ID:', userId);
+            return;
+        }
+        
+        // If the approval state changed to 'Approved' and was previously 'Pending',
+        // move the card from pending to approved container
+        if (approvalState === 'Approved') {
+            const pendingContainer = document.getElementById('pending-users-container');
+            const approvedContainer = document.getElementById('approved-users-container');
+            
+            // Check if the card is currently in the pending container
+            if (pendingContainer.contains(userCard)) {
+                // Remove from pending container
+                userCard.remove();
+                
+                // Update the button in the card to show edit permissions instead of approve
+                const btnContainer = userCard.querySelector('.col-md-auto > div');
+                if (btnContainer) {
+                    btnContainer.innerHTML = `
+                        <button class="btn btn-sm btn-primary edit-user me-1" data-id="${userId}" type="button">
+                            <i class="bi bi-pencil-square"></i> Edit Permissions
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-user" data-id="${userId}" data-name="${userCard.querySelector('.card-title').textContent}" type="button">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    `;
+                }
+                
+                // Add to approved container
+                if (approvedContainer.querySelector('.alert')) {
+                    // Replace the "no users" alert if it exists
+                    approvedContainer.innerHTML = '';
+                }
+                approvedContainer.appendChild(userCard);
+                
+                // Reattach event listeners
+                userCard.querySelector('.edit-user').addEventListener('click', function() {
+                    // Fetch the user data and open the edit modal
+                    fetchUserAndOpenEditModal(userId);
+                });
+                
+                userCard.querySelector('.delete-user').addEventListener('click', function() {
+                    const userName = this.getAttribute('data-name');
+                    showDeleteUserConfirmation(userId, userName);
+                });
+                
+                // Update pending users count or message
+                updatePendingUsersCount();
+            }
+        }
+        
+        // Log the update for debugging
+        console.log(`UI updated for user ${userId}: Role=${userRole}, Approval=${approvalState}`);
+        
+    } catch (error) {
+        console.error('Error updating user card in UI:', error);
+        // If there's an error updating the UI, fall back to reloading all users
+        console.log('Falling back to full user reload due to error');
+        loadUsers();
+    }
+}
+
+// Helper function to fetch user data and open edit modal
+async function fetchUserAndOpenEditModal(userId) {
+    try {
+        const { data: user, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+            
+        if (error) throw error;
+        
+        openEditUserModal(user);
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        showToast('Error', `Could not load user data: ${error.message}`, 'error');
+    }
+}
+
+// Helper to update the pending users count display
+function updatePendingUsersCount() {
+    const pendingContainer = document.getElementById('pending-users-container');
+    const pendingCards = pendingContainer.querySelectorAll('.user-card');
+    const count = pendingCards.length;
+    
+    // Update the pending users count or show "no pending users" message
+    if (count === 0) {
+        pendingContainer.innerHTML = `
+            <div class="alert alert-info">
+                No pending users awaiting approval.
+                <button class="btn btn-sm btn-primary float-end" onclick="loadUsers()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        `;
+        
+        // Reset the Approve All button when no pending users exist
+        const approveAllBtn = document.getElementById('approve-all-users');
+        if (approveAllBtn) {
+            approveAllBtn.innerHTML = '<i class="bi bi-check-all me-1"></i>Approve All';
+            approveAllBtn.disabled = true; // Disable the button since there's nothing to approve
+        }
+    } else {
+        // Update the count in the alert if it exists
+        const alertElement = pendingContainer.querySelector('.alert');
+        if (alertElement) {
+            alertElement.innerHTML = `
+                <strong>${count}</strong> user${count !== 1 ? 's' : ''} awaiting approval
+                <button class="btn btn-sm btn-primary float-end" onclick="loadUsers()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            `;
+        }
     }
 }
