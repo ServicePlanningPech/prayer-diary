@@ -63,12 +63,11 @@ body {
 }
 
 .prayer-profile-img {
-    width: calc(100% - 30px);
+    width: 100%;
     max-height: 350px;
-    object-fit: contain; /* Changed from 'cover' to 'contain' to preserve aspect ratio */
-    border-radius: var(--bs-border-radius);
-    margin: 15px 15px 0 15px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    object-fit: contain; /* Preserve aspect ratio */
+    border-radius: 0; /* Remove border radius from image itself */
+    box-shadow: none; /* Remove image shadow */
 }
 
 .prayer-card .image-container {
@@ -78,8 +77,18 @@ body {
     background-color: #f8f9fa;
     border-top-left-radius: var(--bs-border-radius);
     border-top-right-radius: var(--bs-border-radius);
-    padding: 0 0 5px 0;
+    padding: 10px 0;
     min-height: 200px; /* Minimum height to ensure consistency */
+    overflow: hidden; /* Ensure image doesn't break the rounded corners */
+}
+
+/* Increase shadow on prayer cards */
+.prayer-card {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.prayer-card:hover {
+    box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.2) !important;
 }
 
 .prayer-card-title {

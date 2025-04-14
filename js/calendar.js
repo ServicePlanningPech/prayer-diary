@@ -40,10 +40,10 @@ async function loadPrayerCalendar() {
         const dateStr = formatDate(effectiveDate);
         document.getElementById('current-date').textContent = dateStr;
         
-        // Update the title with new torpedoed style
+        // Update the title with new torpedoed style and smaller font
         titleElement.innerHTML = `
             <div class="prayer-title-container mb-4 p-3 bg-primary text-white rounded shadow">
-                <h3 class="mb-0">Daily Prayer for <span id="current-date">${dateStr}</span></h3>
+                <h4 class="mb-0">Daily Prayer for <span id="current-date">${dateStr}</span></h4>
             </div>
         `;
         
