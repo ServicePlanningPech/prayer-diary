@@ -690,22 +690,53 @@ async function completeProfileSave(data) {
                     console.log(`⚠️ Large image detected (${Math.round(profileImage.size/1024)} KB), attempting to resize`);
                     
                     try {
+                        // Use a more robust approach for image loading and resizing
+                        status.update("Loading image for resizing...");
+                        
                         // Create an offscreen canvas to resize the image
                         const img = new Image();
                         
-                        // Create a promise to handle the image loading
+                        // Create a promise with timeout to handle the image loading
                         const imageLoaded = new Promise((resolve, reject) => {
-                            img.onload = () => resolve();
-                            img.onerror = () => reject(new Error("Failed to load image for resizing"));
+                            // Set a timeout to catch hanging loads
+                            const timeout = setTimeout(() => {
+                                reject(new Error("Image load timeout - taking too long"));
+                            }, 15000); // 15 second timeout
                             
-                            // Read the image using an object URL
-                            img.src = URL.createObjectURL(profileImage);
+                            img.onload = () => {
+                                clearTimeout(timeout);
+                                resolve();
+                            };
+                            
+                            img.onerror = (e) => {
+                                clearTimeout(timeout);
+                                console.error("Image load error:", e);
+                                reject(new Error("Failed to load image for resizing"));
+                            };
+                            
+                            // Try to read the image using a safe approach
+                            try {
+                                const objectUrl = URL.createObjectURL(profileImage);
+                                img.src = objectUrl;
+                                console.log("Created object URL for image:", objectUrl);
+                            } catch (urlError) {
+                                clearTimeout(timeout);
+                                console.error("Error creating object URL:", urlError);
+                                reject(urlError);
+                            }
                         });
                         
                         try {
-                            // Wait for image to load
-                            await imageLoaded;
+                            // Wait for image to load with timeout protection
+                            await Promise.race([
+                                imageLoaded,
+                                new Promise((_, reject) => 
+                                    setTimeout(() => reject(new Error("Image load timed out")), 20000)
+                                )
+                            ]);
+                            
                             status.update("Resizing image...");
+                            console.log(`Image loaded successfully. Original dimensions: ${img.width}x${img.height}`);
                             
                             // Calculate new dimensions - max 1200px width/height
                             const MAX_SIZE = 1200;
@@ -781,25 +812,83 @@ async function completeProfileSave(data) {
                 });
                 
                 try {
-                    // Attempt upload with detailed error handling
+                    // Attempt upload with retry logic and better error handling
                     status.update("Uploading image to server...");
-                    
-                    const uploadStartTime = Date.now();
-                    const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from('prayer-diary')
-                        .upload(filePath, imageToUpload, {
-                            cacheControl: 'no-cache',
-                            upsert: true
-                        });
-                    const uploadDuration = Date.now() - uploadStartTime;
-                    
-                    console.log(`⏱️ Upload took ${uploadDuration}ms`);
+
+                    let uploadAttempts = 0;
+                    const maxAttempts = 3;
+                    let uploadData = null;
+                    let uploadError = null;
+                    let uploadDuration = 0;
+
+                    while (uploadAttempts < maxAttempts) {
+                        uploadAttempts++;
                         
-                    if (uploadError) {
-                        console.error('❌ Profile image upload error:', uploadError);
-                        status.update("Upload failed! See console for details.");
-                        throw uploadError;
+                        try {
+                            console.log(`📤 Upload attempt ${uploadAttempts} of ${maxAttempts}...`);
+                            status.update(`Uploading image to server (attempt ${uploadAttempts})...`);
+                            
+                            const uploadStartTime = Date.now();
+                            
+                            // Set a timeout to detect stalled uploads
+                            const uploadPromise = supabase.storage
+                                .from('prayer-diary')
+                                .upload(filePath, imageToUpload, {
+                                    cacheControl: 'no-cache',
+                                    upsert: true
+                                });
+                                
+                            // Race the upload against a timeout
+                            const uploadResult = await Promise.race([
+                                uploadPromise,
+                                new Promise((_, reject) => 
+                                    setTimeout(() => reject(new Error('Upload timeout - server not responding')), 30000)
+                                )
+                            ]);
+                            
+                            uploadData = uploadResult.data;
+                            uploadError = uploadResult.error;
+                            uploadDuration = Date.now() - uploadStartTime;
+                            
+                            console.log(`⏱️ Upload attempt ${uploadAttempts} took ${uploadDuration}ms`);
+                            
+                            if (!uploadError) {
+                                console.log('✅ Profile image uploaded successfully:', uploadData);
+                                status.update("Upload successful! Generating URL...");
+                                break; // Success - exit the retry loop
+                            } else {
+                                console.error(`❌ Upload attempt ${uploadAttempts} failed:`, uploadError);
+                                
+                                if (uploadAttempts < maxAttempts) {
+                                    // Wait before retrying (500ms, then 1500ms, then more if we add more retries)
+                                    const delay = Math.min(500 * Math.pow(3, uploadAttempts - 1), 10000);
+                                    status.update(`Upload failed, retrying in ${delay/1000} seconds...`);
+                                    await new Promise(resolve => setTimeout(resolve, delay));
+                                }
+                            }
+                        } catch (e) {
+                            console.error(`❌ Exception during upload attempt ${uploadAttempts}:`, e);
+                            uploadError = e;
+                            
+                            if (uploadAttempts < maxAttempts) {
+                                // Wait before retrying
+                                const delay = Math.min(500 * Math.pow(2, uploadAttempts - 1), 10000);
+                                status.update(`Upload error, retrying in ${delay/1000} seconds...`);
+                                await new Promise(resolve => setTimeout(resolve, delay));
+                            }
+                        }
                     }
+
+                    // After all attempts, check if we succeeded
+                    if (uploadError) {
+                        console.error('❌ All upload attempts failed:', uploadError);
+                        status.update("Upload failed after multiple attempts!");
+                        
+                        // Instead of throwing, we'll show a warning and continue with profile update
+                        showNotification('Warning', `Could not upload profile image after ${maxAttempts} attempts. Your profile will still be saved without the new image.`);
+                    } else {
+                        console.log('✅ Profile image uploaded successfully:', uploadData);
+                        status.update("Upload complete! Generating permanent URL...");
                     
                     console.log('✅ Profile image uploaded successfully:', uploadData);
                     status.update("Upload complete! Generating permanent URL...");
