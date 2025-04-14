@@ -140,9 +140,19 @@ async function loadUsers() {
             document.querySelectorAll('.approve-user').forEach(button => {
                 button.addEventListener('click', async () => {
                     const userId = button.getAttribute('data-id');
+                    
+                    // Disable approve button and show spinner
+                    const originalButtonHtml = button.innerHTML;
                     button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
                     button.disabled = true;
-                    await updateUserApproval(userId, 'Approved');
+                    
+                    try {
+                        await updateUserApproval(userId, 'Approved');
+                    } catch (error) {
+                        // If error occurred, restore button state
+                        button.innerHTML = originalButtonHtml;
+                        button.disabled = false;
+                    }
                 });
             });
             
@@ -392,12 +402,13 @@ async function updateUserApproval(userId, state) {
     
     try {
         // Update user profile
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('profiles')
             .update({
                 approval_state: state
             })
-            .eq('id', userId);
+            .eq('id', userId)
+            .select('full_name'); // Get the name for the notification
             
         if (error) {
             console.error('Error updating user approval:', error);
@@ -412,10 +423,107 @@ async function updateUserApproval(userId, state) {
         // Show success notification
         showToast('Success', `User ${state.toLowerCase()} successfully.`, 'success');
         
-        // No need to reload all users, we'll update the UI directly
+        // Update the UI directly - move card from pending to approved
+        if (state === 'Approved') {
+            moveUserCardToApproved(userId, data?.length > 0 ? data[0].full_name : 'User');
+        }
     } catch (error) {
         console.error('Error updating user approval:', error);
         showToast('Error', `Failed to update user approval: ${error.message}`, 'error');
+        
+        // Reset the approval button if it exists
+        const approveButton = document.querySelector(`.approve-user[data-id="${userId}"]`);
+        if (approveButton) {
+            approveButton.innerHTML = '<i class="bi bi-check"></i> Approve';
+            approveButton.disabled = false;
+        }
+    }
+}
+
+// Function to move a user card from pending to approved after approval
+function moveUserCardToApproved(userId, userName) {
+    try {
+        // Find the user card in the pending container
+        const pendingContainer = document.getElementById('pending-users-container');
+        const approvedContainer = document.getElementById('approved-users-container');
+        const userCard = document.querySelector(`.approve-user[data-id="${userId}"]`)?.closest('.user-card');
+        
+        if (!userCard) {
+            console.warn(`Could not find user card for ${userId} in the pending container`);
+            // Fall back to reloading all users
+            loadUsers();
+            return;
+        }
+        
+        // Remove from pending container and update UI
+        userCard.remove();
+        
+        // Update the pending users count
+        updatePendingUsersCount();
+        
+        // Create a new approved user card
+        // First, get any existing user data from the card
+        const userEmail = userCard.querySelector('.card-subtitle')?.textContent || '';
+        const userImageSrc = userCard.querySelector('.user-avatar')?.src || 'img/placeholder-profile.png';
+        
+        // Create the new card with "Edit Permissions" button instead of "Approve"
+        const newCardHtml = `
+        <div class="card user-card mb-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <img class="user-avatar" src="${userImageSrc}" alt="${userName}" 
+                             data-user-id="${userId}"
+                             onerror="this.onerror=null; this.src='img/placeholder-profile.png';"
+                             crossorigin="anonymous">
+                    </div>
+                    <div class="col">
+                        <h5 class="card-title mb-1">${userName}</h5>
+                        <p class="card-subtitle text-muted">${userEmail}</p>
+                    </div>
+                    <div class="col-md-auto mt-2 mt-md-0">
+                        <div>
+                            <button class="btn btn-sm btn-primary edit-user me-1" data-id="${userId}" type="button">
+                                <i class="bi bi-pencil-square"></i> Edit Permissions
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-user" data-id="${userId}" data-name="${userName}" type="button">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        
+        // Check if "No approved users" message is present and remove it
+        const noUsersAlert = approvedContainer.querySelector('.alert');
+        if (noUsersAlert) {
+            approvedContainer.innerHTML = '';
+        }
+        
+        // Add the card to the approved container
+        approvedContainer.insertAdjacentHTML('afterbegin', newCardHtml);
+        
+        // Add event listeners to the new buttons
+        const newEditButton = approvedContainer.querySelector(`.edit-user[data-id="${userId}"]`);
+        if (newEditButton) {
+            newEditButton.addEventListener('click', () => {
+                fetchUserAndOpenEditModal(userId);
+            });
+        }
+        
+        const newDeleteButton = approvedContainer.querySelector(`.delete-user[data-id="${userId}"]`);
+        if (newDeleteButton) {
+            newDeleteButton.addEventListener('click', () => {
+                showDeleteUserConfirmation(userId, userName);
+            });
+        }
+        
+        console.log(`Successfully moved user ${userId} from pending to approved tab`);
+    } catch (error) {
+        console.error('Error moving user card to approved container:', error);
+        // Fall back to reloading users if there's an error
+        loadUsers();
     }
 }
 
@@ -579,6 +687,9 @@ async function approveAllPendingUsers(pendingUsers) {
         let successCount = 0;
         let failCount = 0;
         
+        // Make a copy of pending users for UI updates
+        const usersToMove = [...pendingUsers]; 
+        
         // Process each user sequentially
         for (const user of pendingUsers) {
             try {
@@ -619,7 +730,12 @@ async function approveAllPendingUsers(pendingUsers) {
         // Reset global state flag
         isApprovalInProgress = false;
         
-        // Instead of reloading users, we'll manually update the UI
+        // Clear pending container and update UI
+        if (successCount > 0) {
+            // Simplest approach: just reload the users
+            // This is more reliable than trying to move multiple cards at once
+            loadUsers();
+        }
     } catch (error) {
         console.error('Error in bulk approval:', error);
         showToast('Error', `Failed to complete bulk approval: ${error.message}`, 'error');
