@@ -18,10 +18,19 @@ async function loadUsers() {
     // Prevent multiple simultaneous calls
     if (loadUsersInProgress) {
         console.log('loadUsers already in progress, ignoring duplicate call');
-        return;
+        
+        // If it's been longer than 10 seconds, force reset and retry
+        if (lastLoadUsersStartTime && (Date.now() - lastLoadUsersStartTime > 10000)) {
+            console.warn('Previous loadUsers call seems stuck, forcing reset and retrying');
+            loadUsersInProgress = false;
+            // Continue execution to reload users
+        } else {
+            return; // Exit if not stuck
+        }
     }
     
     loadUsersInProgress = true;
+    lastLoadUsersStartTime = Date.now();
     console.log('Starting loadUsers function');
     
     if (!isAdmin()) {
@@ -205,28 +214,33 @@ async function loadUsers() {
     } catch (error) {
         console.error('Error loading users:', error);
         
-        pendingContainer.innerHTML = `
-            <div class="alert alert-danger">
-                Error loading users: ${error.message}
-                <button class="btn btn-sm btn-primary float-end" id="refresh-users-error-button">
-                    <i class="bi bi-arrow-clockwise"></i> Refresh
-                </button>
-            </div>
-        `;
+        // Make sure containers exist before trying to update them
+        if (pendingContainer) {
+            pendingContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    Error loading users: ${error.message}
+                    <button class="btn btn-sm btn-primary float-end" id="refresh-users-error-button">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            `;
+            
+            // Add event listener to the refresh button
+            setTimeout(() => {
+                const refreshButton = document.getElementById('refresh-users-error-button');
+                if (refreshButton) {
+                    refreshButton.addEventListener('click', loadUsers);
+                }
+            }, 0);
+        }
         
-        // Add event listener to the refresh button
-        setTimeout(() => {
-            const refreshButton = document.getElementById('refresh-users-error-button');
-            if (refreshButton) {
-                refreshButton.addEventListener('click', loadUsers);
-            }
-        }, 0);
-        
-        approvedContainer.innerHTML = `
-            <div class="alert alert-danger">
-                Error loading users: ${error.message}
-            </div>
-        `;
+        if (approvedContainer) {
+            approvedContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    Error loading users: ${error.message}
+                </div>
+            `;
+        }
     } finally {
         // Attach event listener to the refresh button if it exists
         setTimeout(() => {
@@ -238,6 +252,9 @@ async function loadUsers() {
         
         // Reset the flag to allow future calls
         loadUsersInProgress = false;
+        
+        // Add a console log for debugging
+        console.log('loadUsers function completed, state reset');
     }
 }
 
@@ -513,8 +530,24 @@ async function deleteUser(userId) {
         // Show success notification
         showToast('Success', `User ${userData ? userData.full_name : ''} has been deleted successfully.`, 'success');
         
-        // No need to reload the entire user list
-        // The user card will be removed via DOM manipulation
+        // Remove the user card from the DOM
+        try {
+            // Find and remove the user card from either container
+            const userCard = document.querySelector(`.user-card button[data-id="${userId}"]`);
+            if (userCard && userCard.closest('.user-card')) {
+                userCard.closest('.user-card').remove();
+                console.log(`Removed user card for ${userId} from the DOM`);
+                
+                // Update container messages if needed (e.g., if no users left)
+                updateUserContainerMessages();
+            } else {
+                console.warn(`Could not find user card for ${userId} in the DOM`);
+            }
+        } catch (domError) {
+            console.error('Error removing user card from DOM:', domError);
+            // Force reload users if DOM manipulation fails
+            loadUsers();
+        }
     } catch (error) {
         console.error('Error deleting user:', error);
         showToast('Error', `Failed to delete user: ${error.message}`, 'error');
@@ -724,9 +757,34 @@ async function fetchUserAndOpenEditModal(userId) {
     }
 }
 
+// Helper to update all user container messages
+function updateUserContainerMessages() {
+    // Update pending users count
+    updatePendingUsersCount();
+    
+    // Also update approved users container
+    const approvedContainer = document.getElementById('approved-users-container');
+    const approvedCards = approvedContainer.querySelectorAll('.user-card');
+    const approvedCount = approvedCards.length;
+    
+    // If no approved users left, show a message
+    if (approvedCount === 0) {
+        approvedContainer.innerHTML = `
+            <div class="alert alert-info">
+                No approved users found.
+                <button class="btn btn-sm btn-primary float-end" onclick="loadUsers()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        `;
+    }
+}
+
 // Helper to update the pending users count display
 function updatePendingUsersCount() {
     const pendingContainer = document.getElementById('pending-users-container');
+    if (!pendingContainer) return; // Safety check
+    
     const pendingCards = pendingContainer.querySelectorAll('.user-card');
     const count = pendingCards.length;
     
@@ -760,3 +818,21 @@ function updatePendingUsersCount() {
         }
     }
 }
+
+// Safety timeout mechanism to prevent loadUsers from hanging
+// Add this to the top of the file after the global variables
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up a safety mechanism to reset the loadUsersInProgress flag after 30 seconds
+    // This prevents the app from completely hanging if there's an error
+    setInterval(() => {
+        // If loadUsersInProgress has been true for more than 30 seconds, force reset it
+        if (loadUsersInProgress && lastLoadUsersStartTime && (Date.now() - lastLoadUsersStartTime > 30000)) {
+            console.warn('⚠️ loadUsers has been running for over 30 seconds - forcing reset');
+            loadUsersInProgress = false;
+            showToast('Warning', 'The user loading process took too long and was reset. Please try again.', 'warning');
+        }
+    }, 5000); // Check every 5 seconds
+});
+
+// Add a timestamp to track when loadUsers starts
+let lastLoadUsersStartTime = null;
