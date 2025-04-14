@@ -355,8 +355,17 @@ function updatePhoneFieldsVisibility() {
     disableHiddenRequiredFields();
 }
 
+// Track whether debug handlers have been initialized
+let imageDebugHandlersInitialized = false;
+
 // Add debugging for profile image loading issues
 function addImageDebugHandlers() {
+    // If already initialized, don't add duplicate event listeners
+    if (imageDebugHandlersInitialized) {
+        console.log('Image debug handlers already initialized, skipping');
+        return;
+    }
+    
     // Find all image elements that might be loading profile images
     const profileImages = [
         document.getElementById('profile-image-preview'),
@@ -389,6 +398,10 @@ function addImageDebugHandlers() {
             });
         }
     });
+    
+    // Mark as initialized to prevent duplicate event listeners
+    imageDebugHandlersInitialized = true;
+    console.log('Image debug handlers initialized');
 }
 
 // Helper function to update all profile images in the UI
