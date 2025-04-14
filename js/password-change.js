@@ -17,7 +17,7 @@ function initPasswordChange() {
     }
     
     // Set up password matching validation
-    const newPasswordInput = document.getElementById('new-password');
+    const newPasswordInput = document.getElementById('change-new-password');
     const confirmPasswordInput = document.getElementById('confirm-password');
     const passwordMatchMessage = document.querySelector('.password-match-message');
     
@@ -65,7 +65,7 @@ async function handlePasswordChange(e) {
     
     // Get form values
     const currentPassword = document.getElementById('current-password').value;
-    const newPassword = document.getElementById('new-password').value;
+    const newPassword = document.getElementById('change-new-password').value;
     const confirmPassword = document.getElementById('confirm-password').value;
     
     // Basic validation
