@@ -18,21 +18,10 @@ async function loadUserProfile() {
         if (!error && data.user) {
             // Update the currentUser variable with the latest data
             currentUser = data.user;
-            console.log("Refreshed user data for profile:", currentUser.email);
         }
         
-        // Debug what values we have available
-        console.log("Profile data available for user:", {
-            "profile.full_name": userProfile.full_name,
-            "user_metadata": currentUser.user_metadata,
-            "email": currentUser.email,
-            "profile_image_url": userProfile.profile_image_url
-        });
-        
-        // Simply use the stored profile image URL directly - no regeneration needed
+        // Update profile images if available
         if (userProfile.profile_image_url) {
-            // Update all profile images with the stored URL
-            console.log("Using stored profile image URL:", userProfile.profile_image_url);
             updateAllProfileImages(userProfile.profile_image_url);
         }
         
@@ -77,9 +66,6 @@ async function loadUserProfile() {
             document.getElementById('gdpr-consent-submit').disabled = true;
         }
         
-        // Log GDPR acceptance status
-        console.log('GDPR accepted:', userProfile.gdpr_accepted);
-        
         // Ensure name is visible in the form before updating preview
         setTimeout(() => {
             // Double-check name field is populated
@@ -94,9 +80,6 @@ async function loadUserProfile() {
             
             // Now update the preview
             updateProfilePreview();
-            
-            // Add debugging for images
-            addImageDebugHandlers();
         }, 100);
         
         // Update approval status message
@@ -355,59 +338,10 @@ function updatePhoneFieldsVisibility() {
     disableHiddenRequiredFields();
 }
 
-// Track whether debug handlers have been initialized
-let imageDebugHandlersInitialized = false;
 
-// Add debugging for profile image loading issues
-function addImageDebugHandlers() {
-    // If already initialized, don't add duplicate event listeners
-    if (imageDebugHandlersInitialized) {
-        console.log('Image debug handlers already initialized, skipping');
-        return;
-    }
-    
-    // Find all image elements that might be loading profile images
-    const profileImages = [
-        document.getElementById('profile-image-preview'),
-        document.getElementById('preview-profile-image')
-    ];
-    
-    profileImages.forEach(img => {
-        if (img) {
-            img.addEventListener('error', function(e) {
-                console.error('Image load error:', e);
-                console.log('Failed to load image:', this.src);
-                
-                // Add visual error indicator
-                this.style.border = '2px dashed red';
-                
-                // Try to load with cache busting to see if it's a caching issue
-                const originalSrc = this.src;
-                if (!originalSrc.includes('?nocache=')) {
-                    setTimeout(() => {
-                        this.src = originalSrc + '?nocache=' + Date.now();
-                        console.log('Retrying with cache busting:', this.src);
-                    }, 1000);
-                }
-            });
-            
-            img.addEventListener('load', function() {
-                console.log('Image loaded successfully:', this.src);
-                // Clear any error indicators
-                this.style.border = '';
-            });
-        }
-    });
-    
-    // Mark as initialized to prevent duplicate event listeners
-    imageDebugHandlersInitialized = true;
-    console.log('Image debug handlers initialized');
-}
 
 // Helper function to update all profile images in the UI
 function updateAllProfileImages(imageUrl) {
-    console.log('Updating all profile images to:', imageUrl);
-    
     // List of all elements that should show the profile image
     const imageElements = [
         document.getElementById('preview-profile-image'),       // Prayer card preview
@@ -417,9 +351,7 @@ function updateAllProfileImages(imageUrl) {
     // Update each element if it exists
     imageElements.forEach(img => {
         if (img) {
-            console.log('Updating image element:', img.id);
             img.src = imageUrl;
-            img.style.border = ''; // Clear any error borders
         }
     });
 }
