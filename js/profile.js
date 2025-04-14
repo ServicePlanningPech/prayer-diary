@@ -288,13 +288,29 @@ function disableHiddenRequiredFields() {
 
 // Update phone fields visibility based on notification method selections
 function updatePhoneFieldsVisibility() {
-    const prayerUpdateMethod = document.querySelector('input[name="prayer-update-notification"]:checked').value;
-    const urgentPrayerMethod = document.querySelector('input[name="urgent-prayer-notification"]:checked').value;
+    // Get selected notification methods (with null checks)
+    const prayerUpdateRadio = document.querySelector('input[name="prayer-update-notification"]:checked');
+    const urgentPrayerRadio = document.querySelector('input[name="urgent-prayer-notification"]:checked');
     
+    if (!prayerUpdateRadio || !urgentPrayerRadio) {
+        console.warn('Radio buttons for notification preferences not found');
+        return; // Exit if elements don't exist
+    }
+    
+    const prayerUpdateMethod = prayerUpdateRadio.value;
+    const urgentPrayerMethod = urgentPrayerRadio.value;
+    
+    // Get container elements (with null checks)
     const phoneNumbersSection = document.getElementById('phone-numbers-section');
     const smsContainer = document.getElementById('sms-phone-container');
     const whatsappContainer = document.getElementById('whatsapp-phone-container');
     const noPhoneMessage = document.getElementById('no-phone-needed-message');
+    
+    // Exit if any required container is missing
+    if (!phoneNumbersSection) {
+        console.warn('phone-numbers-section element not found');
+        return;
+    }
     
     // Check if SMS is selected for either notification type
     const smsNeeded = (prayerUpdateMethod === 'sms' || urgentPrayerMethod === 'sms');
@@ -317,33 +333,39 @@ function updatePhoneFieldsVisibility() {
     
     // Update visibility of SMS container
     const phoneInput = document.getElementById('profile-phone');
-    if (smsNeeded) {
+    if (smsNeeded && smsContainer) {
         smsContainer.classList.remove('d-none');
-        phoneInput.setAttribute('required', '');
-    } else {
+        if (phoneInput) phoneInput.setAttribute('required', '');
+    } else if (smsContainer) {
         smsContainer.classList.add('d-none');
-        phoneInput.removeAttribute('required');
-        // Clear validation state when hiding
-        phoneInput.classList.remove('is-invalid');
+        if (phoneInput) {
+            phoneInput.removeAttribute('required');
+            // Clear validation state when hiding
+            phoneInput.classList.remove('is-invalid');
+        }
     }
     
     // Update visibility of WhatsApp container
     const whatsappInput = document.getElementById('profile-whatsapp');
-    if (whatsappNeeded) {
+    if (whatsappNeeded && whatsappContainer) {
         whatsappContainer.classList.remove('d-none');
-        whatsappInput.setAttribute('required', '');
-    } else {
+        if (whatsappInput) whatsappInput.setAttribute('required', '');
+    } else if (whatsappContainer) {
         whatsappContainer.classList.add('d-none');
-        whatsappInput.removeAttribute('required');
-        // Clear validation state when hiding
-        whatsappInput.classList.remove('is-invalid');
+        if (whatsappInput) {
+            whatsappInput.removeAttribute('required');
+            // Clear validation state when hiding
+            whatsappInput.classList.remove('is-invalid');
+        }
     }
     
     // Show/hide the "no phone needed" message
-    if (smsNeeded || whatsappNeeded) {
-        noPhoneMessage.classList.add('d-none');
-    } else {
-        noPhoneMessage.classList.remove('d-none');
+    if (noPhoneMessage) {
+        if (smsNeeded || whatsappNeeded) {
+            noPhoneMessage.classList.add('d-none');
+        } else {
+            noPhoneMessage.classList.remove('d-none');
+        }
     }
     
     // Run this directly after changing visibility

@@ -467,7 +467,11 @@ function setupFileInputs() {
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
                 const fileName = fileInput.files[0].name;
-                fileNameElement.textContent = fileName;
+                
+                // Add null check before setting textContent
+                if (fileNameElement) {
+                    fileNameElement.textContent = fileName;
+                }
                 
                 // If preview element exists, show image preview
                 if (previewElement) {
@@ -479,7 +483,10 @@ function setupFileInputs() {
                     reader.readAsDataURL(fileInput.files[0]);
                 }
             } else {
-                fileNameElement.textContent = 'No file selected';
+                // Add null check here too
+                if (fileNameElement) {
+                    fileNameElement.textContent = 'No file selected';
+                }
                 if (previewElement) {
                     previewElement.classList.add('d-none');
                 }
