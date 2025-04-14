@@ -427,12 +427,64 @@ async function deleteUser(userId) {
         deleteBtn.textContent = 'Deleting...';
         deleteBtn.disabled = true;
         
-        // Get user data for notification
-        const { data: userData } = await supabase
+        // Get user data for notification and to check for profile image
+        const { data: userData, error: userDataError } = await supabase
             .from('profiles')
-            .select('full_name')
+            .select('full_name, profile_image_url')
             .eq('id', userId)
             .single();
+            
+        if (userDataError) {
+            console.error('Error fetching user data:', userDataError);
+            // Continue with deletion even if we can't get the user's data
+        }
+        
+        // Delete the user's profile image from storage if it exists
+        if (userData && userData.profile_image_url) {
+            try {
+                console.log('🗑️ Attempting to delete user profile image');
+                
+                // Extract the filepath from the URL
+                // The URL format is typically like: https://xxx.supabase.co/storage/v1/object/public/prayer-diary/profiles/filename.jpg
+                // Or with a signed URL: https://xxx.supabase.co/storage/v1/object/sign/prayer-diary/profiles/filename.jpg?token=xxx
+                let oldFilePath = '';
+                
+                // First check if it's a signed URL (contains 'sign' in the path)
+                if (userData.profile_image_url.includes('/sign/')) {
+                    // Extract path between '/sign/prayer-diary/' and the query string
+                    const pathMatch = userData.profile_image_url.match(/\/sign\/prayer-diary\/([^?]+)/);
+                    if (pathMatch && pathMatch[1]) {
+                        oldFilePath = pathMatch[1];
+                    }
+                } else if (userData.profile_image_url.includes('/public/prayer-diary/')) {
+                    // Extract path between '/public/prayer-diary/' and the end or query string
+                    const pathMatch = userData.profile_image_url.match(/\/public\/prayer-diary\/([^?]+)/);
+                    if (pathMatch && pathMatch[1]) {
+                        oldFilePath = pathMatch[1];
+                    }
+                }
+                
+                // If we found a valid path, delete the file
+                if (oldFilePath) {
+                    console.log(`🗑️ Deleting user profile image: ${oldFilePath}`);
+                    const { error: deleteError } = await supabase.storage
+                        .from('prayer-diary')
+                        .remove([oldFilePath]);
+                        
+                    if (deleteError) {
+                        console.warn('⚠️ Could not delete user profile image:', deleteError);
+                        // Continue with user deletion even if image deletion fails
+                    } else {
+                        console.log('✅ User profile image deleted successfully');
+                    }
+                } else {
+                    console.warn('⚠️ Could not parse user profile image URL for deletion:', userData.profile_image_url);
+                }
+            } catch (imageError) {
+                console.warn('⚠️ Error deleting user profile image:', imageError);
+                // Continue with user deletion even if image deletion fails
+            }
+        }
         
         // Delete the user from the auth database using Edge Function
         const { error: authError } = await supabase.functions.invoke('admin-delete-user', {
