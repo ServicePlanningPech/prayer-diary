@@ -7,9 +7,12 @@ let filteredUsers = [];
 let testDate = null;
 let tapCount = 0;
 
-// Function to format date as DD MMM
+// Function to format date with full month name
 function formatDate(date) {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const months = [
+        "January", "February", "March", "April", "May", "June", 
+        "July", "August", "September", "October", "November", "December"
+    ];
     return `${date.getDate()} ${months[date.getMonth()]}`;
 }
 
@@ -23,6 +26,7 @@ async function loadPrayerCalendar() {
     if (!isApproved()) return;
     
     const container = document.getElementById('prayer-cards-container');
+    const titleElement = document.getElementById('daily-prayer-title');
     container.innerHTML = createLoadingSpinner();
     
     try {
@@ -32,8 +36,16 @@ async function loadPrayerCalendar() {
         const currentMonth = effectiveDate.getMonth() + 1; // JavaScript months are 0-indexed
         const isOddMonth = currentMonth % 2 === 1;
         
-        // Update the date display
-        document.getElementById('current-date').textContent = formatDate(effectiveDate);
+        // Update the date display with stylish container
+        const dateStr = formatDate(effectiveDate);
+        document.getElementById('current-date').textContent = dateStr;
+        
+        // Update the title with new torpedoed style
+        titleElement.innerHTML = `
+            <div class="prayer-title-container mb-4 p-3 bg-primary text-white rounded shadow">
+                <h3 class="mb-0">Daily Prayer for <span id="current-date">${dateStr}</span></h3>
+            </div>
+        `;
         
         // Get users with pray_day > 0 who should be shown this month
         const { data, error } = await supabase
@@ -68,7 +80,7 @@ async function loadPrayerCalendar() {
             container.innerHTML = `
                 <div class="col-12">
                     <div class="alert alert-info">
-                        No prayer subjects assigned for ${formatDate(effectiveDate)}. Please check back later or contact an administrator.
+                        No prayer subjects assigned for ${dateStr}. Please check back later or contact an administrator.
                     </div>
                 </div>
             `;

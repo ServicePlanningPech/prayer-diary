@@ -707,20 +707,27 @@ function createLoadingSpinner() {
 
 // Helper function to create a prayer card
 function createPrayerCard(entry) {
-    const dayOfMonth = entry.day_of_month;
+    // Remove default text when no prayer points are provided
+    const prayerPointsContent = entry.prayer_points ? `<div class="card-text flex-grow-1">${entry.prayer_points}</div>` : '';
     
     return `
-    <div class="col">
-        <div class="card prayer-card h-100 border-primary">
-            <div class="position-relative">
-                <img src="${entry.image_url || 'img/placeholder-profile.png'}" class="card-img-top prayer-card-img-top" alt="${entry.name}">
-                <div class="day-badge">${dayOfMonth}</div>
-            </div>
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title prayer-card-title">${entry.name}</h5>
-                <div class="card-text flex-grow-1">
-                    ${entry.prayer_points || 'No prayer points provided.'}
+    <div class="col mb-4">
+        <div class="card prayer-card h-100 shadow-sm">
+            <div class="row g-0">
+                <div class="col-md-4">
+                    <img src="${entry.image_url || 'img/placeholder-profile.png'}" 
+                         class="img-fluid rounded prayer-card-img" 
+                         alt="${entry.name}">
                 </div>
+                <div class="col-md-8">
+                    <div class="card-body d-flex flex-column">
+                        <h4 class="card-title prayer-card-title fw-bold">${entry.name}</h4>
+                        ${prayerPointsContent}
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-top border-light pt-0">
+                <!-- Empty footer for visual separation -->
             </div>
         </div>
     </div>

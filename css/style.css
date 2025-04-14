@@ -46,35 +46,71 @@ body {
     background-color: var(--primary-color);
 }
 
-/* Prayer cards */
+/* Prayer cards - new profile-style design */
 .prayer-card {
     height: 100%;
-    transition: transform 0.2s ease-in-out;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
     border: none;
     box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
     border-radius: var(--bs-border-radius);
     overflow: hidden;
+    margin-bottom: 1.5rem;
 }
 
 .prayer-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
 }
 
-.prayer-card-img-top {
+.prayer-card-img {
+    height: 100%;
+    object-fit: cover;
     max-height: 250px;
-    object-fit: contain;
-    padding: 10px;
-    background-color: #f8f9fa;
+    border-top-left-radius: var(--bs-border-radius);
+    border-bottom-left-radius: var(--bs-border-radius);
 }
 
 .prayer-card-title {
     font-size: 1.25rem;
     font-weight: 600;
     color: var(--primary-color);
+    margin-bottom: 0.75rem;
 }
 
-/* Day badge for prayer calendar */
+.prayer-card .card-footer {
+    background-color: rgba(0,0,0,0.02);
+    border-top: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Prayer title container styling */
+.prayer-title-container {
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--primary-color);
+    color: white;
+    text-align: center;
+    margin-bottom: 2rem;
+    box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.prayer-title-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
+}
+
+.prayer-title-container h3 {
+    margin: 0;
+    font-weight: 600;
+}
+
+/* Day badge for prayer calendar - for admin view */
 .day-badge {
     position: absolute;
     top: 10px;
@@ -317,7 +353,7 @@ body {
         font-size: 1.1rem;
     }
     
-    .prayer-card-img-top {
+    .prayer-card-img {
         height: 150px;
     }
     
