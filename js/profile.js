@@ -889,33 +889,31 @@ async function completeProfileSave(data) {
                     } else {
                         console.log('✅ Profile image uploaded successfully:', uploadData);
                         status.update("Upload complete! Generating permanent URL...");
-                    
-                    console.log('✅ Profile image uploaded successfully:', uploadData);
-                    status.update("Upload complete! Generating permanent URL...");
-                    
-                    // Generate a permanent signed URL with 20-year expiry
-                    try {
-                        const { data: signedData, error: signedError } = await supabase.storage
-                            .from('prayer-diary')
-                            .createSignedUrl(filePath, 630720000); // 20 year expiry
                         
-                        if (signedError) {
-                            console.error('❌ Error creating signed URL:', signedError);
-                            status.update("Error creating signed URL.");
-                            throw signedError;
+                        // Generate a permanent signed URL with 20-year expiry
+                        try {
+                            const { data: signedData, error: signedError } = await supabase.storage
+                                .from('prayer-diary')
+                                .createSignedUrl(filePath, 630720000); // 20 year expiry
+                            
+                            if (signedError) {
+                                console.error('❌ Error creating signed URL:', signedError);
+                                status.update("Error creating signed URL.");
+                                throw signedError;
+                            }
+                            
+                            // Store this final URL - this will be the permanent link used everywhere
+                            profileImageUrl = signedData.signedUrl;
+                            console.log('✅ Generated permanent signed URL with long expiry:', profileImageUrl);
+                            status.update("URL generated successfully!");
+                            
+                            // Update UI with the new URL
+                            updateAllProfileImages(profileImageUrl);
+                            
+                        } catch (urlError) {
+                            console.error('❌ Error generating signed URL:', urlError);
+                            throw new Error('Failed to generate image URL. Please try again.');
                         }
-                        
-                        // Store this final URL - this will be the permanent link used everywhere
-                        profileImageUrl = signedData.signedUrl;
-                        console.log('✅ Generated permanent signed URL with long expiry:', profileImageUrl);
-                        status.update("URL generated successfully!");
-                        
-                        // Update UI with the new URL
-                        updateAllProfileImages(profileImageUrl);
-                        
-                    } catch (urlError) {
-                        console.error('❌ Error generating signed URL:', urlError);
-                        throw new Error('Failed to generate image URL. Please try again.');
                     }
                 } catch (uploadErr) {
                     console.error('❌ Error in image upload process:', uploadErr);
