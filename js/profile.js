@@ -402,22 +402,67 @@ let profileDataToSave = null;
 let profileSubmitButton = null;
 let gdprModal = null;
 
-// Simple function to upload a profile image to Supabase
+// Simple function to upload a profile image to Supabase with automatic compression for older iOS
 async function uploadProfileImage(imageFile, userId) {
-    console.log('Starting simplified profile image upload');
+    console.log('Starting profile image upload with size handling');
+    console.log(`Original image size: ${Math.round(imageFile.size / 1024)} KB`);
     
     try {
-        // Define the path for storage - simple format
+        // Define the path for storage
         const fileName = `${userId}_${Date.now()}.jpg`;
         const filePath = `profiles/${fileName}`;
         
+        // Check if we're on an iOS device
+        const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+        
+        // Check if we're on an older iOS version (iOS 15 or lower)
+        const isOldIOS = isIOS && (/OS 1[0-5]_/.test(navigator.userAgent) || 
+                                   /Version\/1[0-5]/.test(navigator.userAgent));
+        
+        // Check if the file is large (over 2MB)
+        const isLargeFile = imageFile.size > 2 * 1024 * 1024; // 2MB threshold
+        
+        // Determine if we need compression
+        // Compress if on older iOS OR if file is very large (over 4MB)
+        const needsCompression = (isOldIOS && isLargeFile) || imageFile.size > 4 * 1024 * 1024;
+        
+        // The file we'll actually upload (original or compressed)
+        let fileToUpload = imageFile;
+        
+        // If compression is needed, process the image
+        if (needsCompression) {
+            console.log(`Compressing image (${isOldIOS ? 'older iOS device' : 'large file'} detected)`);
+            
+            try {
+                // Determine target size based on device
+                const maxWidth = isOldIOS ? 1200 : 1800; // Smaller size for older iOS
+                const quality = isOldIOS ? 0.7 : 0.8;    // Lower quality for older iOS
+                
+                // Compress the image
+                fileToUpload = await compressImage(imageFile, maxWidth, quality);
+                console.log(`Compressed image size: ${Math.round(fileToUpload.size / 1024)} KB`);
+                
+                // If still too large for older iOS, compress further
+                if (isOldIOS && fileToUpload.size > 1.5 * 1024 * 1024) {
+                    console.log('Image still large, applying second-stage compression');
+                    fileToUpload = await compressImage(fileToUpload, 900, 0.6);
+                    console.log(`Final compressed size: ${Math.round(fileToUpload.size / 1024)} KB`);
+                }
+            } catch (compressionError) {
+                console.error('Image compression failed, will try with original file:', compressionError);
+                // Fall back to original file if compression fails
+                fileToUpload = imageFile;
+            }
+        }
+        
+        // Proceed with upload using the processed image
         console.log(`Uploading image to path: ${filePath}`);
         
-        // Direct upload with minimal options - set content type explicitly
+        // Upload the file (compressed or original)
         const { data, error } = await supabase.storage
             .from('prayer-diary')
-            .upload(filePath, imageFile, {
-                contentType: imageFile.type,
+            .upload(filePath, fileToUpload, {
+                contentType: 'image/jpeg',
                 upsert: true
             });
         
@@ -451,6 +496,71 @@ async function uploadProfileImage(imageFile, userId) {
         console.error('Error in profile image upload:', error);
         throw error;
     }
+}
+
+// Helper function to compress images
+function compressImage(file, maxWidth, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        try {
+            // Create an image element to load the file
+            const img = new Image();
+            
+            img.onload = () => {
+                // Handle EXIF orientation (common issue with iOS photos)
+                let width = img.width;
+                let height = img.height;
+                
+                // Resize if larger than maxWidth while maintaining aspect ratio
+                if (width > maxWidth) {
+                    height = Math.round(height * (maxWidth / width));
+                    width = maxWidth;
+                }
+                
+                // Create a canvas for the resized image
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                
+                // Draw the image to the canvas
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'white'; // Use white background to ensure JPEG quality
+                ctx.fillRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Convert to a JPEG blob with specified quality
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        reject(new Error("Failed to create image blob"));
+                        return;
+                    }
+                    
+                    // Create a new File object with the right name and type
+                    const compressedFile = new File(
+                        [blob],
+                        file.name, 
+                        { type: 'image/jpeg', lastModified: Date.now() }
+                    );
+                    
+                    // Clean up to prevent memory leaks
+                    URL.revokeObjectURL(img.src);
+                    
+                    resolve(compressedFile);
+                }, 'image/jpeg', quality);
+            };
+            
+            img.onerror = (e) => {
+                URL.revokeObjectURL(img.src);
+                reject(new Error("Failed to load image for compression: " + e.message));
+            };
+            
+            // Load the image using an object URL
+            const objectUrl = URL.createObjectURL(file);
+            img.src = objectUrl;
+            
+        } catch (err) {
+            reject(new Error("Image compression error: " + err.message));
+        }
+    });
 }
 
 // Save the user's profile
