@@ -424,7 +424,8 @@ async function uploadProfileImage(imageFile, userId) {
         
         // Determine if we need compression
         // Compress if on older iOS OR if file is very large (over 4MB)
-        const needsCompression = (isOldIOS && isLargeFile) || imageFile.size > 4 * 1024 * 1024;
+        //const needsCompression = (isOldIOS && isLargeFile) || imageFile.size > 4 * 1024 * 1024;
+		const needsCompression = true;
         
         // The file we'll actually upload (original or compressed)
         let fileToUpload = imageFile;
