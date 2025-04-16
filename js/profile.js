@@ -142,6 +142,16 @@ function handleProfileImageChange() {
             lastModified: new Date(file.lastModified).toISOString()
         });
         
+        // Check if it's HEIC format
+        const isHEIC = file.type === 'image/heic' || 
+                      file.type === 'image/heif' || 
+                      /\.heic$/i.test(file.name) ||
+                      /\.heif$/i.test(file.name);
+                      
+        if (isHEIC) {
+            console.log('HEIC/HEIF format detected - will be converted during upload');
+        }
+        
         const reader = new FileReader();
         
         reader.onload = function(e) {
@@ -402,10 +412,10 @@ let profileDataToSave = null;
 let profileSubmitButton = null;
 let gdprModal = null;
 
-// Simple function to upload a profile image to Supabase with automatic compression for older iOS
+// Simple function to upload a profile image to Supabase with automatic compression
 async function uploadProfileImage(imageFile, userId) {
     console.log('Starting profile image upload with size handling');
-    console.log(`Original image size: ${Math.round(imageFile.size / 1024)} KB`);
+    console.log(`Original image details: ${imageFile.name}, ${Math.round(imageFile.size / 1024)} KB, type: ${imageFile.type}`);
     
     try {
         // Define the path for storage
@@ -419,39 +429,53 @@ async function uploadProfileImage(imageFile, userId) {
         const isOldIOS = isIOS && (/OS 1[0-5]_/.test(navigator.userAgent) || 
                                    /Version\/1[0-5]/.test(navigator.userAgent));
         
+        // Check if the file is in HEIC format (common on iOS devices)
+        const isHEIC = imageFile.type === 'image/heic' || 
+                      imageFile.type === 'image/heif' || 
+                      /\.heic$/i.test(imageFile.name) ||
+                      /\.heif$/i.test(imageFile.name);
+                      
+        if (isHEIC) {
+            console.log('HEIC/HEIF format detected, will convert to JPEG');
+        }
+        
         // Check if the file is large (over 2MB)
         const isLargeFile = imageFile.size > 2 * 1024 * 1024; // 2MB threshold
         
-        // Determine if we need compression
-        // Compress if on older iOS OR if file is very large (over 4MB)
-        //const needsCompression = (isOldIOS && isLargeFile) || imageFile.size > 4 * 1024 * 1024;
-		const needsCompression = true;
+        // Determine if we need processing
+        // Process if:
+        // - It's a HEIC file, OR
+        // - It's on older iOS and large, OR
+        // - It's very large (over 4MB)
+        const needsProcessing = isHEIC || 
+                              (isOldIOS && isLargeFile) || 
+                              imageFile.size > 4 * 1024 * 1024;
         
-        // The file we'll actually upload (original or compressed)
+        // The file we'll actually upload (original or processed)
         let fileToUpload = imageFile;
         
-        // If compression is needed, process the image
-        if (needsCompression) {
-            console.log(`Compressing image (${isOldIOS ? 'older iOS device' : 'large file'} detected)`);
+        // If processing is needed, convert/compress the image
+        if (needsProcessing) {
+            console.log(`Processing image: ${isHEIC ? 'HEIC conversion' : ''} ${isOldIOS ? 'older iOS device' : ''} ${isLargeFile ? 'large file' : ''}`);
             
             try {
                 // Determine target size based on device
                 const maxWidth = isOldIOS ? 1200 : 1800; // Smaller size for older iOS
                 const quality = isOldIOS ? 0.7 : 0.8;    // Lower quality for older iOS
                 
-                // Compress the image
+                // Process the image (handles both HEIC conversion and compression)
                 fileToUpload = await compressImage(imageFile, maxWidth, quality);
-                console.log(`Compressed image size: ${Math.round(fileToUpload.size / 1024)} KB`);
+                console.log(`Processed image size: ${Math.round(fileToUpload.size / 1024)} KB`);
                 
                 // If still too large for older iOS, compress further
                 if (isOldIOS && fileToUpload.size > 1.5 * 1024 * 1024) {
                     console.log('Image still large, applying second-stage compression');
                     fileToUpload = await compressImage(fileToUpload, 900, 0.6);
-                    console.log(`Final compressed size: ${Math.round(fileToUpload.size / 1024)} KB`);
+                    console.log(`Final processed size: ${Math.round(fileToUpload.size / 1024)} KB`);
                 }
-            } catch (compressionError) {
-                console.error('Image compression failed, will try with original file:', compressionError);
-                // Fall back to original file if compression fails
+            } catch (processingError) {
+                console.error('Image processing failed, will try with original file:', processingError);
+                // Fall back to original file if processing fails
                 fileToUpload = imageFile;
             }
         }
@@ -499,7 +523,7 @@ async function uploadProfileImage(imageFile, userId) {
     }
 }
 
-// Helper function to compress images
+// Helper function to compress images and convert HEIC to JPEG
 function compressImage(file, maxWidth, quality = 0.8) {
     return new Promise((resolve, reject) => {
         try {
