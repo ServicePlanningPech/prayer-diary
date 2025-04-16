@@ -126,7 +126,7 @@ async function loadUserProfile() {
     }
 }
 
-// Handle profile image selection with the new button-based approach
+// Handle profile image selection with enhanced handling for camera photos
 function handleProfileImageChange() {
     const fileInput = document.getElementById('profile-image');
     const previewImage = document.getElementById('profile-image-preview');
@@ -134,48 +134,98 @@ function handleProfileImageChange() {
     if (fileInput.files && fileInput.files[0]) {
         const file = fileInput.files[0];
         
-        // Debug image characteristics - useful for troubleshooting iOS issues
-        console.log('Selected image details:', {
-            name: file.name,
-            type: file.type,
-            size: file.size + ' bytes (' + Math.round(file.size/1024) + ' KB)',
-            lastModified: new Date(file.lastModified).toISOString()
-        });
+        // Identify if this is likely a camera photo (created in last minute)
+        const isCameraPhoto = file.lastModified >= (Date.now() - 60000);
         
         // Check if it's HEIC format
         const isHEIC = file.type === 'image/heic' || 
                       file.type === 'image/heif' || 
                       /\.heic$/i.test(file.name) ||
                       /\.heif$/i.test(file.name);
-                      
+        
+        // Debug image characteristics - useful for troubleshooting iOS issues
+        console.log('Selected image details:', {
+            name: file.name,
+            type: file.type,
+            size: Math.round(file.size/1024) + ' KB',
+            lastModified: new Date(file.lastModified).toISOString(),
+            likelyCameraPhoto: isCameraPhoto,
+            isHEIC: isHEIC
+        });
+        
         if (isHEIC) {
             console.log('HEIC/HEIF format detected - will be converted during upload');
         }
         
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            console.log('Image loaded in memory successfully');
-            previewImage.src = e.target.result;
+        // For camera photos, we'll use a more lightweight preview method
+        if (isCameraPhoto) {
+            console.log('Likely camera photo detected - using optimized handling');
+            createLightweightPreview(file, previewImage);
+        } else {
+            // Use normal reader for gallery photos
+            const reader = new FileReader();
             
-            // Also update the card preview
-            document.getElementById('preview-profile-image').src = e.target.result;
+            reader.onload = function(e) {
+                console.log('Image loaded in memory successfully');
+                previewImage.src = e.target.result;
+                
+                // Also update the card preview
+                document.getElementById('preview-profile-image').src = e.target.result;
+            };
+            
+            reader.onerror = function(e) {
+                console.error('Error reading image file:', e);
+                // Set to placeholder if there's an error
+                previewImage.src = 'img/placeholder-profile.png';
+                document.getElementById('preview-profile-image').src = 'img/placeholder-profile.png';
+            };
+            
+            // Start reading the image
+            try {
+                console.log('Starting to read image file...');
+                reader.readAsDataURL(file);
+            } catch (err) {
+                console.error('Exception when reading image:', err);
+            }
+        }
+    }
+}
+
+// Create a lightweight preview that doesn't stall the browser
+function createLightweightPreview(file, previewImage) {
+    console.log('Creating lightweight preview for camera photo');
+    // Create a lightweight preview using createObjectURL instead of readAsDataURL
+    try {
+        const objectUrl = URL.createObjectURL(file);
+        
+        // Update both preview elements
+        previewImage.src = objectUrl;
+        document.getElementById('preview-profile-image').src = objectUrl;
+        
+        // Clean up the URL after the image loads to prevent memory leaks
+        previewImage.onload = () => {
+            console.log('Preview image loaded successfully');
+            // We don't revoke immediately because we need both previews to load
+            // Instead, schedule cleanup for later
+            setTimeout(() => {
+                URL.revokeObjectURL(objectUrl);
+                console.log('ObjectURL revoked to prevent memory leaks');
+            }, 3000); // Wait 3 seconds to ensure all uses of the URL are complete
         };
         
-        reader.onerror = function(e) {
-            console.error('Error reading image file:', e);
+        previewImage.onerror = () => {
+            console.error('Error loading preview image');
+            URL.revokeObjectURL(objectUrl);
+            
             // Set to placeholder if there's an error
             previewImage.src = 'img/placeholder-profile.png';
             document.getElementById('preview-profile-image').src = 'img/placeholder-profile.png';
         };
-        
-        // Start reading the image
-        try {
-            console.log('Starting to read image file...');
-            reader.readAsDataURL(file);
-        } catch (err) {
-            console.error('Exception when reading image:', err);
-        }
+    } catch (error) {
+        console.error('Error creating lightweight preview:', error);
+        // Fallback to placeholder
+        previewImage.src = 'img/placeholder-profile.png';
+        document.getElementById('preview-profile-image').src = 'img/placeholder-profile.png';
     }
 }
 
