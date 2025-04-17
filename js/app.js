@@ -113,7 +113,7 @@ function setupAllModals() {
     initUI();
     
     // Check if we have a super admin user and create one if it doesn't exist
-    checkForSuperAdmin();
+    //checkForSuperAdmin(); removed due to RLS problems. We will always create a super admin via SQL if needed
     
     // Request notification permissions if supported
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
