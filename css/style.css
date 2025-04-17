@@ -448,7 +448,7 @@ body {
 
 /* Only show drawer toggle for mobile */
 .navbar-drawer-toggle {
-  display: none;
+  display: none; /* Hidden by default */
   background: transparent;
   border: none;
   padding: 8px;
@@ -471,7 +471,7 @@ body {
 
 @media (max-width: 991.98px) {
   .navbar-drawer-toggle {
-    display: block;
+    display: block; /* Only show on mobile/tablet */
   }
 =======
   
