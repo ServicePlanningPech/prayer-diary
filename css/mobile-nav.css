@@ -1,0 +1,168 @@
+/* Mobile Navigation Drawer Styles */
+
+/* The drawer container */
+.mobile-drawer {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100vh;
+    background-color: #483D8B;
+    z-index: 1045;
+    transition: left 0.3s ease-in-out;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+}
+
+/* When the drawer is open */
+.mobile-drawer.open {
+    left: 0;
+}
+
+/* Drawer header with logo */
+.drawer-header {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.drawer-header img {
+    margin-right: 0.75rem;
+}
+
+.drawer-header .navbar-brand {
+    color: white;
+    font-weight: bold;
+    margin-right: 0;
+}
+
+/* Drawer content styles */
+.drawer-content {
+    padding: 1rem 0;
+}
+
+.drawer-nav .nav-item {
+    margin-bottom: 0.5rem;
+}
+
+.drawer-nav .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.drawer-nav .nav-link:hover,
+.drawer-nav .nav-link:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.drawer-nav .nav-link i {
+    margin-right: 0.75rem;
+    font-size: 1.1rem;
+}
+
+/* Dropdown items in drawer */
+.drawer-nav .dropdown-menu {
+    position: static !important;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: rgba(0, 0, 0, 0.15);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    transform: none !important;
+}
+
+.drawer-nav .dropdown-item {
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.6rem 2.5rem;
+}
+
+.drawer-nav .dropdown-item:hover,
+.drawer-nav .dropdown-item:focus {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.drawer-nav .dropdown-divider {
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 1.5rem;
+}
+
+/* Backdrop overlay */
+.drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.drawer-backdrop.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Drawer toggle button */
+.drawer-toggle {
+    border: none;
+    background: transparent;
+    color: white;
+    font-size: 1.5rem;
+    line-height: 1;
+    padding: 0.25rem 0.5rem;
+}
+
+.drawer-toggle:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* On larger screens, hide the drawer toggle and backdrop */
+@media (min-width: 992px) {
+    .drawer-toggle,
+    .drawer-backdrop,
+    .mobile-drawer {
+        display: none !important;
+    }
+}
+
+/* On smaller screens, hide the regular navbar collapse */
+@media (max-width: 991.98px) {
+    .navbar-collapse {
+        display: none !important;
+    }
+}
+
+/* User info in drawer */
+.drawer-user-info {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 1rem;
+}
+
+.drawer-user-info .dropdown-toggle {
+    color: white;
+    display: flex;
+    align-items: center;
+}
+
+.drawer-user-info .dropdown-toggle::after {
+    margin-left: auto;
+}
+
+/* Adjust main container to prevent content from being hidden under the navbar */
+body.has-drawer-open {
+    overflow: hidden;
+}

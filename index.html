@@ -31,6 +31,11 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-prayer sticky-top">
         <div class="container-fluid">
+            <!-- Add drawer toggle button for mobile -->
+            <button class="navbar-drawer-toggle me-2" type="button" aria-label="Toggle navigation drawer">
+                <i class="bi bi-list text-white fs-4"></i>
+            </button>
+            
             <a class="navbar-brand" href="index.html">
                 <img src="img/logo.png" alt="Prayer Diary Logo" width="50" height="28" class="d-inline-block align-text-top me-2">
                 Prayer Diary
@@ -1249,6 +1254,23 @@
         <!-- Toasts will be dynamically added here -->
     </div>
 
+    <!-- Navigation Drawer for Mobile -->
+    <div class="nav-overlay"></div>
+    <div class="nav-drawer">
+        <div class="drawer-header">
+            <a class="navbar-brand" href="index.html">
+                <img src="img/logo.png" alt="Prayer Diary Logo" width="50" height="28" class="d-inline-block align-text-top me-2">
+                Prayer Diary
+            </a>
+            <button class="drawer-close" aria-label="Close navigation">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="drawer-menu">
+            <!-- This will be populated with the same navigation items as the navbar -->
+        </div>
+    </div>
+
     <!-- Scripts -->
     <!-- Production Mode Setting -->
     <script>
@@ -1292,6 +1314,7 @@
         loadScript("js/notification-processor.js");
         loadScript("js/email-test.js");
         loadScript("js/password-change.js");
+        loadScript("js/drawer-navigation.js");
         loadScript("js/app.js");
         
         // Load mobile debug panel only in development mode
