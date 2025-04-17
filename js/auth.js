@@ -832,6 +832,9 @@ function showLoggedInState() {
         return;
     }
     
+    // Dispatch a custom event to notify other components about login state change
+    document.dispatchEvent(new CustomEvent('login-state-changed', { detail: { loggedIn: true }}));
+    
     // Check approval status first
     if (userProfile.approval_state !== 'Approved') {
         // User is logged in but not approved - show pending screen and prevent navigation
@@ -968,6 +971,9 @@ function showLoggedOutState() {
     document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden')); // Keep logged-out elements hidden
     document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+    
+    // Dispatch a custom event to notify other components about login state change
+    document.dispatchEvent(new CustomEvent('login-state-changed', { detail: { loggedIn: false }}));
     
     document.getElementById('landing-view').classList.add('d-none'); // Keep landing-view hidden
     document.getElementById('app-views').classList.add('d-none');
