@@ -799,6 +799,30 @@ function showGdprConsentModal() {
     gdprModal.show();
 }
 
+// Function to extract filename from a Supabase storage URL
+function extractFilenameFromURL(url) {
+    if (!url) return null;
+    
+    try {
+        // Extract the path component after the bucket name
+        const matches = url.match(/\/storage\/v1\/object\/public\/prayer-diary\/([^?]+)/);
+        if (matches && matches[1]) {
+            return matches[1]; // This is the path relative to the bucket
+        }
+        
+        // Alternative approach for signed URLs
+        const signedMatches = url.match(/\/storage\/v1\/object\/sign\/prayer-diary\/([^?]+)/);
+        if (signedMatches && signedMatches[1]) {
+            return signedMatches[1];
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Error extracting filename from URL:', error);
+        return null;
+    }
+}
+
 // Complete profile save after GDPR check
 async function completeProfileSave(data) {
     try {
@@ -806,6 +830,7 @@ async function completeProfileSave(data) {
         
         // Get current profile image URL (fallback)
         let profileImageUrl = userProfile.profile_image_url;
+        const oldImageUrl = profileImageUrl; // Store the old URL for deletion later
         const profileImage = document.getElementById('profile-image').files[0];
         
         // Only process image upload if a new image was selected
@@ -857,6 +882,29 @@ async function completeProfileSave(data) {
         }
         
         console.log('✅ Profile updated successfully and marked as set');
+        
+        // If we uploaded a new image successfully and we had an old image, delete the old one
+        if (profileImage && oldImageUrl && profileImageUrl !== oldImageUrl) {
+            try {
+                const oldFilePath = extractFilenameFromURL(oldImageUrl);
+                if (oldFilePath) {
+                    console.log(`🗑️ Attempting to delete old profile image: ${oldFilePath}`);
+                    
+                    const { error: deleteError } = await supabase.storage
+                        .from('prayer-diary')
+                        .remove([oldFilePath]);
+                    
+                    if (deleteError) {
+                        console.warn(`⚠️ Could not delete old profile image: ${deleteError.message}`);
+                    } else {
+                        console.log('✅ Old profile image deleted successfully');
+                    }
+                }
+            } catch (deleteError) {
+                console.warn('⚠️ Error during old image cleanup:', deleteError);
+                // Don't throw this error - just log it since the profile was already saved
+            }
+        }
         
         // Refresh user profile
         await fetchUserProfile();
