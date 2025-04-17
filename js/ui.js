@@ -76,18 +76,24 @@ function setupNavigation() {
 
 // Setup the date picker trigger for testing
 function setupDatePickerTrigger() {
-    const titleElement = document.getElementById('daily-prayer-title');
-    if (titleElement) {
-        // Set up tap counter
-        let tapCount = 0;
-        let tapTimer = null;
-        
-        titleElement.addEventListener('click', (e) => {
-            // Only trigger if the user clicked on the word "Daily"
-            const clickTarget = e.target;
-            if (clickTarget.id === 'daily-prayer-title' || clickTarget.tagName === 'H2') {
-                // Increment tap counter
+    // Now works with either the prayer title or the navbar brand (app title)
+    const titleElements = [
+        document.getElementById('daily-prayer-title'),
+        document.querySelector('.navbar-brand')
+    ];
+    
+    // Set up tap counter
+    let tapCount = 0;
+    let tapTimer = null;
+    
+    titleElements.forEach(titleElement => {
+        if (titleElement) {
+            titleElement.addEventListener('click', (e) => {
+                // Increment tap counter for any click on the title elements
                 tapCount++;
+                
+                // Log for debugging
+                console.log(`Title tap detected: ${tapCount}/5`);
                 
                 // Reset tap counter after 3 seconds
                 clearTimeout(tapTimer);
@@ -103,9 +109,9 @@ function setupDatePickerTrigger() {
                     // Show date picker modal
                     showDatePickerModal();
                 }
-            }
-        });
-    }
+            });
+        }
+    });
     
     // Set up event listeners for the date picker modal
     document.getElementById('set-test-date').addEventListener('click', () => {
