@@ -970,6 +970,11 @@ function showLoggedOutState() {
     // Update landing page message
     const statusMessage = document.getElementById('auth-status-message');
     statusMessage.innerHTML = `<p>Please log in or sign up to access the Prayer Diary app.</p>`;
+    
+    // Show login form automatically on startup instead of welcome screen
+    setTimeout(() => {
+        openAuthModal('login');
+    }, 300);
 }
 
 // Create super admin

@@ -96,20 +96,7 @@ function setupAllModals() {
     // Set up notification modal specifically
     setupNotificationCloseButton();
     
-    // Add a recovery button to force-fix UI in case of issues
-    const navContainer = document.querySelector('.navbar .container-fluid');
-    if (navContainer) {
-        const recoveryButton = document.createElement('button');
-        recoveryButton.className = 'btn btn-sm btn-outline-secondary d-none d-md-block ms-2';
-        recoveryButton.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i>';
-        recoveryButton.title = 'Fix UI Issues';
-        recoveryButton.id = 'ui-recovery-button';
-        recoveryButton.onclick = function() {
-            cleanupModalBackdrops();
-            alert('UI cleanup performed. If issues persist, please reload the page.');
-        };
-        navContainer.appendChild(recoveryButton);
-    }
+    // Recovery button removed
     // Check if Supabase configuration is set
     if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
         showNotification(
