@@ -42,6 +42,17 @@ body {
     font-weight: 500;
 }
 
+/* Add right padding to the auth container for better dropdown visibility */
+#auth-container {
+    padding-right: 20px;
+}
+
+/* Fix for My Details dropdown positioning */
+#auth-container .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
 .dropdown-item:active {
     background-color: var(--primary-color);
 }
