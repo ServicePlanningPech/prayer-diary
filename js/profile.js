@@ -94,19 +94,21 @@ async function loadUserProfile() {
         // Update approval status message
         const profileStatus = document.getElementById('profile-status');
         if (userProfile.approval_state === 'Pending') {
-            profileStatus.classList.remove('is-hidden');
-            profileStatus.classList.add('is-warning');
+            profileStatus.classList.remove('d-none');
+            profileStatus.classList.remove('alert-danger');
+            profileStatus.classList.add('alert-warning');
             profileStatus.innerHTML = `
-                <p>Your account is pending approval by an administrator. You'll receive an email when your account is approved.</p>
+                <p class="mb-0">Your account is pending approval by an administrator. You'll receive an email when your account is approved.</p>
             `;
         } else if (userProfile.approval_state === 'Rejected') {
-            profileStatus.classList.remove('is-hidden');
-            profileStatus.classList.add('is-danger');
+            profileStatus.classList.remove('d-none');
+            profileStatus.classList.remove('alert-warning');
+            profileStatus.classList.add('alert-danger');
             profileStatus.innerHTML = `
-                <p>Your account has been rejected by an administrator. Please contact the church office for more information.</p>
+                <p class="mb-0">Your account has been rejected by an administrator. Please contact the church office for more information.</p>
             `;
         } else {
-            profileStatus.classList.add('is-hidden');
+            profileStatus.classList.add('d-none');
         }
         
         // Set up form submission

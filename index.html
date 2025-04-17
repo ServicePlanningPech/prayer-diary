@@ -536,57 +536,65 @@
             </div>
 
             <!-- Manage Prayer Updates View -->
-            <div id="manage-updates-view" class="view-content is-hidden">
-                <h1 class="title is-4">Manage Prayer Updates</h1>
-                <div class="columns">
-                    <div class="column is-4">
-                        <div class="card">
-                            <div class="card-content">
-                                <h2 class="title is-5">Create Prayer Update</h2>
+            <div id="manage-updates-view" class="view-content d-none">
+                <h2 class="fw-bold mb-4">Manage Prayer Updates</h2>
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h5 class="card-title mb-0">Create Prayer Update</h5>
+                            </div>
+                            <div class="card-body">
                                 <form id="update-form">
-                                    <div class="field">
-                                        <label class="label">Title</label>
-                                        <div class="control">
-                                            <input class="input" type="text" id="update-title" placeholder="Weekly Prayer Update - [date]">
-                                        </div>
+                                    <div class="mb-3">
+                                        <label for="update-title" class="form-label">Title</label>
+                                        <input type="text" class="form-control" id="update-title" placeholder="Weekly Prayer Update - [date]">
                                     </div>
                                     
-                                    <div class="field">
-                                        <label class="label">Content</label>
-                                        <div class="control">
-                                            <div id="update-editor"></div>
-                                        </div>
+                                    <div class="mb-3">
+                                        <label for="update-editor" class="form-label">Content</label>
+                                        <div id="update-editor"></div>
                                     </div>
                                     
-                                    <div class="field">
-                                        <div class="control">
-                                            <button class="button is-primary is-fullwidth" type="submit">
-                                                Create Update
-                                            </button>
-                                        </div>
+                                    <div class="d-grid">
+                                        <button class="btn btn-primary" type="submit">
+                                            Create Update
+                                        </button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
-                    <div class="column is-8">
-                        <div class="card">
-                            <div class="card-content">
-                                <h2 class="title is-5">Existing Prayer Updates</h2>
-                                <div class="tabs">
-                                    <ul>
-                                        <li class="is-active"><a data-tab="current-updates-admin">Current</a></li>
-                                        <li><a data-tab="archived-updates-admin">Archived</a></li>
-                                    </ul>
-                                </div>
-                                <div id="current-updates-admin" class="tab-content">
-                                    <div id="admin-updates-container">
-                                        <!-- Prayer updates will be dynamically inserted here -->
+                    <div class="col-md-8">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h5 class="card-title mb-0">Existing Prayer Updates</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="nav nav-tabs mb-3" id="adminUpdatesTab" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="current-updates-admin-tab" data-bs-toggle="tab" 
+                                                data-bs-target="#current-updates-admin" type="button" role="tab" 
+                                                aria-controls="current-updates-admin" aria-selected="true">Current</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="archived-updates-admin-tab" data-bs-toggle="tab" 
+                                                data-bs-target="#archived-updates-admin" type="button" role="tab" 
+                                                aria-controls="archived-updates-admin" aria-selected="false">Archived</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="adminUpdatesTabContent">
+                                    <div class="tab-pane fade show active" id="current-updates-admin" role="tabpanel" 
+                                         aria-labelledby="current-updates-admin-tab">
+                                        <div id="admin-updates-container">
+                                            <!-- Prayer updates will be dynamically inserted here -->
+                                        </div>
                                     </div>
-                                </div>
-                                <div id="archived-updates-admin" class="tab-content is-hidden">
-                                    <div id="admin-archived-updates-container">
-                                        <!-- Archived prayer updates will be dynamically inserted here -->
+                                    <div class="tab-pane fade" id="archived-updates-admin" role="tabpanel" 
+                                         aria-labelledby="archived-updates-admin-tab">
+                                        <div id="admin-archived-updates-container">
+                                            <!-- Archived prayer updates will be dynamically inserted here -->
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -596,71 +604,61 @@
             </div>
 
             <!-- Manage Urgent Prayers View -->
-            <div id="manage-urgent-view" class="view-content is-hidden">
-                <h1 class="title is-4">Manage Urgent Prayer Requests</h1>
-                <div class="columns">
-                    <div class="column is-4">
-                        <div class="card">
-                            <div class="card-content">
-                                <h2 class="title is-5">Create Urgent Prayer Request</h2>
+            <div id="manage-urgent-view" class="view-content d-none">
+                <h2 class="fw-bold mb-4">Manage Urgent Prayer Requests</h2>
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h5 class="card-title mb-0">Create Urgent Prayer Request</h5>
+                            </div>
+                            <div class="card-body">
                                 <form id="urgent-form">
-                                    <div class="field">
-                                        <label class="label">Title</label>
-                                        <div class="control">
-                                            <input class="input" type="text" id="urgent-title" placeholder="Urgent prayer for...">
+                                    <div class="mb-3">
+                                        <label for="urgent-title" class="form-label">Title</label>
+                                        <input type="text" class="form-control" id="urgent-title" placeholder="Urgent prayer for...">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="urgent-editor" class="form-label">Content</label>
+                                        <div id="urgent-editor"></div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Send Notifications</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="send-email" checked>
+                                            <label class="form-check-label" for="send-email">Email</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="send-sms">
+                                            <label class="form-check-label" for="send-sms">SMS</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="send-whatsapp">
+                                            <label class="form-check-label" for="send-whatsapp">WhatsApp</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="send-push">
+                                            <label class="form-check-label" for="send-push">Push Notification</label>
                                         </div>
                                     </div>
                                     
-                                    <div class="field">
-                                        <label class="label">Content</label>
-                                        <div class="control">
-                                            <div id="urgent-editor"></div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="field">
-                                        <label class="label">Send Notifications</label>
-                                        <div class="control">
-                                            <label class="checkbox">
-                                                <input type="checkbox" id="send-email" checked>
-                                                Email
-                                            </label>
-                                        </div>
-                                        <div class="control">
-                                            <label class="checkbox">
-                                                <input type="checkbox" id="send-sms">
-                                                SMS
-                                            </label>
-                                        </div>
-                                        <div class="control">
-                                            <label class="checkbox">
-                                                <input type="checkbox" id="send-whatsapp">
-                                                WhatsApp
-                                            </label>
-                                        </div>
-                                        <div class="control">
-                                            <label class="checkbox">
-                                                <input type="checkbox" id="send-push">
-                                                Push Notification
-                                            </label>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="field">
-                                        <div class="control">
-                                            <button class="button is-primary is-fullwidth" type="submit">
-                                                Create Urgent Prayer Request
-                                            </button>
-                                        </div>
+                                    <div class="d-grid">
+                                        <button class="btn btn-primary" type="submit">
+                                            Create Urgent Prayer Request
+                                        </button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
-                    <div class="column is-8">
-                        <div class="card">
-                            <div class="card-content">
-                                <h2 class="title is-5">Active Urgent Prayer Requests</h2>
+                    <div class="col-md-8">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h5 class="card-title mb-0">Active Urgent Prayer Requests</h5>
+                            </div>
+                            <div class="card-body">
                                 <div id="admin-urgent-container">
                                     <!-- Urgent prayer requests will be dynamically inserted here -->
                                 </div>

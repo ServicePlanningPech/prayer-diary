@@ -80,7 +80,7 @@ async function loadPrayerUpdates() {
         // Display current updates
         if (currentUpdates.length === 0) {
             currentContainer.innerHTML = `
-                <div class="notification is-info">
+                <div class="alert alert-info">
                     No current prayer updates available.
                 </div>
             `;
@@ -95,7 +95,7 @@ async function loadPrayerUpdates() {
         // Display archived updates
         if (archivedUpdates.length === 0) {
             archivedContainer.innerHTML = `
-                <div class="notification is-info">
+                <div class="alert alert-info">
                     No archived prayer updates available.
                 </div>
             `;
@@ -110,12 +110,12 @@ async function loadPrayerUpdates() {
     } catch (error) {
         console.error('Error loading prayer updates:', error);
         currentContainer.innerHTML = `
-            <div class="notification is-danger">
+            <div class="alert alert-danger">
                 Error loading prayer updates: ${error.message}
             </div>
         `;
         archivedContainer.innerHTML = `
-            <div class="notification is-danger">
+            <div class="alert alert-danger">
                 Error loading archived updates: ${error.message}
             </div>
         `;
@@ -126,7 +126,7 @@ async function loadPrayerUpdates() {
 async function loadUpdatesAdmin() {
     if (!hasPermission('prayer_update_editor')) return;
     
-    // Get container elements
+    // Get container elements - ensure we're using the Bootstrap tab content elements
     const currentContainer = document.getElementById('admin-updates-container');
     const archivedContainer = document.getElementById('admin-archived-updates-container');
     
@@ -156,7 +156,7 @@ async function loadUpdatesAdmin() {
         // Display current updates
         if (currentUpdates.length === 0) {
             currentContainer.innerHTML = `
-                <div class="notification is-info">
+                <div class="alert alert-info">
                     No current prayer updates available. Create one using the form.
                 </div>
             `;
@@ -168,7 +168,7 @@ async function loadUpdatesAdmin() {
             currentContainer.innerHTML = currentHtml;
             
             // Add edit event listeners
-            document.querySelectorAll('.edit-update').forEach(button => {
+            currentContainer.querySelectorAll('.edit-update').forEach(button => {
                 button.addEventListener('click', () => {
                     const updateId = button.getAttribute('data-id');
                     const update = currentUpdates.find(u => u.id === updateId);
@@ -179,7 +179,7 @@ async function loadUpdatesAdmin() {
             });
             
             // Add archive event listeners
-            document.querySelectorAll('.archive-update').forEach(button => {
+            currentContainer.querySelectorAll('.archive-update').forEach(button => {
                 button.addEventListener('click', async () => {
                     const updateId = button.getAttribute('data-id');
                     await toggleArchiveUpdate(updateId, true);
@@ -190,7 +190,7 @@ async function loadUpdatesAdmin() {
         // Display archived updates
         if (archivedUpdates.length === 0) {
             archivedContainer.innerHTML = `
-                <div class="notification is-info">
+                <div class="alert alert-info">
                     No archived prayer updates available.
                 </div>
             `;
@@ -202,7 +202,7 @@ async function loadUpdatesAdmin() {
             archivedContainer.innerHTML = archivedHtml;
             
             // Add edit event listeners
-            document.querySelectorAll('.edit-update').forEach(button => {
+            archivedContainer.querySelectorAll('.edit-update').forEach(button => {
                 button.addEventListener('click', () => {
                     const updateId = button.getAttribute('data-id');
                     const update = archivedUpdates.find(u => u.id === updateId);
@@ -213,10 +213,10 @@ async function loadUpdatesAdmin() {
             });
             
             // Add unarchive event listeners (replacing the archive buttons in archived view)
-            document.querySelectorAll('.archive-update').forEach(button => {
+            archivedContainer.querySelectorAll('.archive-update').forEach(button => {
                 button.textContent = 'Unarchive';
-                button.querySelector('i').classList.remove('fa-archive');
-                button.querySelector('i').classList.add('fa-inbox');
+                button.querySelector('i').classList.remove('bi-archive');
+                button.querySelector('i').classList.add('bi-inbox-fill');
                 button.addEventListener('click', async () => {
                     const updateId = button.getAttribute('data-id');
                     await toggleArchiveUpdate(updateId, false);
@@ -227,12 +227,12 @@ async function loadUpdatesAdmin() {
     } catch (error) {
         console.error('Error loading admin prayer updates:', error);
         currentContainer.innerHTML = `
-            <div class="notification is-danger">
+            <div class="alert alert-danger">
                 Error loading prayer updates: ${error.message}
             </div>
         `;
         archivedContainer.innerHTML = `
-            <div class="notification is-danger">
+            <div class="alert alert-danger">
                 Error loading archived updates: ${error.message}
             </div>
         `;
