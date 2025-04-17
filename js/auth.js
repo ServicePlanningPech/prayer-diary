@@ -87,15 +87,24 @@ function setupAuthListeners() {
     });
     
     // UI Event Listeners
-    document.getElementById('btn-login').addEventListener('click', () => {
-        openAuthModal('login');
-    });
+    const loginBtn = document.getElementById('btn-login');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            openAuthModal('login');
+        });
+    }
     
-    document.getElementById('btn-signup').addEventListener('click', () => {
-        openAuthModal('signup');
-    });
+    const signupBtn = document.getElementById('btn-signup');
+    if (signupBtn) {
+        signupBtn.addEventListener('click', () => {
+            openAuthModal('signup');
+        });
+    }
     
-    document.getElementById('btn-logout').addEventListener('click', logout);
+    const logoutBtn = document.getElementById('btn-logout');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
     
     document.getElementById('auth-switch').addEventListener('click', toggleAuthMode);
     
