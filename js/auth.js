@@ -829,6 +829,7 @@ function showLoggedInState() {
         document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
         
+        // Show landing view for status message
         document.getElementById('landing-view').classList.remove('d-none');
         document.getElementById('app-views').classList.add('d-none');
         
@@ -840,7 +841,7 @@ function showLoggedInState() {
         
         const statusMessage = document.getElementById('auth-status-message');
         statusMessage.innerHTML = `
-            <div class="alert alert-warning">
+            <div class="alert alert-warning mt-5">
                 <h4 class="alert-heading">Account Pending Approval</h4>
                 <p>Your account is pending approval by an administrator. You'll receive an email when your account is approved.</p>
                 <p>Please close this window and check your email for the approval notification.</p>
@@ -897,6 +898,7 @@ function showRegistrationCompleteScreen() {
     document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
     
+    // Show landing view for status message
     document.getElementById('landing-view').classList.remove('d-none');
     document.getElementById('app-views').classList.add('d-none');
     
@@ -909,7 +911,7 @@ function showRegistrationCompleteScreen() {
     // Show registration complete message
     const statusMessage = document.getElementById('auth-status-message');
     statusMessage.innerHTML = `
-        <div class="alert alert-success">
+        <div class="alert alert-success mt-5">
             <h4 class="alert-heading">Registration Complete!</h4>
             <p>Your account has been created and is pending approval by an administrator.</p>
             <p>You'll receive an email when your account is approved.</p>
@@ -954,11 +956,11 @@ function showRegistrationCompleteScreen() {
 
 // Update user interface for logged out state
 function showLoggedOutState() {
-    document.querySelectorAll('.logged-out').forEach(el => el.classList.remove('hidden'));
+    document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden')); // Keep logged-out elements hidden
     document.querySelectorAll('.logged-in').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
     
-    document.getElementById('landing-view').classList.remove('d-none');
+    document.getElementById('landing-view').classList.add('d-none'); // Keep landing-view hidden
     document.getElementById('app-views').classList.add('d-none');
     
     // Re-enable navigation buttons
@@ -967,14 +969,10 @@ function showLoggedOutState() {
         link.style.pointerEvents = '';
     });
     
-    // Update landing page message
-    const statusMessage = document.getElementById('auth-status-message');
-    statusMessage.innerHTML = `<p>Please log in or sign up to access the Prayer Diary app.</p>`;
-    
-    // Show login form automatically on startup instead of welcome screen
+    // Only show the auth modal - no welcome screen
     setTimeout(() => {
         openAuthModal('login');
-    }, 300);
+    }, 100);
 }
 
 // Create super admin
@@ -1215,7 +1213,7 @@ function openNewPasswordModal() {
     const statusMessage = document.getElementById('auth-status-message');
     if (statusMessage) {
         statusMessage.innerHTML = `
-            <div class="alert alert-info">
+            <div class="alert alert-info mt-5">
                 <h4 class="alert-heading">Password Reset Required</h4>
                 <p>You've clicked a password reset link. Please set a new password to continue.</p>
             </div>
