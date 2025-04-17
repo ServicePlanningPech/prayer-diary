@@ -31,23 +31,33 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-prayer sticky-top">
         <div class="container-fluid">
-            <!-- Add drawer toggle button for mobile -->
-            <button class="navbar-drawer-toggle me-2" type="button" aria-label="Toggle navigation drawer">
-                <i class="bi bi-list text-white fs-4"></i>
-            </button>
-            
             <a class="navbar-brand" href="index.html">
                 <img src="img/logo.png" alt="Prayer Diary Logo" width="50" height="28" class="d-inline-block align-text-top me-2">
                 Prayer Diary
             </a>
             
+            <!-- Regular navbar toggler hidden on mobile -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarBasic" 
                     aria-controls="navbarBasic" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
+
+            <div class="d-flex order-lg-last">
+                <!-- Drawer toggle button positioned on the right for mobile -->
+                <button class="navbar-drawer-toggle" type="button" aria-label="Toggle navigation drawer">
+                    <div class="hamburger-icon">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </div>
+                </button>
+            </div>
+=======
+=======
             
             <div class="collapse navbar-collapse" id="navbarBasic">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+=======
                     <li class="nav-item">
                         <a class="nav-link" id="nav-calendar" href="#">
                             <i class="bi bi-calendar-day"></i> Daily Prayer

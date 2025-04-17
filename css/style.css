@@ -449,12 +449,31 @@ body {
 /* Only show drawer toggle for mobile */
 .navbar-drawer-toggle {
   display: none;
+  background: transparent;
+  border: none;
+  padding: 8px;
+}
+
+.navbar-drawer-toggle .hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 30px;
+  height: 24px;
+}
+
+.navbar-drawer-toggle .hamburger-line {
+  width: 100%;
+  height: 3px;
+  background-color: white;
+  border-radius: 2px;
 }
 
 @media (max-width: 991.98px) {
   .navbar-drawer-toggle {
     display: block;
   }
+=======
   
   /* Hide regular navbar toggler on mobile */
   .navbar-toggler {
