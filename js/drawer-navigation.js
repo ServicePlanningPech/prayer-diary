@@ -24,6 +24,12 @@ function initDrawerNavigation() {
     const navItems = document.querySelectorAll('#navbarBasic .navbar-nav > li');
     navItems.forEach(item => {
         const clonedItem = item.cloneNode(true);
+        
+        // Apply the same visibility classes as in the main navbar
+        if (item.classList.contains('hidden')) {
+            clonedItem.classList.add('hidden');
+        }
+        
         drawerMenu.appendChild(clonedItem);
     });
     

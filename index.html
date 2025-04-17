@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#483D8B">
-    <meta name="application-name" content="Prayer Diary">
+    <meta name="application-name" content="PECH Prayer">
     <meta name="description" content="A prayer calendar and updates app for church members">
     <title>Prayer Diary</title>
     
@@ -65,6 +65,29 @@
                             <i class="bi bi-exclamation-circle"></i> Urgent Prayers
                         </a>
                     </li>
+                    <li class="nav-item dropdown editor-only hidden">
+                        <a class="nav-link dropdown-toggle" href="#" id="editDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="editDropdown">
+                            <li class="calendar-editor-only hidden">
+                                <a class="dropdown-item" id="nav-manage-calendar" href="#">
+                                    <i class="bi bi-calendar"></i> Manage Prayer Calendar
+                                </a>
+                            </li>
+                            <li class="update-editor-only hidden">
+                                <a class="dropdown-item" id="nav-manage-updates" href="#">
+                                    <i class="bi bi-pencil-square"></i> Manage Prayer Updates
+                                </a>
+                            </li>
+                            <li class="urgent-editor-only hidden">
+                                <a class="dropdown-item" id="nav-manage-urgent" href="#">
+                                    <i class="bi bi-bell"></i> Manage Urgent Prayers
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
                     <li class="nav-item dropdown admin-only hidden">
                         <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" 
                            data-bs-toggle="dropdown" aria-expanded="false">
@@ -74,21 +97,6 @@
                             <li>
                                 <a class="dropdown-item" id="nav-manage-users" href="#">
                                     <i class="bi bi-people"></i> Manage Users
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" id="nav-manage-calendar" href="#">
-                                    <i class="bi bi-calendar"></i> Manage Prayer Calendar
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" id="nav-manage-updates" href="#">
-                                    <i class="bi bi-pencil-square"></i> Manage Prayer Updates
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" id="nav-manage-urgent" href="#">
-                                    <i class="bi bi-bell"></i> Manage Urgent Prayers
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>

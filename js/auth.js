@@ -883,6 +883,41 @@ function showLoggedInState() {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
     }
     
+    // Show/hide Edit menu and its items based on editor permissions
+    const hasAnyEditorPermission = 
+        userProfile.prayer_calendar_editor || 
+        userProfile.prayer_update_editor || 
+        userProfile.urgent_prayer_editor;
+    
+    // Show/hide the entire Edit dropdown menu
+    if (hasAnyEditorPermission || userProfile.user_role === 'Administrator') {
+        document.querySelectorAll('.editor-only').forEach(el => el.classList.remove('hidden'));
+    } else {
+        document.querySelectorAll('.editor-only').forEach(el => el.classList.add('hidden'));
+    }
+    
+    // Show/hide individual editor items based on specific permissions
+    // Calendar editor
+    if (userProfile.prayer_calendar_editor || userProfile.user_role === 'Administrator') {
+        document.querySelectorAll('.calendar-editor-only').forEach(el => el.classList.remove('hidden'));
+    } else {
+        document.querySelectorAll('.calendar-editor-only').forEach(el => el.classList.add('hidden'));
+    }
+    
+    // Update editor
+    if (userProfile.prayer_update_editor || userProfile.user_role === 'Administrator') {
+        document.querySelectorAll('.update-editor-only').forEach(el => el.classList.remove('hidden'));
+    } else {
+        document.querySelectorAll('.update-editor-only').forEach(el => el.classList.add('hidden'));
+    }
+    
+    // Urgent prayer editor
+    if (userProfile.urgent_prayer_editor || userProfile.user_role === 'Administrator') {
+        document.querySelectorAll('.urgent-editor-only').forEach(el => el.classList.remove('hidden'));
+    } else {
+        document.querySelectorAll('.urgent-editor-only').forEach(el => el.classList.add('hidden'));
+    }
+    
     // Enable all navigation buttons
     document.querySelectorAll('.nav-link, .navbar-brand').forEach(link => {
         link.classList.remove('disabled');
