@@ -175,6 +175,9 @@ function showView(viewId) {
     window.scrollTo(0, 0);
 }
 
+// Make showView globally accessible for drawer navigation
+window.showView = showView;
+
 // Setup modal close buttons
 function setupModalClosers() {
     // Bootstrap handles most modal closing automatically
