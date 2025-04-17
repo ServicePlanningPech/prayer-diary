@@ -150,6 +150,7 @@ async function loadAllUsers() {
             .from('profiles')
             .select('id, full_name, profile_image_url, prayer_points, pray_day, pray_months, approval_state')
             .eq('approval_state', 'Approved')
+            .not('full_name', 'eq', 'Super Admin') // Exclude Super Admin from the list
             .order('pray_day', { ascending: true })
             .order('full_name', { ascending: true });
             

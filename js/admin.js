@@ -72,6 +72,7 @@ async function loadUsers() {
         const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
             .select('*')
+            .not('full_name', 'eq', 'Super Admin') // Exclude Super Admin from the list
             .order('full_name', { ascending: true })
             .limit(100); // Removed the second order and headers call that was causing the error
         

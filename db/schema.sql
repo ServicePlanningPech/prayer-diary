@@ -75,110 +75,12 @@ ALTER TABLE prayer_updates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE urgent_prayers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notification_logs ENABLE ROW LEVEL SECURITY;
 
--- Profiles policies
--- Anyone can read their own profile
-CREATE POLICY "Users can view their own profile" 
-  ON profiles FOR SELECT 
-  USING (auth.uid() = id);
 
--- Administrators can read all profiles
-CREATE POLICY "Administrators can view all profiles" 
-  ON profiles FOR SELECT 
-  USING ((SELECT user_role FROM profiles WHERE id = auth.uid()) = 'Administrator');
 
--- Users can update their own profile
-CREATE POLICY "Users can update their own profile" 
-  ON profiles FOR UPDATE 
-  USING (auth.uid() = id);
 
--- Administrators can update all profiles
-CREATE POLICY "Administrators can update any profile" 
-  ON profiles FOR UPDATE 
-  USING ((SELECT user_role FROM profiles WHERE id = auth.uid()) = 'Administrator');
 
--- Prayer Calendar policies
--- Anyone can read the prayer calendar if they're approved
-CREATE POLICY "Approved users can view prayer calendar" 
-  ON prayer_calendar FOR SELECT 
-  USING ((SELECT approval_state FROM profiles WHERE id = auth.uid()) = 'Approved');
 
--- Only prayer calendar editors can insert/update/delete
-CREATE POLICY "Prayer calendar editors can manage prayer calendar" 
-  ON prayer_calendar FOR ALL 
-  USING ((SELECT prayer_calendar_editor FROM profiles WHERE id = auth.uid()) = TRUE);
 
--- Prayer Updates policies
--- Anyone can read prayer updates if they're approved
-CREATE POLICY "Approved users can view prayer updates" 
-  ON prayer_updates FOR SELECT 
-  USING ((SELECT approval_state FROM profiles WHERE id = auth.uid()) = 'Approved');
 
--- Only prayer update editors can insert/update/delete
-CREATE POLICY "Prayer update editors can manage prayer updates" 
-  ON prayer_updates FOR ALL 
-  USING ((SELECT prayer_update_editor FROM profiles WHERE id = auth.uid()) = TRUE);
 
--- Urgent Prayers policies
--- Anyone can read urgent prayers if they're approved
-CREATE POLICY "Approved users can view urgent prayers" 
-  ON urgent_prayers FOR SELECT 
-  USING ((SELECT approval_state FROM profiles WHERE id = auth.uid()) = 'Approved');
-
--- Only urgent prayer editors can insert/update/delete
-CREATE POLICY "Urgent prayer editors can manage urgent prayers" 
-  ON urgent_prayers FOR ALL 
-  USING ((SELECT urgent_prayer_editor FROM profiles WHERE id = auth.uid()) = TRUE);
-
--- Notification Logs policies
--- Users can view their own notification logs
-CREATE POLICY "Users can view their own notification logs" 
-  ON notification_logs FOR SELECT 
-  USING (auth.uid() = user_id);
-
--- Administrators can view all notification logs
-CREATE POLICY "Administrators can view all notification logs" 
-  ON notification_logs FOR SELECT 
-  USING ((SELECT user_role FROM profiles WHERE id = auth.uid()) = 'Administrator');
-
--- Create a trigger to automatically create a profile for new users
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (
-    id, 
-    full_name,
-    email, -- Added email field here 
-    user_role, 
-    approval_state, 
-    profile_set,
-    prayer_update_notification_method,
-    urgent_prayer_notification_method,
-    gdpr_accepted
-  )
-  VALUES (
-    NEW.id, 
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
-    NEW.email, -- Store the user's email address from auth.users
-    'User', 
-    'Pending',
-    FALSE,
-    'email',
-    'email',
-    FALSE
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE OR REPLACE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
   
-  -- To create a super admin account, run the following in your application
--- or directly in Supabase Auth UI and then run this SQL:
--- Replace [ADMIN_USER_ID] with the UUID of the admin user you created
-
-/*
-INSERT INTO profiles (id, full_name, user_role, approval_state, prayer_calendar_editor, prayer_update_editor, urgent_prayer_editor)
-VALUES ('[ADMIN_USER_ID]', 'Super Admin', 'Administrator', 'Approved', TRUE, TRUE, TRUE);
-*/
