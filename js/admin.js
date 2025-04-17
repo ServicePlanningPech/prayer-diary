@@ -3,6 +3,9 @@
 // Global state variable to track approval operations
 let isApprovalInProgress = false;
 
+// Make sure loadUsers is globally accessible
+window.loadUsers = loadUsers;
+
 // Helper function to simply return the stored URL - no regeneration needed
 async function getSignedProfileImageUrl(imagePath) {
     if (!imagePath) return null;
@@ -952,3 +955,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Add a timestamp to track when loadUsers starts
 let lastLoadUsersStartTime = null;
+
+// Make functions globally accessible for use in other modules
+window.loadUsers = loadUsers;
+window.fetchUserAndOpenEditModal = fetchUserAndOpenEditModal;
