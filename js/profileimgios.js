@@ -192,69 +192,12 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
         
         console.log('iOS: Upload successful!');
         
-        // Get the proper URL format for the uploaded file
-        console.log('iOS: Getting proper URL for the uploaded file...');
+        // Simply create a direct public URL without any signing
+        console.log('iOS: Creating public URL for the uploaded file...');
         
-        // Use auth token to get the URL information
-        const urlInfoResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/info/prayer-diary/${filePath}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (!urlInfoResponse.ok) {
-            console.log('iOS: Could not get URL info, using fallback URL format');
-            // Fallback to constructed signed URL since bucket info fetch failed
-            // Use the already obtained authToken - no need to fetch again
-            
-            const getUrlResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/prayer-diary/${filePath}?token=${authToken}&expires=3153600000`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
-                }
-            });
-            
-            if (!getUrlResponse.ok) {
-                throw new Error('Failed to get URL for the uploaded file');
-            }
-            
-            const urlData = await getUrlResponse.json();
-            const publicUrl = urlData.signedURL.split('?')[0]; // Remove the token part
-            console.log('iOS: Created fallback URL for the image:', publicUrl);
-            return publicUrl;
-        }
-        
-        // Get a proper URL using the signed URL endpoint and the determined bucket name
-        console.log('iOS: Creating a signed URL to get proper format...');
-        try {
-            const signUrlResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${bucketName}/${filePath}?expiresIn=3153600000`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (signUrlResponse.ok) {
-                const urlData = await signUrlResponse.json();
-                const signedUrl = urlData.signedURL;
-                
-                // Get the base part without query params for public URL if possible
-                const publicUrl = signedUrl.split('?')[0]; 
-                console.log('iOS: Created URL for the image:', publicUrl);
-                return publicUrl;
-            } else {
-                console.warn('iOS: Could not create signed URL, using fallback URL construction');
-            }
-        } catch (urlError) {
-            console.error('iOS: Error creating signed URL:', urlError);
-        }
-        
-        // Fallback to direct URL construction if signed URL fails
+        // Construct the public URL directly
         const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
-        console.log('iOS: Created fallback URL for the image:', publicUrl);
+        console.log('iOS: Created public URL for the image:', publicUrl);
         
         // If we've uploaded a new image successfully and had an old image, try to delete the old one
         if (oldImageUrl) {
