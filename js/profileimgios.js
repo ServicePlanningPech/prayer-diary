@@ -106,19 +106,36 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
             fileToUpload = imageFile;
         }
         
-        // Get authentication token first
-		// Get authentication token using getUser instead of getSession to prevent stalling on iOS
-		const { data } = await supabase.auth.getUser();
-		if (!data || !data.user) {
-			throw new Error('User authentication failed - please log in again');
-		}
-		const authToken = data.user.session?.access_token;
-		if (!authToken) {
-			console.warn('iOS: Could not get access token from getUser(), falling back to getSession()');
-			const { data: { session } } = await supabase.auth.getSession();
-			const authToken = session.access_token;
-		}
-				
+        // Use the globally stored auth token instead of making a new request
+        let authToken = window.authToken;
+        
+        // Fallback only if token isn't available
+        if (!authToken) {
+            console.log('iOS: No stored auth token found, fetching new one');
+            try {
+                const { data } = await supabase.auth.getUser();
+                if (data && data.user) {
+                    authToken = data.user.session?.access_token;
+                    if (authToken) {
+                        // Store it for future use
+                        window.authToken = authToken;
+                    }
+                }
+            } catch (tokenError) {
+                console.warn('iOS: Error getting user:', tokenError);
+            }
+            
+            // Last resort fallback
+            if (!authToken) {
+                console.warn('iOS: Still could not get token, falling back to getSession()');
+                const { data: { session } } = await supabase.auth.getSession();
+                authToken = session.access_token;
+                
+                // Store it for future use
+                window.authToken = authToken;
+            }
+        }
+                
         // Check for available buckets to ensure we use the correct one
         console.log('iOS: Checking available storage buckets...');
         let bucketName = 'prayer-diary'; // Default bucket name
@@ -190,16 +207,7 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
         if (!urlInfoResponse.ok) {
             console.log('iOS: Could not get URL info, using fallback URL format');
             // Fallback to constructed signed URL since bucket info fetch failed
-			const { data } = await supabase.auth.getUser();
-			if (!data || !data.user) {
-				throw new Error('User authentication failed - please log in again');
-			}
-			const authToken = data.user.session?.access_token;
-			if (!authToken) {
-				console.warn('iOS: Could not get access token from getUser(), falling back to getSession()');
-				const { data: { session } } = await supabase.auth.getSession();
-				const authToken = session.access_token;
-			}
+            // Use the already obtained authToken - no need to fetch again
             
             const getUrlResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/prayer-diary/${filePath}?token=${authToken}&expires=3153600000`, {
                 method: 'GET',

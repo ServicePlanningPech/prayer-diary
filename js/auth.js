@@ -51,6 +51,10 @@ async function initAuth() {
             console.log("Normal session found, user is logged in");
             currentUser = session.user;
             
+            // Store the access token in a global variable for reuse
+            window.authToken = session.access_token;
+            console.log("Access token stored for reuse in the app");
+            
             // Normal login flow
             const profile = await fetchUserProfile();
             if (profile) {
@@ -77,6 +81,9 @@ function setupAuthListeners() {
     supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN') {
             currentUser = session.user;
+            // Update the stored token on sign in
+            window.authToken = session.access_token;
+            console.log("Access token updated on sign in");
             await fetchUserProfile();
             showLoggedInState();
         } else if (event === 'SIGNED_OUT') {
