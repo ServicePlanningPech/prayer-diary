@@ -171,9 +171,30 @@ async function uploadProfileImage(imageFile, userId, oldImageUrl = null) {
         // Proceed with upload using the standard Supabase SDK
         console.log(`Uploading image to path: ${filePath}`);
         
+        // Check if we're using the correct bucket name
+        console.log('Checking available storage buckets...');
+        try {
+            const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+            if (bucketError) {
+                console.error('Error listing buckets:', bucketError);
+            } else {
+                console.log('Available buckets:', buckets.map(b => b.name).join(', '));
+                // Use the first bucket if available and prayer-diary doesn't exist
+                if (buckets.length > 0 && !buckets.some(b => b.name === 'prayer-diary')) {
+                    console.log(`Bucket 'prayer-diary' not found, using '${buckets[0].name}' instead`);
+                    bucketName = buckets[0].name;
+                }
+            }
+        } catch (bucketError) {
+            console.error('Error checking buckets:', bucketError);
+        }
+        
+        // Use the determined bucket name
+        const bucketName = 'prayer-diary'; // Default, may be updated above
+        
         // Upload the file (compressed or original)
         const { data, error } = await supabase.storage
-            .from('prayer-diary')
+            .from(bucketName)
             .upload(filePath, fileToUpload, {
                 contentType: 'image/jpeg',
                 upsert: true
@@ -192,8 +213,34 @@ async function uploadProfileImage(imageFile, userId, oldImageUrl = null) {
         console.log('Image uploaded successfully');
         
         // Create a public URL instead of a signed URL
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/prayer-diary/${filePath}`;
-        console.log('Created public URL for the image:', publicUrl);
+        // First check if the bucket is set to public
+        console.log('Verifying bucket access and creating public URL...');
+        
+        // Try to create a signed URL first (this works even if bucket isn't public)
+        const { data: urlData, error: urlError } = await supabase.storage
+            .from('prayer-diary')
+            .createSignedUrl(filePath, 157680000); // 5-year expiry
+        
+        if (urlError) {
+            console.error("URL generation failed:", urlError);
+            throw urlError;
+        }
+        
+        // Check if bucket is public by testing bucket URL format vs signed URL format
+        const urlParts = urlData.signedUrl.split('?')[0].split('/');
+        const isBucketPublic = urlParts.includes('public');
+        
+        let publicUrl;
+        if (isBucketPublic) {
+            // If bucket is already public, we can just use the URL without token
+            publicUrl = urlData.signedUrl.split('?')[0]; // Remove the token part
+        } else {
+            // If bucket is not public, we need to use the signed URL
+            publicUrl = urlData.signedUrl;
+            console.log('Warning: Using signed URL as bucket may not be public. URL will expire in 5 years.');
+        }
+        
+        console.log('Created URL for the image:', publicUrl);
         
         // If we've successfully uploaded a new image and we had an old image, delete the old one
         if (oldImageUrl) {

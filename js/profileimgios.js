@@ -106,24 +106,45 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
             fileToUpload = imageFile;
         }
         
-        // Calculate bucket path explicitly
-        const bucket = 'prayer-diary';
-        const fullPath = `${bucket}/${filePath}`;
-        console.log(`iOS: Will upload to path: ${fullPath}`);
-        
-        // 1. Get an upload authorization token directly from Supabase REST API
-        console.log('iOS: Getting upload authorization...');
-        
-        // Create FormData for the file upload
-        const formData = new FormData();
-        formData.append('file', fileToUpload, fileName);
-        
-        // Get authentication token
+        // Get authentication token first
         const { data: { session } } = await supabase.auth.getSession();
         const authToken = session.access_token;
         
-        // API endpoint for direct upload (public bucket)
-        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/prayer-diary/${filePath}`;
+        // Check for available buckets to ensure we use the correct one
+        console.log('iOS: Checking available storage buckets...');
+        let bucketName = 'prayer-diary'; // Default bucket name
+        
+        try {
+            const bucketsResponse = await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (bucketsResponse.ok) {
+                const buckets = await bucketsResponse.json();
+                console.log('iOS: Available buckets:', buckets.map(b => b.name).join(', '));
+                
+                // Use the first bucket if prayer-diary doesn't exist
+                if (buckets.length > 0 && !buckets.some(b => b.name === 'prayer-diary')) {
+                    console.log(`iOS: Bucket 'prayer-diary' not found, using '${buckets[0].name}' instead`);
+                    bucketName = buckets[0].name;
+                }
+            } else {
+                console.error('iOS: Could not list buckets, using default bucket name');
+            }
+        } catch (bucketError) {
+            console.error('iOS: Error checking buckets:', bucketError);
+        }
+        
+        // Calculate bucket path explicitly with the correct bucket
+        const fullPath = `${bucketName}/${filePath}`;
+        console.log(`iOS: Will upload to path: ${fullPath}`);
+        
+        // API endpoint for direct upload with the correct bucket
+        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`;
         
         // Upload directly using fetch API
         console.log('iOS: Uploading file with fetch API...');
@@ -145,9 +166,70 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
         
         console.log('iOS: Upload successful!');
         
-        // Create a public URL for the uploaded file
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/prayer-diary/${filePath}`;
-        console.log('iOS: Created public URL for the image:', publicUrl);
+        // Get the proper URL format for the uploaded file
+        console.log('iOS: Getting proper URL for the uploaded file...');
+        
+        // Use auth token to get the URL information
+        const urlInfoResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/info/prayer-diary/${filePath}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!urlInfoResponse.ok) {
+            console.log('iOS: Could not get URL info, using fallback URL format');
+            // Fallback to constructed signed URL since bucket info fetch failed
+            const { data: { session } } = await supabase.auth.getSession();
+            const authToken = session.access_token;
+            
+            const getUrlResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/prayer-diary/${filePath}?token=${authToken}&expires=3153600000`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+            
+            if (!getUrlResponse.ok) {
+                throw new Error('Failed to get URL for the uploaded file');
+            }
+            
+            const urlData = await getUrlResponse.json();
+            const publicUrl = urlData.signedURL.split('?')[0]; // Remove the token part
+            console.log('iOS: Created fallback URL for the image:', publicUrl);
+            return publicUrl;
+        }
+        
+        // Get a proper URL using the signed URL endpoint and the determined bucket name
+        console.log('iOS: Creating a signed URL to get proper format...');
+        try {
+            const signUrlResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${bucketName}/${filePath}?expiresIn=3153600000`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (signUrlResponse.ok) {
+                const urlData = await signUrlResponse.json();
+                const signedUrl = urlData.signedURL;
+                
+                // Get the base part without query params for public URL if possible
+                const publicUrl = signedUrl.split('?')[0]; 
+                console.log('iOS: Created URL for the image:', publicUrl);
+                return publicUrl;
+            } else {
+                console.warn('iOS: Could not create signed URL, using fallback URL construction');
+            }
+        } catch (urlError) {
+            console.error('iOS: Error creating signed URL:', urlError);
+        }
+        
+        // Fallback to direct URL construction if signed URL fails
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
+        console.log('iOS: Created fallback URL for the image:', publicUrl);
         
         // If we've uploaded a new image successfully and had an old image, try to delete the old one
         if (oldImageUrl) {
