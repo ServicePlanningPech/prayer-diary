@@ -171,23 +171,7 @@ async function uploadProfileImage(imageFile, userId, oldImageUrl = null) {
         // Proceed with upload using the standard Supabase SDK
         console.log(`Uploading image to path: ${filePath}`);
         
-        // Check if we're using the correct bucket name
-        console.log('Checking available storage buckets...');
-        try {
-            const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-            if (bucketError) {
-                console.error('Error listing buckets:', bucketError);
-            } else {
-                console.log('Available buckets:', buckets.map(b => b.name).join(', '));
-                // Use the first bucket if available and prayer-diary doesn't exist
-                if (buckets.length > 0 && !buckets.some(b => b.name === 'prayer-diary')) {
-                    console.log(`Bucket 'prayer-diary' not found, using '${buckets[0].name}' instead`);
-                    bucketName = buckets[0].name;
-                }
-            }
-        } catch (bucketError) {
-            console.error('Error checking buckets:', bucketError);
-        }
+
         
         // Use the determined bucket name
         const bucketName = 'prayer-diary'; // Default, may be updated above
