@@ -14,7 +14,7 @@ Prayer Diary is a web application that helps churches organize their prayer mini
 
 ## Technical Stack
 
-- **Frontend**: HTML, CSS (Bulma framework), JavaScript (vanilla)
+- **Frontend**: HTML, CSS (Bootstrap framework), JavaScript (vanilla)
 - **Backend**: Supabase (Authentication, Database, Storage)
 - **Deployment**: GitHub Pages (or any web server)
 - **PWA**: Service Worker for offline capability
