@@ -1,6 +1,6 @@
 // Profile Image Handler for iOS Devices
-// This file contains functions for handling profile image uploads using direct REST API calls
-// to work around issues with the Supabase SDK on iOS
+// This file contains functions for handling profile image uploads using Supabase SDK
+// with iOS-specific optimizations
 
 // Set up the profile image button click handler for iOS devices
 function setupIosProfileImageHandlers() {
@@ -83,9 +83,9 @@ function createIosLightweightPreview(file, previewImage) {
     }
 }
 
-// Upload profile image using direct REST API calls for iOS
+// Upload profile image using Supabase SDK with iOS optimizations
 async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
-    console.log('iOS: Starting profile image upload using REST API');
+    console.log('iOS: Starting profile image upload using Supabase SDK');
     console.log(`iOS: Original image details: ${imageFile.name}, ${Math.round(imageFile.size / 1024)} KB, type: ${imageFile.type}`);
     
     try {
@@ -106,70 +106,39 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
             fileToUpload = imageFile;
         }
         
-        // Use the globally stored auth token instead of making a new request
-        let authToken = window.authToken;
+        // Create a File object from the Blob for Supabase SDK
+        const fileForUpload = new File(
+            [fileToUpload],
+            fileName,
+            { type: 'image/jpeg', lastModified: Date.now() }
+        );
         
-        // Fallback only if token isn't available
-        if (!authToken) {
-            console.log('iOS: No stored auth token found, fetching new one');
-            try {
-                const { data } = await supabase.auth.getUser();
-                if (data && data.user) {
-                    authToken = data.user.session?.access_token;
-                    if (authToken) {
-                        // Store it for future use
-                        window.authToken = authToken;
-                    }
-                }
-            } catch (tokenError) {
-                console.warn('iOS: Error getting user:', tokenError);
-            }
-            
-            // Last resort fallback
-            if (!authToken) {
-                console.warn('iOS: Still could not get token, falling back to getSession()');
-                const { data: { session } } = await supabase.auth.getSession();
-                authToken = session.access_token;
-                
-                // Store it for future use
-                window.authToken = authToken;
-            }
-        }
-                
-        // Always use prayer-diary bucket - no need to check available buckets
+        // Always use prayer-diary bucket
         console.log('iOS: Using prayer-diary bucket');
         const bucketName = 'prayer-diary';
         
+        console.log(`iOS: Will upload to path: ${filePath}`);
         
-        // Calculate bucket path explicitly with the correct bucket
-        const fullPath = `${bucketName}/${filePath}`;
-        console.log(`iOS: Will upload to path: ${fullPath}`);
+        // Upload using the Supabase SDK
+        console.log('iOS: Uploading file with Supabase SDK...');
+        const { data, error } = await supabase.storage
+            .from(bucketName)
+            .upload(filePath, fileForUpload, {
+                contentType: 'image/jpeg',
+                upsert: true
+            });
         
-        // API endpoint for direct upload with the correct bucket
-        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`;
-        
-        // Upload directly using fetch API
-        console.log('iOS: Uploading file with fetch API...');
-        const uploadResponse = await fetch(uploadUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'x-upsert': 'true'
-            },
-            body: fileToUpload
-        });
-        
-        if (!uploadResponse.ok) {
-            const errorText = await uploadResponse.text();
-            console.error('iOS: Upload failed with status:', uploadResponse.status);
-            console.error('iOS: Error response:', errorText);
-            throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
+        if (error) {
+            console.error('iOS: Upload failed with Supabase SDK:', error);
+            console.error('iOS: Error details:', {
+                message: error.message || "Unknown error",
+                status: error.status || "No status",
+                statusCode: error.statusCode || "No code"
+            });
+            throw error;
         }
         
         console.log('iOS: Upload successful!');
-        
-        // Simply create a direct public URL without any signing
-        console.log('iOS: Creating public URL for the uploaded file...');
         
         // Construct the public URL directly
         const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
@@ -177,7 +146,25 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
         
         // If we've uploaded a new image successfully and had an old image, try to delete the old one
         if (oldImageUrl) {
-            await deleteOldImageIOS(oldImageUrl, authToken);
+            try {
+                const oldFilePath = extractFilenameFromURL(oldImageUrl);
+                if (oldFilePath) {
+                    console.log(`iOS: Attempting to delete old profile image: ${oldFilePath}`);
+                    
+                    const { error: deleteError } = await supabase.storage
+                        .from(bucketName)
+                        .remove([oldFilePath]);
+                    
+                    if (deleteError) {
+                        console.warn(`iOS: Could not delete old profile image: ${deleteError.message}`);
+                    } else {
+                        console.log('iOS: Old profile image deleted successfully');
+                    }
+                }
+            } catch (deleteError) {
+                console.warn('iOS: Error during old image cleanup:', deleteError);
+                // Don't throw this error - just log it
+            }
         }
         
         return publicUrl;
@@ -185,37 +172,6 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
     } catch (error) {
         console.error('iOS: Error in profile image upload:', error);
         throw error;
-    }
-}
-
-// Delete an old image using REST API for iOS
-async function deleteOldImageIOS(oldImageUrl, authToken) {
-    try {
-        const oldFilePath = extractFilenameFromURL(oldImageUrl);
-        
-        if (oldFilePath) {
-            console.log(`iOS: Attempting to delete old profile image: ${oldFilePath}`);
-            
-            // API endpoint for deletion
-            const deleteUrl = `${SUPABASE_URL}/storage/v1/object/prayer-diary/${oldFilePath}`;
-            
-            // Delete using fetch API
-            const deleteResponse = await fetch(deleteUrl, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
-                }
-            });
-            
-            if (!deleteResponse.ok) {
-                console.warn(`iOS: Could not delete old profile image. Status: ${deleteResponse.status}`);
-            } else {
-                console.log('iOS: Old profile image deleted successfully');
-            }
-        }
-    } catch (deleteError) {
-        console.warn('iOS: Error during old image cleanup:', deleteError);
-        // Don't throw this error - just log it
     }
 }
 
@@ -258,7 +214,7 @@ function compressImageIOS(file, maxWidth, quality = 0.7) {
                     // Clean up to prevent memory leaks
                     URL.revokeObjectURL(img.src);
                     
-                    resolve(blob); // Just return the blob, not a File object
+                    resolve(blob); // Return the blob for later conversion to File
                 }, 'image/jpeg', quality);
             };
             
