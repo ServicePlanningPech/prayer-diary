@@ -8,7 +8,8 @@ function setupStandardProfileImageHandlers() {
     
     // First add event listener to the file input
     if (fileInput) {
-        fileInput.addEventListener('change', handleProfileImageChange);
+        // Use a standard-specific named function to avoid collision
+        fileInput.addEventListener('change', handleStandardProfileImageChange);
     }
     
     if (selectButton && fileInput) {
@@ -23,8 +24,8 @@ function setupStandardProfileImageHandlers() {
     }
 }
 
-// Handle profile image selection
-function handleProfileImageChange() {
+// Handle profile image selection for standard devices - renamed to avoid collision
+function handleStandardProfileImageChange() {
     const fileInput = document.getElementById('profile-image');
     const previewImage = document.getElementById('profile-image-preview');
     
@@ -57,7 +58,7 @@ function handleProfileImageChange() {
         // For camera photos, we'll use a more lightweight preview method
         if (isCameraPhoto) {
             console.log('Likely camera photo detected - using optimized handling');
-            createLightweightPreview(file, previewImage);
+            createStandardLightweightPreview(file, previewImage);
         } else {
             // Use normal reader for gallery photos
             const reader = new FileReader();
@@ -89,7 +90,7 @@ function handleProfileImageChange() {
 }
 
 // Create a lightweight preview that doesn't stall the browser
-function createLightweightPreview(file, previewImage) {
+function createStandardLightweightPreview(file, previewImage) {
     console.log('Creating lightweight preview for camera photo');
     // Create a lightweight preview using createObjectURL instead of readAsDataURL
     try {

@@ -133,10 +133,13 @@ async function loadUserProfile() {
 
 // Helper function to determine which image handler to use
 function setupProfileImageHandlers() {
-    // Check if we're on an iOS device
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    // Check if we're on an iOS device and store globally
+    window.isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent);
     
-    if (isIOS) {
+    console.log('Device detection - User agent:', navigator.userAgent);
+    console.log('Device detection - isIOS:', window.isIOSDevice);
+    
+    if (window.isIOSDevice) {
         console.log('iOS device detected, using iOS-specific image handling');
         // Setup iOS-specific image handling
         setupIosProfileImageHandlers();
@@ -531,10 +534,11 @@ async function completeProfileSave(data) {
                 console.log('🖼️ Profile image detected, starting upload process');
                 console.log(`📊 Image: ${profileImage.name}, ${profileImage.size} bytes, type: ${profileImage.type}`);
                 
-                // Check which image upload method to use based on device type
-                const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+                // Check which image upload method to use based on device type - use window-level detection
+                window.isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent);
+                console.log(`Device detection during upload - isIOS: ${window.isIOSDevice}`);
                 
-                if (isIOS) {
+                if (window.isIOSDevice) {
                     // Use iOS-specific upload function
                     profileImageUrl = await uploadProfileImageIOS(profileImage, getUserId(), oldImageUrl);
                 } else {

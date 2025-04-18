@@ -9,7 +9,8 @@ function setupIosProfileImageHandlers() {
     
     // First add event listener to the file input
     if (fileInput) {
-        fileInput.addEventListener('change', handleProfileImageChange);
+        // Use an iOS-specific named function to avoid collision
+        fileInput.addEventListener('change', handleIosProfileImageChange);
     }
     
     if (selectButton && fileInput) {
@@ -24,8 +25,8 @@ function setupIosProfileImageHandlers() {
     }
 }
 
-// Handle profile image selection for iOS
-function handleProfileImageChange() {
+// Handle profile image selection for iOS devices - renamed to avoid collision
+function handleIosProfileImageChange() {
     const fileInput = document.getElementById('profile-image');
     const previewImage = document.getElementById('profile-image-preview');
     
@@ -41,12 +42,12 @@ function handleProfileImageChange() {
         });
         
         // For iOS, always use the lightweight preview method to avoid memory issues
-        createLightweightPreview(file, previewImage);
+        createIosLightweightPreview(file, previewImage);
     }
 }
 
 // Create a lightweight preview for iOS that uses createObjectURL
-function createLightweightPreview(file, previewImage) {
+function createIosLightweightPreview(file, previewImage) {
     console.log('iOS: Creating lightweight preview');
     
     try {
