@@ -107,9 +107,18 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
         }
         
         // Get authentication token first
-        const { data: { session } } = await supabase.auth.getSession();
-        const authToken = session.access_token;
-        
+		// Get authentication token using getUser instead of getSession to prevent stalling on iOS
+		const { data } = await supabase.auth.getUser();
+		if (!data || !data.user) {
+			throw new Error('User authentication failed - please log in again');
+		}
+		const authToken = data.user.session?.access_token;
+		if (!authToken) {
+			console.warn('iOS: Could not get access token from getUser(), falling back to getSession()');
+			const { data: { session } } = await supabase.auth.getSession();
+			const authToken = session.access_token;
+		}
+				
         // Check for available buckets to ensure we use the correct one
         console.log('iOS: Checking available storage buckets...');
         let bucketName = 'prayer-diary'; // Default bucket name
@@ -181,8 +190,16 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
         if (!urlInfoResponse.ok) {
             console.log('iOS: Could not get URL info, using fallback URL format');
             // Fallback to constructed signed URL since bucket info fetch failed
-            const { data: { session } } = await supabase.auth.getSession();
-            const authToken = session.access_token;
+			const { data } = await supabase.auth.getUser();
+			if (!data || !data.user) {
+				throw new Error('User authentication failed - please log in again');
+			}
+			const authToken = data.user.session?.access_token;
+			if (!authToken) {
+				console.warn('iOS: Could not get access token from getUser(), falling back to getSession()');
+				const { data: { session } } = await supabase.auth.getSession();
+				const authToken = session.access_token;
+			}
             
             const getUrlResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/prayer-diary/${filePath}?token=${authToken}&expires=3153600000`, {
                 method: 'GET',
