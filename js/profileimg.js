@@ -171,8 +171,6 @@ async function uploadProfileImage(imageFile, userId, oldImageUrl = null) {
         // Proceed with upload using the standard Supabase SDK
         console.log(`Uploading image to path: ${filePath}`);
         
-
-        
         // Use the determined bucket name
         const bucketName = 'prayer-diary'; // Default, may be updated above
         
@@ -196,35 +194,12 @@ async function uploadProfileImage(imageFile, userId, oldImageUrl = null) {
         
         console.log('Image uploaded successfully');
         
-        // Create a public URL instead of a signed URL
-        // First check if the bucket is set to public
-        console.log('Verifying bucket access and creating public URL...');
+        // Simply create a direct public URL since the bucket is public
+        console.log('Creating public URL...');
         
-        // Try to create a signed URL first (this works even if bucket isn't public)
-        const { data: urlData, error: urlError } = await supabase.storage
-            .from('prayer-diary')
-            .createSignedUrl(filePath, 157680000); // 5-year expiry
-        
-        if (urlError) {
-            console.error("URL generation failed:", urlError);
-            throw urlError;
-        }
-        
-        // Check if bucket is public by testing bucket URL format vs signed URL format
-        const urlParts = urlData.signedUrl.split('?')[0].split('/');
-        const isBucketPublic = urlParts.includes('public');
-        
-        let publicUrl;
-        if (isBucketPublic) {
-            // If bucket is already public, we can just use the URL without token
-            publicUrl = urlData.signedUrl.split('?')[0]; // Remove the token part
-        } else {
-            // If bucket is not public, we need to use the signed URL
-            publicUrl = urlData.signedUrl;
-            console.log('Warning: Using signed URL as bucket may not be public. URL will expire in 5 years.');
-        }
-        
-        console.log('Created URL for the image:', publicUrl);
+        // Construct the public URL directly
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/prayer-diary/${filePath}`;
+        console.log('Created public URL for the image:', publicUrl);
         
         // If we've successfully uploaded a new image and we had an old image, delete the old one
         if (oldImageUrl) {

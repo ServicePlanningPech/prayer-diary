@@ -136,34 +136,10 @@ async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
             }
         }
                 
-        // Check for available buckets to ensure we use the correct one
-        console.log('iOS: Checking available storage buckets...');
-        let bucketName = 'prayer-diary'; // Default bucket name
+        // Always use prayer-diary bucket - no need to check available buckets
+        console.log('iOS: Using prayer-diary bucket');
+        const bucketName = 'prayer-diary';
         
-        try {
-            const bucketsResponse = await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (bucketsResponse.ok) {
-                const buckets = await bucketsResponse.json();
-                console.log('iOS: Available buckets:', buckets.map(b => b.name).join(', '));
-                
-                // Use the first bucket if prayer-diary doesn't exist
-                if (buckets.length > 0 && !buckets.some(b => b.name === 'prayer-diary')) {
-                    console.log(`iOS: Bucket 'prayer-diary' not found, using '${buckets[0].name}' instead`);
-                    bucketName = buckets[0].name;
-                }
-            } else {
-                console.error('iOS: Could not list buckets, using default bucket name');
-            }
-        } catch (bucketError) {
-            console.error('iOS: Error checking buckets:', bucketError);
-        }
         
         // Calculate bucket path explicitly with the correct bucket
         const fullPath = `${bucketName}/${filePath}`;
