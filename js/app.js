@@ -17,8 +17,11 @@ window.testDate = null;
 // Initialize the app when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
 
+
 // Initialize app function
 function initializeApp() {
+	// Check if returning from profile save (should run early)
+    checkForPostProfileSave();
     // Set up all modals
     setupAllModals();
     
@@ -37,6 +40,32 @@ function initializeApp() {
         });
     }
 }
+
+// Add this to app.js or at the beginning of your main execution flow
+function checkForPostProfileSave() {
+    // Check if coming back from a profile save refresh
+    if (sessionStorage.getItem('profileSaved') === 'true') {
+        // Clear the flag
+        sessionStorage.removeItem('profileSaved');
+        
+        // Show a message
+        setTimeout(() => {
+            showNotification('Profile Updated', 'Your profile has been successfully updated.', 'success');
+        }, 500);
+        
+        // If user was in the profile view before refresh, return there
+        if (sessionStorage.getItem('lastView') === 'profile-view') {
+            setTimeout(() => {
+                showView('profile-view');
+            }, 100);
+        }
+    }
+}
+
+// Make sure to call this function when the app initializes
+// Add this line to your app initialization code (app.js or similar)
+// document.addEventListener('DOMContentLoaded', checkForPostProfileSave);
+
 
 // Setup logout on tab close functionality
 function setupTabCloseLogout() {

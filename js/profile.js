@@ -571,7 +571,7 @@ async function saveProfile(e) {
     }
 }
 
-// Update profile via Edge Function with timeout and stall prevention
+// Update profile via Edge Function with iOS-specific page refresh
 async function updateProfileViaEdgeFunction(data) {
     // Set a timeout to ensure button state is always restored
     const TIMEOUT_MS = 15000; // 15 seconds
@@ -588,6 +588,11 @@ async function updateProfileViaEdgeFunction(data) {
     
     try {
         console.log('🔄 Starting profile update via Edge Function');
+        
+        // Check if this is an iOS device (for special handling later)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        console.log(`Device detection: iOS = ${isIOS}`);
         
         // Get current profile image URL (fallback)
         const oldImageUrl = userProfile.profile_image_url || null;
@@ -673,14 +678,34 @@ async function updateProfileViaEdgeFunction(data) {
             updateAllProfileImages(result.imageUrl);
         }
         
-        // IMPORTANT CHANGE: Use the profile data returned from the Edge Function
+        // Use the profile data returned from the Edge Function
         // instead of making another Supabase SDK call that could stall
         if (result.profile) {
             userProfile = result.profile;
             console.log('📊 Updated profile data from Edge Function:', userProfile);
         }
         
+        // Show a success notification
         showNotification('Success', 'Profile saved successfully!');
+        
+        // iOS-specific handling: refresh the page to reset Supabase SDK state
+        if (isIOS) {
+            console.log('📱 iOS detected, will refresh page after profile update');
+            
+            // Show a notification about the refresh
+            setTimeout(() => {
+                showNotification('Refreshing', 'Updating app to apply changes...', 'info');
+                
+                // Store a marker in sessionStorage to indicate we're coming back from a refresh
+                // This allows us to restore state or show a message
+                sessionStorage.setItem('profileSaved', 'true');
+                
+                // Give time for the notification to be seen, then refresh
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            }, 1000);
+        }
         
     } catch (error) {
         console.error('❌ Error in updateProfileViaEdgeFunction:', error);
@@ -695,6 +720,7 @@ async function updateProfileViaEdgeFunction(data) {
         console.log('🏁 Profile update process completed');
     }
 }
+
 
 // Helper function to get auth token
 async function getAuthToken() {
