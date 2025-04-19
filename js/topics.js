@@ -3,40 +3,47 @@
 // Variables to track state
 let allTopics = [];
 let filteredTopics = [];
-let topicEditor;
+let topicEditor = null;
 let currentTopicId = null;
+let editorInitialized = false;
 
 // Initialize topics functionality
 function initTopics() {
     if (!hasPermission('prayer_calendar_editor')) return;
     
-    // Set up the Quill editor for topic text
-    topicEditor = new Quill('#topic-text-editor', {
-        theme: 'snow',
-        modules: {
-            toolbar: [
-                ['bold', 'italic', 'underline'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                ['clean']
-            ]
-        },
-        placeholder: 'Enter topic text...'
-    });
+    // Only initialize the editor once
+    if (!editorInitialized) {
+        // Set up the Quill editor for topic text
+        topicEditor = new Quill('#topic-text-editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['clean']
+                ]
+            },
+            placeholder: 'Enter topic text...'
+        });
+        
+        // Set up image selection for topic
+        document.getElementById('select-topic-image').addEventListener('click', () => {
+            document.getElementById('topic-image').click();
+        });
+        
+        document.getElementById('topic-image').addEventListener('change', handleTopicImageSelection);
+        
+        // Set up topic form validation
+        document.getElementById('topic-title').addEventListener('input', validateTopicForm);
+        topicEditor.on('text-change', validateTopicForm);
+        
+        // Set up save topic button
+        document.getElementById('save-topic').addEventListener('click', saveTopic);
+        
+        editorInitialized = true;
+    }
     
-    // Set up image selection for topic
-    document.getElementById('select-topic-image').addEventListener('click', () => {
-        document.getElementById('topic-image').click();
-    });
-    
-    document.getElementById('topic-image').addEventListener('change', handleTopicImageSelection);
-    
-    // Set up topic form validation
-    document.getElementById('topic-title').addEventListener('input', validateTopicForm);
-    topicEditor.on('text-change', validateTopicForm);
-    
-    // Set up save topic button
-    document.getElementById('save-topic').addEventListener('click', saveTopic);
-    
+    // These event listeners can be set up each time
     // Set up edit topics button
     document.getElementById('edit-topics-btn').addEventListener('click', openTopicManagement);
     
@@ -90,7 +97,7 @@ function validateTopicForm() {
     
     // Check if title and text are provided
     const hasTitle = titleField.value.trim().length > 0;
-    const hasText = topicEditor.getText().trim().length > 5; // At least a few characters
+    const hasText = topicEditor && topicEditor.getText().trim().length > 5; // At least a few characters
     
     // Enable/disable save button
     saveButton.disabled = !(hasTitle && hasText);
@@ -115,6 +122,9 @@ function handleTopicImageSelection(e) {
         document.getElementById('topic-image-preview').src = event.target.result;
     };
     reader.readAsDataURL(file);
+    
+    // Force validation after image selection
+    validateTopicForm();
 }
 
 // Open topic management modal
@@ -185,7 +195,11 @@ function openAddTopicModal() {
     document.getElementById('topic-id').value = '';
     currentTopicId = null;
     document.getElementById('topic-image-preview').src = 'img/placeholder-profile.png';
-    topicEditor.root.innerHTML = '';
+    
+    // Clear Quill editor
+    if (topicEditor) {
+        topicEditor.root.innerHTML = '';
+    }
     
     // Update modal title
     document.getElementById('topic-edit-title').textContent = 'Add Prayer Topic';
@@ -196,6 +210,9 @@ function openAddTopicModal() {
     // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('topic-edit-modal'));
     modal.show();
+    
+    // Force validation to update button state
+    setTimeout(validateTopicForm, 100);
 }
 
 // Open edit topic modal
@@ -219,7 +236,11 @@ function openEditTopicModal(topicId) {
     
     // Fill the form with topic data
     document.getElementById('topic-title').value = topic.topic_title;
-    topicEditor.root.innerHTML = topic.topic_text;
+    
+    // Set Quill editor content
+    if (topicEditor) {
+        topicEditor.root.innerHTML = topic.topic_text;
+    }
     
     // Set image preview
     if (topic.topic_image_url) {
@@ -231,12 +252,12 @@ function openEditTopicModal(topicId) {
     // Update modal title
     document.getElementById('topic-edit-title').textContent = 'Edit Prayer Topic';
     
-    // Enable save button
-    validateTopicForm();
-    
     // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('topic-edit-modal'));
     modal.show();
+    
+    // Force validation to update button state
+    setTimeout(validateTopicForm, 100);
 }
 
 // Save topic
@@ -251,38 +272,55 @@ async function saveTopic() {
         
         // Get form data
         const topicTitle = document.getElementById('topic-title').value.trim();
-        const topicText = topicEditor.root.innerHTML;
+        const topicText = topicEditor ? topicEditor.root.innerHTML : '';
         
         // Handle image upload first if there is one
         let topicImageUrl = null;
         const imageInput = document.getElementById('topic-image');
         
         if (imageInput.files && imageInput.files[0]) {
-            // Upload the image
-            const file = imageInput.files[0];
-            const fileName = `topic_${Date.now()}_${file.name.replace(/\\s+/g, '_')}`;
-            
-            // Upload to Supabase Storage
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('prayer-diary')
-                .upload(`topic_images/${fileName}`, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
+            try {
+                console.log('Uploading image file...');
+                // Upload the image
+                const file = imageInput.files[0];
+                const fileName = `topic_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
                 
-            if (uploadError) throw uploadError;
-            
-            // Get the public URL with a 10-year expiry
-            const tenYearsInSeconds = 60 * 60 * 24 * 365 * 10;
-            const { data: urlData } = await supabase.storage
-                .from('prayer-diary')
-                .createSignedUrl(`topic_images/${fileName}`, tenYearsInSeconds);
+                // Upload to Supabase Storage
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('prayer-diary')
+                    .upload(`topic_images/${fileName}`, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+                    
+                if (uploadError) {
+                    console.error('Image upload error:', uploadError);
+                    throw uploadError;
+                }
                 
-            if (!urlData || !urlData.signedUrl) {
-                throw new Error('Failed to get signed URL');
+                console.log('Image uploaded successfully, getting URL...');
+                
+                // Get the public URL with a 10-year expiry
+                const tenYearsInSeconds = 60 * 60 * 24 * 365 * 10;
+                const { data: urlData, error: urlError } = await supabase.storage
+                    .from('prayer-diary')
+                    .createSignedUrl(`topic_images/${fileName}`, tenYearsInSeconds);
+                    
+                if (urlError) {
+                    console.error('URL generation error:', urlError);
+                    throw urlError;
+                }
+                
+                if (!urlData || !urlData.signedUrl) {
+                    throw new Error('Failed to get signed URL');
+                }
+                
+                topicImageUrl = urlData.signedUrl;
+                console.log('Image URL generated:', topicImageUrl);
+            } catch (imageError) {
+                console.error('Error processing image:', imageError);
+                showNotification('Warning', 'Could not process image, but continuing to save topic', 'warning');
             }
-            
-            topicImageUrl = urlData.signedUrl;
         } else if (!isNewTopic) {
             // If editing and no new image selected, keep existing URL
             const existingTopic = allTopics.find(t => t.id === topicId);
