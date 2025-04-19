@@ -127,6 +127,39 @@ function handleTopicImageSelection(e) {
     validateTopicForm();
 }
 
+// Call the topic management Edge Function
+async function callTopicEdgeFunction(action, data) {
+    try {
+        const functionUrl = `${SUPABASE_URL}/functions/v1/topic-management`;
+        
+        // Add user ID to the request data
+        const requestData = {
+            action,
+            data,
+            userId: getUserId()
+        };
+        
+        const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${window.authToken || ''}`
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Edge function error: ${response.status} - ${errorText}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error(`Error calling topic-management edge function (${action}):`, error);
+        throw error;
+    }
+}
+
 // Open topic management modal
 async function openTopicManagement() {
     // Refresh topics list
@@ -274,90 +307,41 @@ async function saveTopic() {
         const topicTitle = document.getElementById('topic-title').value.trim();
         const topicText = topicEditor ? topicEditor.root.innerHTML : '';
         
-        // Handle image upload first if there is one
-        let topicImageUrl = null;
-        const imageInput = document.getElementById('topic-image');
+        // Prepare data for the Edge function
+        const requestData = {
+            topicId,
+            topicTitle,
+            topicText
+        };
         
+        // Handle image if selected
+        const imageInput = document.getElementById('topic-image');
         if (imageInput.files && imageInput.files[0]) {
-            try {
-                console.log('Uploading image file...');
-                // Upload the image
-                const file = imageInput.files[0];
-                const fileName = `topic_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-                
-                // Upload to Supabase Storage
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('prayer-diary')
-                    .upload(`topic_images/${fileName}`, file, {
-                        cacheControl: '3600',
-                        upsert: false
-                    });
-                    
-                if (uploadError) {
-                    console.error('Image upload error:', uploadError);
-                    throw uploadError;
-                }
-                
-                console.log('Image uploaded successfully, getting URL...');
-                
-                // Get the public URL with a 10-year expiry
-                const tenYearsInSeconds = 60 * 60 * 24 * 365 * 10;
-                const { data: urlData, error: urlError } = await supabase.storage
-                    .from('prayer-diary')
-                    .createSignedUrl(`topic_images/${fileName}`, tenYearsInSeconds);
-                    
-                if (urlError) {
-                    console.error('URL generation error:', urlError);
-                    throw urlError;
-                }
-                
-                if (!urlData || !urlData.signedUrl) {
-                    throw new Error('Failed to get signed URL');
-                }
-                
-                topicImageUrl = urlData.signedUrl;
-                console.log('Image URL generated:', topicImageUrl);
-            } catch (imageError) {
-                console.error('Error processing image:', imageError);
-                showNotification('Warning', 'Could not process image, but continuing to save topic', 'warning');
-            }
+            const file = imageInput.files[0];
+            
+            // Read file as base64
+            const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
+            
+            requestData.imageBase64 = base64;
+            requestData.fileName = file.name;
         } else if (!isNewTopic) {
             // If editing and no new image selected, keep existing URL
             const existingTopic = allTopics.find(t => t.id === topicId);
             if (existingTopic && existingTopic.topic_image_url) {
-                topicImageUrl = existingTopic.topic_image_url;
+                requestData.existingImageUrl = existingTopic.topic_image_url;
             }
         }
         
-        // Prepare topic data
-        const topicData = {
-            topic_title: topicTitle,
-            topic_text: topicText,
-            topic_image_url: topicImageUrl
-        };
+        // Call the Edge function
+        const response = await callTopicEdgeFunction('saveTopic', requestData);
         
-        // Add or update the topic
-        let result;
-        if (isNewTopic) {
-            // Create new topic
-            topicData.created_by = getUserId();
-            topicData.pray_day = 0; // Unassigned by default
-            topicData.pray_months = 0; // All months by default
-            
-            result = await supabase
-                .from('prayer_topics')
-                .insert(topicData);
-        } else {
-            // Update existing topic
-            topicData.updated_at = new Date().toISOString();
-            
-            result = await supabase
-                .from('prayer_topics')
-                .update(topicData)
-                .eq('id', topicId);
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to save topic');
         }
-        
-        if (result.error) throw result.error;
         
         // Refresh topics list
         await loadTopics();
@@ -369,11 +353,7 @@ async function saveTopic() {
         }
         
         // Show success notification
-        showNotification(
-            'Success', 
-            isNewTopic ? 'Topic created successfully' : 'Topic updated successfully',
-            'success'
-        );
+        showNotification('Success', response.message, 'success');
         
         // Open the topic management modal again to show the updated list
         openTopicManagement();
@@ -404,19 +384,18 @@ function confirmDeleteTopic(topicId) {
 // Delete topic
 async function deleteTopic(topicId) {
     try {
-        // Delete the topic
-        const { error } = await supabase
-            .from('prayer_topics')
-            .delete()
-            .eq('id', topicId);
+        // Call the Edge function to delete the topic
+        const response = await callTopicEdgeFunction('deleteTopic', { topicId });
         
-        if (error) throw error;
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to delete topic');
+        }
         
         // Refresh topics list
         await loadTopics();
         
         // Show success notification
-        showNotification('Success', 'Topic deleted successfully', 'success');
+        showNotification('Success', response.message, 'success');
         
         // Refresh the modal content
         openTopicManagement();
@@ -574,23 +553,28 @@ async function assignTopicToDay(topicId) {
     }
     
     try {
-        const { data, error } = await supabase
-            .from('prayer_topics')
-            .update({ pray_day: selectedDay })
-            .eq('id', topicId);
-            
-        if (error) throw error;
+        // Call the Edge function
+        const response = await callTopicEdgeFunction('assignTopicToDay', { 
+            topicId, 
+            day: selectedDay 
+        });
         
-        // Update local data
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to assign topic');
+        }
+        
+        // Update local data to avoid reload
         const topicIndex = allTopics.findIndex(topic => topic.id === topicId);
         if (topicIndex >= 0) {
             allTopics[topicIndex].pray_day = selectedDay;
+            // Refresh display
+            filterAndDisplayTopics();
+        } else {
+            // If not found in local data, reload all topics
+            await loadTopics();
         }
         
-        // Refresh display
-        filterAndDisplayTopics();
-        
-        showNotification('Success', 'Topic assigned to day ' + selectedDay, 'success');
+        showNotification('Success', response.message, 'success');
         
     } catch (error) {
         console.error('Error assigning topic:', error);
@@ -601,20 +585,23 @@ async function assignTopicToDay(topicId) {
 // Update the topic's months settings
 async function updateTopicMonths(topicId, months) {
     try {
-        const { data, error } = await supabase
-            .from('prayer_topics')
-            .update({ pray_months: months })
-            .eq('id', topicId);
-            
-        if (error) throw error;
+        // Call the Edge function
+        const response = await callTopicEdgeFunction('updateTopicMonths', { 
+            topicId, 
+            months
+        });
         
-        // Update local data
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to update months');
+        }
+        
+        // Update local data to avoid reload
         const topicIndex = allTopics.findIndex(topic => topic.id === topicId);
         if (topicIndex >= 0) {
             allTopics[topicIndex].pray_months = months;
         }
         
-        showNotification('Success', 'Month settings updated', 'success');
+        showNotification('Success', response.message, 'success');
         
     } catch (error) {
         console.error('Error updating months:', error);
