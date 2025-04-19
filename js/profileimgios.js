@@ -1,6 +1,5 @@
 // Profile Image Handler for iOS Devices
-// This file contains functions for handling profile image uploads using Supabase SDK
-// with iOS-specific optimizations
+// This file handles profile image uploads for iOS devices using a Supabase Edge Function
 
 // Set up the profile image button click handler for iOS devices
 function setupIosProfileImageHandlers() {
@@ -25,7 +24,7 @@ function setupIosProfileImageHandlers() {
     }
 }
 
-// Handle profile image selection for iOS devices - renamed to avoid collision
+// Handle profile image selection for iOS devices
 function handleIosProfileImageChange() {
     const fileInput = document.getElementById('profile-image');
     const previewImage = document.getElementById('profile-image-preview');
@@ -33,7 +32,7 @@ function handleIosProfileImageChange() {
     if (fileInput.files && fileInput.files[0]) {
         const file = fileInput.files[0];
         
-        // Debug image characteristics - useful for troubleshooting iOS issues
+        // Debug image characteristics
         console.log('iOS: Selected image details:', {
             name: file.name,
             type: file.type,
@@ -83,96 +82,83 @@ function createIosLightweightPreview(file, previewImage) {
     }
 }
 
-// Upload profile image using Supabase SDK with iOS optimizations
+// Upload profile image using the Edge Function
 async function uploadProfileImageIOS(imageFile, userId, oldImageUrl = null) {
-    console.log('iOS: Starting profile image upload using Supabase SDK');
+    console.log('iOS: Starting profile image upload using Edge Function');
     console.log(`iOS: Original image details: ${imageFile.name}, ${Math.round(imageFile.size / 1024)} KB, type: ${imageFile.type}`);
     
     try {
-        // Define the path for storage
-        const fileName = `${userId}_${Date.now()}.jpg`;
-        const filePath = `profiles/${fileName}`;
-        
         // First compress the image to make it smaller for iOS
         console.log('iOS: Compressing image before upload');
-        let fileToUpload;
+        let compressedImage;
         
         try {
             // Use a smaller size for iOS devices to ensure better performance
-            fileToUpload = await compressImageIOS(imageFile, 1200, 0.7);
-            console.log(`iOS: Compressed image size: ${Math.round(fileToUpload.size / 1024)} KB`);
+            compressedImage = await compressImageIOS(imageFile, 1200, 0.7);
+            console.log(`iOS: Compressed image size: ${Math.round(compressedImage.size / 1024)} KB`);
         } catch (processingError) {
-            console.error('iOS: Image processing failed, will try with original file:', processingError);
-            fileToUpload = imageFile;
+            console.error('iOS: Image processing failed, will use original:', processingError);
+            // Create a blob copy of the original file to use the same approach
+            compressedImage = await imageFile.arrayBuffer().then(buffer => new Blob([buffer], { type: 'image/jpeg' }));
         }
         
-        // Create a File object from the Blob for Supabase SDK
-        const fileForUpload = new File(
-            [fileToUpload],
-            fileName,
-            { type: 'image/jpeg', lastModified: Date.now() }
-        );
+        // Convert the compressed image to base64
+        const base64Data = await blobToBase64(compressedImage);
         
-        // Always use prayer-diary bucket
-        console.log('iOS: Using prayer-diary bucket');
-        const bucketName = 'prayer-diary';
+        // Define the Edge Function URL - replace with your actual function URL
+        const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/upload-image`;
         
-        console.log(`iOS: Will upload to path: ${filePath}`);
+        // Prepare the request payload
+        const payload = {
+            imageData: base64Data,
+            userId: userId,
+            oldImageUrl: oldImageUrl
+        };
         
-        // Upload using the Supabase SDK
-        console.log('iOS: Uploading file with Supabase SDK...');
-        const { data, error } = await supabase.storage
-            .from(bucketName)
-            .upload(filePath, fileForUpload, {
-                contentType: 'image/jpeg',
-                upsert: true
-            });
+        console.log('iOS: Sending image to Edge Function...');
         
-        if (error) {
-            console.error('iOS: Upload failed with Supabase SDK:', error);
-            console.error('iOS: Error details:', {
-                message: error.message || "Unknown error",
-                status: error.status || "No status",
-                statusCode: error.statusCode || "No code"
-            });
-            throw error;
+        // Post to the Edge Function
+        const response = await fetch(edgeFunctionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${window.authToken || ''}`
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('iOS: Edge Function request failed:', response.status, errorText);
+            throw new Error(`Edge Function failed: ${response.status} - ${errorText}`);
         }
         
-        console.log('iOS: Upload successful!');
+        // Parse the response to get the public URL
+        const result = await response.json();
         
-        // Construct the public URL directly
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
-        console.log('iOS: Created public URL for the image:', publicUrl);
-        
-        // If we've uploaded a new image successfully and had an old image, try to delete the old one
-        if (oldImageUrl) {
-            try {
-                const oldFilePath = extractFilenameFromURL(oldImageUrl);
-                if (oldFilePath) {
-                    console.log(`iOS: Attempting to delete old profile image: ${oldFilePath}`);
-                    
-                    const { error: deleteError } = await supabase.storage
-                        .from(bucketName)
-                        .remove([oldFilePath]);
-                    
-                    if (deleteError) {
-                        console.warn(`iOS: Could not delete old profile image: ${deleteError.message}`);
-                    } else {
-                        console.log('iOS: Old profile image deleted successfully');
-                    }
-                }
-            } catch (deleteError) {
-                console.warn('iOS: Error during old image cleanup:', deleteError);
-                // Don't throw this error - just log it
-            }
+        if (!result.success || !result.publicUrl) {
+            throw new Error('Edge Function did not return a valid URL');
         }
         
-        return publicUrl;
+        console.log('iOS: Upload via Edge Function successful!');
+        console.log('iOS: Received public URL:', result.publicUrl);
+        
+        return result.publicUrl;
         
     } catch (error) {
         console.error('iOS: Error in profile image upload:', error);
         throw error;
     }
+}
+
+// Helper function to convert Blob to base64
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
 }
 
 // Helper function to compress images for iOS
@@ -214,7 +200,7 @@ function compressImageIOS(file, maxWidth, quality = 0.7) {
                     // Clean up to prevent memory leaks
                     URL.revokeObjectURL(img.src);
                     
-                    resolve(blob); // Return the blob for later conversion to File
+                    resolve(blob);
                 }, 'image/jpeg', quality);
             };
             
@@ -233,7 +219,7 @@ function compressImageIOS(file, maxWidth, quality = 0.7) {
     });
 }
 
-// Function to extract filename from a Supabase storage URL - same as in profileimg.js
+// Function to extract filename from a Supabase storage URL - kept for reference
 function extractFilenameFromURL(url) {
     if (!url) return null;
     
