@@ -571,8 +571,21 @@ async function saveProfile(e) {
     }
 }
 
-// Update profile via Edge Function
+// Update profile via Edge Function with timeout and stall prevention
 async function updateProfileViaEdgeFunction(data) {
+    // Set a timeout to ensure button state is always restored
+    const TIMEOUT_MS = 15000; // 15 seconds
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Update timeout exceeded')), TIMEOUT_MS);
+    });
+    
+    // Create a timer to reset the button state regardless of outcome
+    const buttonResetTimer = setTimeout(() => {
+        console.log('⏰ Safety timer: resetting button state');
+        data.submitBtn.textContent = data.originalText;
+        data.submitBtn.disabled = false;
+    }, TIMEOUT_MS + 1000); // 1 second after the timeout
+    
     try {
         console.log('🔄 Starting profile update via Edge Function');
         
@@ -626,14 +639,19 @@ async function updateProfileViaEdgeFunction(data) {
         const authToken = window.authToken || await getAuthToken();
         
         console.log('📡 Sending data to Edge Function...');
-        const response = await fetch(edgeFunctionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify(payload)
-        });
+        
+        // Use Promise.race to implement timeout
+        const response = await Promise.race([
+            fetch(edgeFunctionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(payload)
+            }),
+            timeoutPromise
+        ]);
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -655,15 +673,23 @@ async function updateProfileViaEdgeFunction(data) {
             updateAllProfileImages(result.imageUrl);
         }
         
-        // Refresh user profile from database
-        await fetchUserProfile();
+        // IMPORTANT CHANGE: Use the profile data returned from the Edge Function
+        // instead of making another Supabase SDK call that could stall
+        if (result.profile) {
+            userProfile = result.profile;
+            console.log('📊 Updated profile data from Edge Function:', userProfile);
+        }
         
         showNotification('Success', 'Profile saved successfully!');
         
     } catch (error) {
         console.error('❌ Error in updateProfileViaEdgeFunction:', error);
-        throw error;
+        showNotification('Error', `Failed to save profile: ${error.message}`);
     } finally {
+        // Clear the safety timer since we're in the finally block
+        clearTimeout(buttonResetTimer);
+        
+        // Reset button state
         data.submitBtn.textContent = data.originalText;
         data.submitBtn.disabled = false;
         console.log('🏁 Profile update process completed');
