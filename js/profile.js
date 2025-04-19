@@ -118,8 +118,7 @@ async function loadUserProfile() {
         document.getElementById('profile-name').addEventListener('input', updateProfilePreview);
         document.getElementById('profile-prayer-points').addEventListener('input', updateProfilePreview);
         
-        // Call the appropriate setup function for image handling based on the platform
-        // This is where we split iOS and non-iOS handling
+        // Set up profile image handler (we now use the same handler for all devices)
         setupProfileImageHandlers();
         
     } catch (error) {
@@ -131,22 +130,83 @@ async function loadUserProfile() {
     }
 }
 
-// Helper function to determine which image handler to use
+// Helper function to set up the profile image button and file input
 function setupProfileImageHandlers() {
-    // Check if we're on an iOS device and store globally
-    window.isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const selectButton = document.getElementById('select-profile-image');
+    const fileInput = document.getElementById('profile-image');
     
-    console.log('Device detection - User agent:', navigator.userAgent);
-    console.log('Device detection - isIOS:', window.isIOSDevice);
+    // First add event listener to the file input
+    if (fileInput) {
+        fileInput.addEventListener('change', handleProfileImageChange);
+    }
     
-    if (window.isIOSDevice) {
-        console.log('iOS device detected, using iOS-specific image handling');
-        // Setup iOS-specific image handling
-        setupIosProfileImageHandlers();
-    } else {
-        console.log('Non-iOS device detected, using standard image handling');
-        // Setup standard image handling
-        setupStandardProfileImageHandlers();
+    if (selectButton && fileInput) {
+        // Remove any existing event listeners first to prevent duplicates
+        const newSelectButton = selectButton.cloneNode(true);
+        selectButton.parentNode.replaceChild(newSelectButton, selectButton);
+        
+        // Add the event listener to the fresh button
+        newSelectButton.addEventListener('click', function() {
+            fileInput.click();
+        });
+    }
+}
+
+// Handle profile image selection
+function handleProfileImageChange() {
+    const fileInput = document.getElementById('profile-image');
+    const previewImage = document.getElementById('profile-image-preview');
+    
+    if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        
+        // Debug image characteristics
+        console.log('Selected image details:', {
+            name: file.name,
+            type: file.type,
+            size: Math.round(file.size/1024) + ' KB',
+            lastModified: new Date(file.lastModified).toISOString()
+        });
+        
+        // Always use the createLightweightPreview
+        createLightweightPreview(file, previewImage);
+    }
+}
+
+// Create a lightweight preview that uses createObjectURL
+function createLightweightPreview(file, previewImage) {
+    console.log('Creating lightweight preview');
+    
+    try {
+        const objectUrl = URL.createObjectURL(file);
+        
+        // Update both preview elements
+        previewImage.src = objectUrl;
+        document.getElementById('preview-profile-image').src = objectUrl;
+        
+        // Clean up the URL after the image loads to prevent memory leaks
+        previewImage.onload = () => {
+            console.log('Preview image loaded successfully');
+            // Schedule cleanup for later
+            setTimeout(() => {
+                URL.revokeObjectURL(objectUrl);
+                console.log('ObjectURL revoked to prevent memory leaks');
+            }, 3000); // Wait 3 seconds to ensure all uses of the URL are complete
+        };
+        
+        previewImage.onerror = () => {
+            console.error('Error loading preview image');
+            URL.revokeObjectURL(objectUrl);
+            
+            // Set to placeholder if there's an error
+            previewImage.src = 'img/placeholder-profile.png';
+            document.getElementById('preview-profile-image').src = 'img/placeholder-profile.png';
+        };
+    } catch (error) {
+        console.error('Error creating lightweight preview:', error);
+        // Fallback to placeholder
+        previewImage.src = 'img/placeholder-profile.png';
+        document.getElementById('preview-profile-image').src = 'img/placeholder-profile.png';
     }
 }
 
@@ -403,7 +463,7 @@ function showGdprConsentModal() {
             // Complete the profile save with GDPR consent
             if (profileDataToSave) {
                 profileDataToSave.gdprAccepted = true;
-                await completeProfileSave(profileDataToSave);
+                await updateProfileViaEdgeFunction(profileDataToSave);
             }
         } finally {
             // Ensure modal is properly disposed
@@ -472,20 +532,23 @@ async function saveProfile(e) {
             return; // Stop form submission
         }
         
+        // Prepare profile data object
+        const profileData = {
+            fullName,
+            prayerPoints,
+            phoneNumber,
+            whatsappNumber,
+            prayerUpdateNotification,
+            urgentPrayerNotification,
+            notifyPush,
+            submitBtn,
+            originalText
+        };
+        
         // Check if user has accepted GDPR
         if (!userProfile.gdpr_accepted) {
             // Store the profile data and button for later
-            profileDataToSave = {
-                fullName,
-                prayerPoints,
-                phoneNumber,
-                whatsappNumber,
-                prayerUpdateNotification,
-                urgentPrayerNotification,
-                notifyPush,
-                submitBtn,
-                originalText
-            };
+            profileDataToSave = profileData;
             
             // Store submit button for later
             profileSubmitButton = submitBtn;
@@ -496,17 +559,7 @@ async function saveProfile(e) {
         }
         
         // If we get here, user has already accepted GDPR
-        await completeProfileSave({
-            fullName,
-            prayerPoints,
-            phoneNumber,
-            whatsappNumber,
-            prayerUpdateNotification,
-            urgentPrayerNotification,
-            notifyPush,
-            submitBtn,
-            originalText
-        });
+        await updateProfileViaEdgeFunction(profileData);
         
     } catch (error) {
         console.error('Error saving profile:', error);
@@ -518,55 +571,23 @@ async function saveProfile(e) {
     }
 }
 
-// Complete profile save after GDPR check
-async function completeProfileSave(data) {
+// Update profile via Edge Function
+async function updateProfileViaEdgeFunction(data) {
     try {
-        console.log('🔄 Starting profile save process');
+        console.log('🔄 Starting profile update via Edge Function');
         
         // Get current profile image URL (fallback)
-        let profileImageUrl = userProfile.profile_image_url;
-        const oldImageUrl = profileImageUrl; // Store the old URL for deletion later
+        const oldImageUrl = userProfile.profile_image_url || null;
         const profileImage = document.getElementById('profile-image').files[0];
-        
-        // Only process image upload if a new image was selected
-        if (profileImage) {
-            try {
-                console.log('🖼️ Profile image detected, starting upload process');
-                console.log(`📊 Image: ${profileImage.name}, ${profileImage.size} bytes, type: ${profileImage.type}`);
-                
-                // Check which image upload method to use based on device type - use window-level detection
-                window.isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent);
-                console.log(`Device detection during upload - isIOS: ${window.isIOSDevice}`);
-                
-                if (window.isIOSDevice) {
-                    // Use iOS-specific upload function
-                    profileImageUrl = await uploadProfileImageIOS(profileImage, getUserId(), oldImageUrl);
-                } else {
-                    // Use standard upload function
-                    profileImageUrl = await uploadProfileImage(profileImage, getUserId(), oldImageUrl);
-                }
-                
-                // Update UI with the new image URL
-                updateAllProfileImages(profileImageUrl);
-                
-            } catch (uploadError) {
-                console.error('❌ Error in image upload process:', uploadError);
-                showNotification('Warning', `Profile will be saved without the new image. Error: ${uploadError.message}`);
-                // Keep using the existing image URL if upload failed
-            }
-        }
-        
-        // Save profile data regardless of image upload success
-        console.log('📝 Saving profile data to database...');
         
         // Determine if GDPR was accepted in this save
         const gdprAccepted = data.gdprAccepted === true ? true : userProfile.gdpr_accepted || false;
         
-        // Prepare profile data object
-        const profileData = {
+        // Prepare profile data for the Edge Function
+        const profileDataForUpdate = {
             full_name: data.fullName,
             prayer_points: data.prayerPoints,
-            profile_image_url: profileImageUrl,
+            profile_image_url: oldImageUrl, // Will be updated by Edge Function if a new image is provided
             phone_number: data.phoneNumber,
             whatsapp_number: data.whatsappNumber || data.phoneNumber, 
             prayer_update_notification_method: data.prayerUpdateNotification,
@@ -577,114 +598,95 @@ async function completeProfileSave(data) {
             updated_at: new Date().toISOString()
         };
         
-        // Use direct API call instead of Supabase SDK to prevent stalling
-        // This is especially important after image uploads via Edge Function
-        try {
-            await updateProfileDirectApi(profileData, getUserId());
-            console.log('✅ Profile updated successfully using direct API');
-        } catch (directApiError) {
-            console.error('❌ Direct API update failed, falling back to SDK:', directApiError);
-            
-            // Fall back to Supabase SDK if direct API fails
-            const { error } = await supabase
-                .from('profiles')
-                .update(profileData)
-                .eq('id', getUserId());
-                
-            if (error) throw error;
+        // Process the image if one is selected
+        let imageData = null;
+        if (profileImage) {
+            try {
+                console.log('🖼️ Profile image detected, preparing for upload');
+                // Convert to base64
+                imageData = await fileToBase64(profileImage);
+            } catch (imageError) {
+                console.error('❌ Error preparing image:', imageError);
+                // Continue without image - the Edge Function will handle profile update only
+            }
         }
         
-        // Refresh user profile
+        // Define the Edge Function URL
+        const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/update-profile`;
+        
+        // Prepare the payload for the Edge Function
+        const payload = {
+            profileData: profileDataForUpdate,
+            imageData: imageData,
+            userId: getUserId(),
+            oldImageUrl: oldImageUrl
+        };
+        
+        // Get the auth token
+        const authToken = window.authToken || await getAuthToken();
+        
+        console.log('📡 Sending data to Edge Function...');
+        const response = await fetch(edgeFunctionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Edge Function error:', response.status, errorText);
+            throw new Error(`Update failed (${response.status}): ${errorText}`);
+        }
+        
+        // Parse the response
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Unknown error updating profile');
+        }
+        
+        console.log('✅ Profile updated successfully via Edge Function');
+        
+        // If the image was updated, update the UI
+        if (result.imageUrl) {
+            updateAllProfileImages(result.imageUrl);
+        }
+        
+        // Refresh user profile from database
         await fetchUserProfile();
         
         showNotification('Success', 'Profile saved successfully!');
         
     } catch (error) {
-        console.error('❌ Error saving profile:', error);
-        showNotification('Error', `Failed to save profile: ${error.message}`);
+        console.error('❌ Error in updateProfileViaEdgeFunction:', error);
+        throw error;
     } finally {
         data.submitBtn.textContent = data.originalText;
         data.submitBtn.disabled = false;
-        console.log('🏁 Profile save process completed');
+        console.log('🏁 Profile update process completed');
     }
 }
 
-/**
- * Updates a user profile via direct REST API call to avoid Supabase SDK stalling issues
- * @param {Object} profileData - Profile data to update (must include all required fields)
- * @param {string} userId - The user ID to update
- * @returns {Promise<Object>} - Response data or error
- */
-async function updateProfileDirectApi(profileData, userId) {
-    console.log('Updating profile via direct REST API');
-    
+// Helper function to get auth token
+async function getAuthToken() {
     try {
-        // Get the auth token (use the globally stored one or fetch from Supabase)
-        let authToken = window.authToken;
-        
-        // Fallback if token isn't available (rare case)
-        if (!authToken) {
-            try {
-                const { data } = await supabase.auth.getSession();
-                authToken = data.session?.access_token;
-            } catch (tokenError) {
-                console.error('Error getting auth token:', tokenError);
-                throw new Error('Authentication token not available');
-            }
-        }
-        
-        // Construct the Supabase REST API URL for the profiles table
-        const updateUrl = `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`;
-        
-        // Make the direct PATCH request to update the profile
-        const response = await fetch(updateUrl, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`,
-                'apikey': SUPABASE_ANON_KEY,
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify(profileData)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Profile update failed: ${response.status}`, errorText);
-            throw new Error(`Profile update failed (${response.status}): ${errorText}`);
-        }
-        
-        console.log('Profile updated successfully via direct API');
-        return { success: true };
-        
+        const { data } = await supabase.auth.getSession();
+        return data?.session?.access_token;
     } catch (error) {
-        console.error('Error in updateProfileDirectApi:', error);
-        throw error;
+        console.error('Error getting auth token:', error);
+        throw new Error('Unable to get authentication token');
     }
 }
 
-/**
- * Complete function that updates a profile with a new image URL
- * Used after Edge Function image upload to avoid Supabase SDK stalling
- * @param {Object} profileData - The complete profile data 
- * @param {string} imageUrl - The new image URL from the Edge Function
- * @param {string} userId - The user ID
- * @returns {Promise<Object>} - Success or error result
- */
-async function updateProfileWithImage(profileData, imageUrl, userId) {
-    try {
-        // Update the profile data with the new image URL
-        const updatedProfileData = {
-            ...profileData,
-            profile_image_url: imageUrl,
-            updated_at: new Date().toISOString()
-        };
-        
-        // Use the direct API method to avoid stalling
-        return await updateProfileDirectApi(updatedProfileData, userId);
-        
-    } catch (error) {
-        console.error('Error updating profile with image:', error);
-        throw error;
-    }
+// Convert file to base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 }
