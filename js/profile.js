@@ -130,6 +130,8 @@ async function loadUserProfile() {
     }
 }
 
+// Add this to profile.js
+
 // Helper function to set up the profile image button and file input
 function setupProfileImageHandlers() {
     const selectButton = document.getElementById('select-profile-image');
@@ -145,11 +147,123 @@ function setupProfileImageHandlers() {
         const newSelectButton = selectButton.cloneNode(true);
         selectButton.parentNode.replaceChild(newSelectButton, selectButton);
         
-        // Add the event listener to the fresh button
-        newSelectButton.addEventListener('click', function() {
-            fileInput.click();
+        // Check if this is an Android device
+        const isAndroid = /Android/.test(navigator.userAgent);
+        
+        if (isAndroid) {
+            // For Android, show options when the button is clicked
+            newSelectButton.addEventListener('click', function(e) {
+                e.preventDefault(); // Prevent default button behavior
+                showPhotoOptions();
+            });
+        } else {
+            // For other devices, use standard behavior
+            newSelectButton.addEventListener('click', function() {
+                fileInput.click();
+            });
+        }
+    }
+}
+
+// Function to show photo options modal for Android
+function showPhotoOptions() {
+    // Create modal HTML if it doesn't exist yet
+    if (!document.getElementById('photo-options-modal')) {
+        const modalHtml = `
+        <div class="modal fade" id="photo-options-modal" tabindex="-1" aria-labelledby="photo-options-title" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="photo-options-title">Select Image Source</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="d-grid gap-3">
+                            <button type="button" class="btn btn-primary" id="take-photo-btn">
+                                <i class="bi bi-camera-fill me-2"></i>Take Photo
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="choose-gallery-btn">
+                                <i class="bi bi-images me-2"></i>Choose from Gallery
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // Append modal to the body
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHtml;
+        document.body.appendChild(modalContainer.firstElementChild);
+        
+        // Set up event listeners for the modal buttons
+        document.getElementById('take-photo-btn').addEventListener('click', function() {
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('photo-options-modal'));
+            modal.hide();
+            
+            // Set capture attribute and trigger camera
+            triggerCameraCapture();
+        });
+        
+        document.getElementById('choose-gallery-btn').addEventListener('click', function() {
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('photo-options-modal'));
+            modal.hide();
+            
+            // Trigger standard file selection
+            triggerGallerySelection();
         });
     }
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('photo-options-modal'));
+    modal.show();
+}
+
+// Function to trigger camera capture
+function triggerCameraCapture() {
+    const fileInput = document.getElementById('profile-image');
+    
+    // First, clone the file input to remove any existing event listeners
+    const newFileInput = fileInput.cloneNode(false);
+    
+    // Set capture attribute to camera (this makes it use the camera on Android)
+    newFileInput.setAttribute('capture', 'camera');
+    newFileInput.setAttribute('accept', 'image/*');
+    
+    // Re-add the change event listener
+    newFileInput.addEventListener('change', handleProfileImageChange);
+    
+    // Replace the original file input
+    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+    
+    // Click the file input to open the camera
+    newFileInput.click();
+}
+
+// Function to trigger gallery selection
+function triggerGallerySelection() {
+    const fileInput = document.getElementById('profile-image');
+    
+    // First, clone the file input to remove any existing attributes from camera mode
+    const newFileInput = fileInput.cloneNode(false);
+    
+    // Remove any capture attribute that might be present
+    newFileInput.removeAttribute('capture');
+    
+    // Set accept to all images
+    newFileInput.setAttribute('accept', 'image/*');
+    
+    // Re-add the change event listener
+    newFileInput.addEventListener('change', handleProfileImageChange);
+    
+    // Replace the original file input
+    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+    
+    // Click the file input to open the gallery
+    newFileInput.click();
 }
 
 // Handle profile image selection
