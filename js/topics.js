@@ -129,6 +129,7 @@ function handleTopicImageSelection(e) {
 
 // Call the topic management Edge Function
 async function callTopicEdgeFunction(action, data) {
+	console.log('In callTopicEdgeFunction');
     try {
         const functionUrl = `${SUPABASE_URL}/functions/v1/topic-management`;
         
@@ -138,7 +139,7 @@ async function callTopicEdgeFunction(action, data) {
             data,
             userId: getUserId()
         };
-        
+        console.log('Calling topic edge function');
         const response = await fetch(functionUrl, {
             method: 'POST',
             headers: {
