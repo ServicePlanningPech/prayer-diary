@@ -88,14 +88,28 @@ Deno.serve(async (req) => {
           throw new Error(`Image upload failed: ${error.message}`);
         }
 
-        // Create the public URL
-        finalImageUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${filePath}`;
-        console.log(`New image uploaded, URL: ${finalImageUrl}`);
+        // Calculate expiry time: 20 years in seconds (approximate)
+        const TWENTY_YEARS_IN_SECONDS = 60 * 60 * 24 * 365 * 20; // 631,152,000 seconds
+
+        // Generate the signed URL with a very long expiry
+        const { data: signedUrlData, error: signedUrlError } = await supabase
+          .storage
+          .from(bucketName)
+          .createSignedUrl(filePath, TWENTY_YEARS_IN_SECONDS);
+
+        if (signedUrlError) {
+          console.error('Error generating signed URL:', signedUrlError);
+          throw new Error(`Signed URL generation failed: ${signedUrlError.message}`);
+        }
+
+        // Use the signed URL instead of a public URL
+        finalImageUrl = signedUrlData.signedUrl;
+        console.log(`New image uploaded, signed URL created with 20-year expiry`);
 
         // Delete old image if provided and different from the new one
         if (oldImageUrl && oldImageUrl !== finalImageUrl) {
           try {
-            // Extract the path from the URL
+            // Extract the path from the URL - need to handle signed URLs differently
             const oldFilePath = extractFilenameFromURL(oldImageUrl);
             
             if (oldFilePath) {
@@ -171,7 +185,8 @@ Deno.serve(async (req) => {
   }
 });
 
-// Helper function to extract filename from URL
+// Helper function to extract filename from URL 
+// Updated to handle both public URLs and signed URLs
 function extractFilenameFromURL(url) {
   if (!url) return null;
   
@@ -182,12 +197,19 @@ function extractFilenameFromURL(url) {
       return publicMatches[1]; // This is the path relative to the bucket
     }
     
-    // Alternative approach for signed URLs
+    // Extract from signed URL
     const signedMatches = url.match(/\/storage\/v1\/object\/sign\/prayer-diary\/([^?]+)/);
     if (signedMatches && signedMatches[1]) {
       return signedMatches[1];
     }
     
+    // Handle another format of signed URL that might be encountered
+    const otherSignedMatches = url.match(/\/storage\/v1\/object\/prayer-diary\/([^?]+)/);
+    if (otherSignedMatches && otherSignedMatches[1]) {
+      return otherSignedMatches[1];
+    }
+    
+    console.warn("Could not extract filename from URL:", url);
     return null;
   } catch (error) {
     console.error('Error extracting filename from URL:', error);
