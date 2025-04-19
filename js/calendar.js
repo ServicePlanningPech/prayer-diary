@@ -48,7 +48,7 @@ async function loadPrayerCalendar() {
         `;
         
         // Get users with pray_day > 0 who should be shown this month
-        const { data, error } = await supabase
+        const { data: userData, error: userError } = await supabase
             .from('profiles')
             .select(`
                 id,
@@ -63,18 +63,43 @@ async function loadPrayerCalendar() {
             .or(`pray_months.eq.0,pray_months.eq.${isOddMonth ? 1 : 2}`)
             .order('full_name', { ascending: true });
             
-        if (error) throw error;
+        if (userError) throw userError;
+        
+        // Get topics with pray_day matching the current day
+        const { data: topicData, error: topicError } = await supabase
+            .from('prayer_topics')
+            .select('*')
+            .eq('pray_day', currentDay)
+            .or(`pray_months.eq.0,pray_months.eq.${isOddMonth ? 1 : 2}`)
+            .order('topic_title', { ascending: true });
+            
+        if (topicError) throw topicError;
         
         // Transform user data to match the old format for compatibility
-        let prayerEntries = data.map(user => ({
+        let prayerEntries = userData.map(user => ({
             id: user.id,
             day_of_month: user.pray_day,
             name: user.full_name,
             image_url: user.profile_image_url,
             prayer_points: user.prayer_points,
             is_user: true,
-            user_id: user.id
+            user_id: user.id,
+            type: 'member'
         }));
+        
+        // Add topics to prayer entries
+        const topicEntries = topicData.map(topic => ({
+            id: topic.id,
+            day_of_month: topic.pray_day,
+            name: topic.topic_title,
+            image_url: topic.topic_image_url,
+            prayer_points: topic.topic_text,
+            is_user: false,
+            type: 'topic'
+        }));
+        
+        // Combine both types of entries
+        prayerEntries = [...prayerEntries, ...topicEntries];
         
         if (prayerEntries.length === 0) {
             container.innerHTML = `
@@ -95,6 +120,9 @@ async function loadPrayerCalendar() {
         
         container.innerHTML = html;
         
+        // Set up event listeners for prayer cards
+        setupPrayerCardListeners();
+        
     } catch (error) {
         console.error('Error loading prayer calendar:', error);
         container.innerHTML = `
@@ -105,6 +133,114 @@ async function loadPrayerCalendar() {
             </div>
         `;
     }
+}
+
+// Create a prayer card HTML
+function createPrayerCard(entry) {
+    const imgSrc = entry.image_url || 'img/placeholder-profile.png';
+    
+    // Add badge based on type (member or topic)
+    const typeBadge = entry.type === 'topic' 
+        ? '<span class="badge bg-info position-absolute top-0 end-0 m-2">Topic</span>' 
+        : '';
+    
+    // Format prayer points: for topics, use first 100 characters of HTML content
+    let prayerPointsDisplay = 'No prayer points available.';
+    
+    if (entry.prayer_points) {
+        if (entry.type === 'topic') {
+            // For topics, show just the first portion of the formatted text
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = entry.prayer_points;
+            const textContent = tempDiv.textContent || tempDiv.innerText || '';
+            prayerPointsDisplay = textContent.substring(0, 100) + (textContent.length > 100 ? '...' : '');
+        } else {
+            // For members, display as is
+            prayerPointsDisplay = entry.prayer_points;
+        }
+    }
+    
+    return `
+    <div class="col">
+        <div class="card h-100 shadow prayer-card" data-entry-id="${entry.id}" data-entry-type="${entry.type || 'member'}">
+            ${typeBadge}
+            <div class="image-container">
+                <img src="${imgSrc}" class="prayer-profile-img" alt="${entry.name}">
+            </div>
+            <div class="card-body">
+                <h5 class="card-title prayer-card-title">${entry.name}</h5>
+                <div class="card-text prayer-points-preview">
+                    ${prayerPointsDisplay}
+                </div>
+            </div>
+            <div class="card-footer bg-transparent">
+                <button class="btn btn-primary btn-sm w-100 view-prayer-card">
+                    View Details
+                </button>
+            </div>
+        </div>
+    </div>
+    `;
+}
+
+// Set up event listeners for prayer cards
+function setupPrayerCardListeners() {
+    document.querySelectorAll('.view-prayer-card').forEach(button => {
+        button.addEventListener('click', function() {
+            const card = this.closest('.prayer-card');
+            const entryId = card.dataset.entryId;
+            const entryType = card.dataset.entryType || 'member';
+            
+            if (entryType === 'topic') {
+                viewTopicCard(entryId);
+            } else {
+                viewPrayerCard(entryId);
+            }
+        });
+    });
+}
+
+// View prayer card details
+async function viewPrayerCard(userId) {
+    try {
+        // Get user details
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+            
+        if (error) throw error;
+        
+        // Set modal content
+        document.getElementById('card-modal-title').textContent = data.full_name;
+        document.getElementById('card-image').src = data.profile_image_url || 'img/placeholder-profile.png';
+        document.getElementById('card-content').innerHTML = `
+            <h4 class="mb-3">${data.full_name}</h4>
+            <div>
+                ${data.prayer_points || 'No prayer points available.'}
+            </div>
+        `;
+        
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('view-card-modal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('Error viewing prayer card:', error);
+        showNotification('Error', `Failed to load user details: ${error.message}`, 'error');
+    }
+}
+
+// Create loading spinner
+function createLoadingSpinner() {
+    return `
+    <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+    `;
 }
 
 // Initialize calendar management

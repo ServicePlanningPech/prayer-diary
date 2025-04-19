@@ -448,7 +448,7 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="other-tab" data-bs-toggle="tab" 
                                 data-bs-target="#other-content" type="button" role="tab" 
-                                aria-controls="other-content" aria-selected="false">Assign Other</button>
+                                aria-controls="other-content" aria-selected="false">Assign Topics</button>
                     </li>
                 </ul>
                 
@@ -526,10 +526,82 @@
                         </div>
                     </div>
                     
-                    <!-- Add Other Items Tab (placeholder for now) -->
+                    <!-- Assign Topics Tab -->
                     <div class="tab-pane fade" id="other-content" role="tabpanel" aria-labelledby="other-tab">
-                        <div class="alert alert-info">
-                            This feature will be implemented in the next phase.
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <button id="edit-topics-btn" class="btn btn-primary">
+                                    <i class="bi bi-pencil-square me-1"></i> Edit Topics
+                                </button>
+                            </div>
+                            
+                            <!-- Days selection in calendar format -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card shadow">
+                                    <div class="card-header bg-primary text-white py-2">
+                                        <h5 class="card-title mb-0">Select Day for Prayer</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-3">Click on a day to select it for topic allocation:</p>
+                                        <div class="calendar-days-grid">
+                                            <!-- Days 1-31 will be dynamically inserted here -->
+                                        </div>
+                                        <div class="mt-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="selected-day-info">
+                                                    <span class="fw-bold">Selected day: </span>
+                                                    <span id="topics-selected-day">None</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Topic lists -->
+                            <div class="col-md-6">
+                                <div class="card shadow">
+                                    <div class="card-header bg-primary text-white py-2">
+                                        <h5 class="card-title mb-0">Assign Topics to Prayer Calendar</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Search box -->
+                                        <div class="mb-3">
+                                            <input type="text" class="form-control" id="topic-search" placeholder="Search for a topic...">
+                                        </div>
+                                        
+                                        <!-- Tabs for unallocated/allocated topics -->
+                                        <ul class="nav nav-tabs mb-3" id="topicListTab" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link active" id="unallocated-topics-tab" data-bs-toggle="tab" 
+                                                       data-bs-target="#unallocated-topics" type="button" role="tab" 
+                                                       aria-controls="unallocated-topics" aria-selected="true">Unassigned</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="allocated-topics-tab" data-bs-toggle="tab" 
+                                                       data-bs-target="#allocated-topics" type="button" role="tab" 
+                                                       aria-controls="allocated-topics" aria-selected="false">Assigned</button>
+                                            </li>
+                                        </ul>
+                                        
+                                        <div class="tab-content" id="topicListTabContent">
+                                            <!-- Unallocated topics list -->
+                                            <div class="tab-pane fade show active" id="unallocated-topics" role="tabpanel" aria-labelledby="unallocated-topics-tab">
+                                                <div id="unallocated-topics-list" class="topic-list">
+                                                    <!-- Unallocated topics will be dynamically inserted here -->
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Allocated topics list -->
+                                            <div class="tab-pane fade" id="allocated-topics" role="tabpanel" aria-labelledby="allocated-topics-tab">
+                                                <div id="allocated-topics-list" class="topic-list">
+                                                    <!-- Allocated topics will be dynamically inserted here -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1257,6 +1329,80 @@
         </div>
     </div>
 
+    <!-- Topic Management Modal -->
+    <div class="modal fade" id="topic-management-modal" tabindex="-1" aria-labelledby="topic-management-title" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="topic-management-title">Manage Prayer Topics</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button id="add-topic-btn" class="btn btn-success">
+                            <i class="bi bi-plus-circle me-1"></i> Add Topic
+                        </button>
+                    </div>
+                    
+                    <div id="topics-list-container">
+                        <!-- Topics will be dynamically inserted here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Topic Modal -->
+    <div class="modal fade" id="topic-edit-modal" tabindex="-1" aria-labelledby="topic-edit-title" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="topic-edit-title">Add Prayer Topic</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="topic-form">
+                        <input type="hidden" id="topic-id">
+                        
+                        <div class="mb-3">
+                            <label for="topic-title" class="form-label">Topic Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="topic-title" placeholder="Enter topic title" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="topic-image" class="form-label">Topic Image</label>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="me-3">
+                                    <img id="topic-image-preview" class="topic-img-preview border rounded" 
+                                         src="img/placeholder-profile.png" alt="Topic image preview" 
+                                         style="width: 100px; height: 100px; object-fit: cover;">
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-outline-primary" id="select-topic-image">
+                                        <i class="bi bi-camera me-1"></i> Upload Image
+                                    </button>
+                                    <input type="file" class="d-none" id="topic-image" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="topic-text-editor" class="form-label">Topic Text <span class="text-danger">*</span></label>
+                            <div id="topic-text-editor"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-topic" disabled>Save Topic</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast container -->
     <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" id="toast-container">
         <!-- Toasts will be dynamically added here -->
@@ -1315,6 +1461,7 @@
         loadScript("js/admin.js");
         loadScript("js/ui.js");
         loadScript("js/calendar.js");
+        loadScript("js/topics.js");
         loadScript("js/updates.js");
         loadScript("js/urgent.js");
         loadScript("js/profile.js");

@@ -39,6 +39,14 @@ function initializeApp() {
             }
         });
     }
+    
+    // Initialize topics functionality
+    document.addEventListener('login-state-changed', function(event) {
+        if (event.detail && event.detail.loggedIn) {
+            // Initialize topics when user is logged in
+            initTopics();
+        }
+    });
 }
 
 // Add this to app.js or at the beginning of your main execution flow
