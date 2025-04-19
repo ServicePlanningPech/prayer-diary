@@ -139,7 +139,7 @@ async function callTopicEdgeFunction(action, data) {
             data,
             userId: getUserId()
         };
-        console.log('Calling topic edge function');
+        console.log(`Calling topic edge function for ${functionUrl}`);
         const response = await fetch(functionUrl, {
             method: 'POST',
             headers: {
