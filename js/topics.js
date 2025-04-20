@@ -129,6 +129,8 @@ function handleTopicImageSelection(e) {
 
 // Call the topic management Edge Function
 async function callTopicEdgeFunction(action, data) {
+	// Get the auth token
+    const authToken = window.authToken || await getAuthToken();
 	console.log('In callTopicEdgeFunction');
     try {
         const functionUrl = `${SUPABASE_URL}/functions/v1/topic-management`;
@@ -144,7 +146,7 @@ async function callTopicEdgeFunction(action, data) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${window.authToken || ''}`
+                'Authorization': `Bearer ${authToken}`
             },
             body: JSON.stringify(requestData)
         });
