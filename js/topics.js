@@ -346,20 +346,29 @@ async function saveTopic() {
             throw new Error(response.error || 'Failed to save topic');
         }
         
-        // Refresh topics list
-        await loadTopics();
-        
         // Close the modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('topic-edit-modal'));
         if (modal) {
             modal.hide();
         }
         
-        // Show success notification
-        showNotification('Success', response.message, 'success');
+        // Show success notification and refresh the page to avoid session issues
+        showNotification('Success', response.message + ' - Refreshing to update data...', 'success');
         
-        // Open the topic management modal again to show the updated list
-        openTopicManagement();
+        // Save state before refreshing
+        sessionStorage.setItem('topicSaved', 'true');
+        sessionStorage.setItem('lastAction', 'saveTopic');
+        
+        // Save current view to restore after refresh
+        const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
+        if (currentView) {
+            sessionStorage.setItem('lastView', currentView);
+        }
+        
+        // Refresh the page after a short delay
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
         
     } catch (error) {
         console.error('Error saving topic:', error);
@@ -394,14 +403,29 @@ async function deleteTopic(topicId) {
             throw new Error(response.error || 'Failed to delete topic');
         }
         
-        // Refresh topics list
-        await loadTopics();
-        
         // Show success notification
-        showNotification('Success', response.message, 'success');
+        showNotification('Success', response.message + ' - Refreshing to update data...', 'success');
         
-        // Refresh the modal content
-        openTopicManagement();
+        // Save state before refreshing
+        sessionStorage.setItem('topicDeleted', 'true');
+        sessionStorage.setItem('lastAction', 'deleteTopic');
+        
+        // Save current view to restore after refresh
+        const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
+        if (currentView) {
+            sessionStorage.setItem('lastView', currentView);
+        }
+        
+        // Close the modal if it's open
+        const modal = bootstrap.Modal.getInstance(document.getElementById('topic-management-modal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+        // Refresh the page after a short delay
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
         
     } catch (error) {
         console.error('Error deleting topic:', error);
@@ -566,18 +590,24 @@ async function assignTopicToDay(topicId) {
             throw new Error(response.error || 'Failed to assign topic');
         }
         
-        // Update local data to avoid reload
-        const topicIndex = allTopics.findIndex(topic => topic.id === topicId);
-        if (topicIndex >= 0) {
-            allTopics[topicIndex].pray_day = selectedDay;
-            // Refresh display
-            filterAndDisplayTopics();
-        } else {
-            // If not found in local data, reload all topics
-            await loadTopics();
+        // Show success notification
+        showNotification('Success', response.message + ' - Refreshing to update data...', 'success');
+        
+        // Save state before refreshing
+        sessionStorage.setItem('topicAssigned', 'true');
+        sessionStorage.setItem('lastAssignedDay', selectedDay.toString());
+        sessionStorage.setItem('lastAction', 'assignTopic');
+        
+        // Save current view to restore after refresh
+        const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
+        if (currentView) {
+            sessionStorage.setItem('lastView', currentView);
         }
         
-        showNotification('Success', response.message, 'success');
+        // Refresh the page after a short delay
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
         
     } catch (error) {
         console.error('Error assigning topic:', error);
@@ -598,13 +628,23 @@ async function updateTopicMonths(topicId, months) {
             throw new Error(response.error || 'Failed to update months');
         }
         
-        // Update local data to avoid reload
-        const topicIndex = allTopics.findIndex(topic => topic.id === topicId);
-        if (topicIndex >= 0) {
-            allTopics[topicIndex].pray_months = months;
+        // Show success notification
+        showNotification('Success', response.message + ' - Refreshing to update data...', 'success');
+        
+        // Save state before refreshing
+        sessionStorage.setItem('topicMonthsUpdated', 'true');
+        sessionStorage.setItem('lastAction', 'updateMonths');
+        
+        // Save current view to restore after refresh
+        const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
+        if (currentView) {
+            sessionStorage.setItem('lastView', currentView);
         }
         
-        showNotification('Success', response.message, 'success');
+        // Refresh the page after a short delay
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
         
     } catch (error) {
         console.error('Error updating months:', error);
@@ -656,4 +696,39 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('other-tab').addEventListener('click', () => {
         initTopics();
     });
+    
+    // Check for state restoration after page refresh
+    if (sessionStorage.getItem('topicSaved') === 'true' || 
+        sessionStorage.getItem('topicDeleted') === 'true' || 
+        sessionStorage.getItem('topicAssigned') === 'true' || 
+        sessionStorage.getItem('topicMonthsUpdated') === 'true') {
+        
+        // Clear flags
+        sessionStorage.removeItem('topicSaved');
+        sessionStorage.removeItem('topicDeleted');
+        sessionStorage.removeItem('topicAssigned');
+        sessionStorage.removeItem('topicMonthsUpdated');
+        
+        // Show a success message about the completed action
+        const lastAction = sessionStorage.getItem('lastAction');
+        if (lastAction) {
+            let message = 'Operation completed successfully';
+            switch (lastAction) {
+                case 'saveTopic':
+                    message = 'Topic saved successfully';
+                    break;
+                case 'deleteTopic':
+                    message = 'Topic deleted successfully';
+                    break;
+                case 'assignTopic':
+                    message = 'Topic assigned successfully';
+                    break;
+                case 'updateMonths':
+                    message = 'Month settings updated successfully';
+                    break;
+            }
+            showNotification('Success', message, 'success');
+            sessionStorage.removeItem('lastAction');
+        }
+    }
 });

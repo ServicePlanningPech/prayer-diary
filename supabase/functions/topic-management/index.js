@@ -3,54 +3,73 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Environment variables
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-export const handler = async (req) => {
-  // Handle CORS preflight requests
+// Serve handles HTTP requests
+Deno.serve(async (req) => {
+  // Enable CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }
+    });
   }
 
   try {
-    // Create a Supabase client with the project URL and anon key
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-    const supabaseAdminKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseAnonKey || !supabaseAdminKey) {
-      throw new Error('Missing environment variables for Supabase');
+    // Only accept POST requests
+    if (req.method !== 'POST') {
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }),
+        { 
+          status: 405, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
     }
 
-    // Create Supabase client with admin rights for storage operations
-    const supabase = createClient(supabaseUrl, supabaseAdminKey);
-
-    // Parse request body
+    // Parse the request body
     const { action, data, userId } = await req.json();
 
-    if (!action) {
+    // Validate required fields
+    if (!action || !userId) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Action not specified' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        JSON.stringify({ error: 'Missing required fields: action, userId' }),
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'User ID not provided' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
+    // Initialize Supabase client with service role key for admin access
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
     // Validate the user session to ensure the request is legitimate
-    const { data: authData, error: authError } = await supabase.auth.getUser(req.headers.get('Authorization')?.split('Bearer ')[1] || '');
+    const { data: authData, error: authError } = await supabase.auth.getUser(
+      req.headers.get('Authorization')?.split('Bearer ')[1] || ''
+    );
     
     if (authError || !authData.user || authData.user.id !== userId) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -76,25 +95,42 @@ export const handler = async (req) => {
         
       default:
         return new Response(
-          JSON.stringify({ success: false, error: 'Unknown action' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          JSON.stringify({ error: 'Unknown action' }),
+          { 
+            status: 400, 
+            headers: { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
         );
     }
 
+    // Return the result
     return new Response(
       JSON.stringify(result),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 200, 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
-
-  } catch (error) {
-    console.error('Error processing request:', error);
-    
+  } catch (err) {
+    console.error('Server error:', err);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ error: `Server error: ${err.message}` }),
+      { 
+        status: 500, 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
   }
-};
+});
 
 // Helper function to save or update a topic with optional image
 async function saveTopic(supabase, data, userId) {

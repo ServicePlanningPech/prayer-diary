@@ -42,6 +42,42 @@ body {
     font-weight: 500;
 }
 
+/* Refresh button styling */
+#refresh-button {
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: none;
+    margin-right: 10px;
+    transition: transform 0.3s ease-in-out;
+}
+
+#refresh-button:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    transform: rotate(30deg);
+}
+
+#refresh-button:active {
+    transform: rotate(360deg);
+}
+
+#refresh-button .spinner-border {
+    width: 1rem;
+    height: 1rem;
+}
+
+@media (max-width: 576px) {
+    #refresh-button {
+        width: 28px;
+        height: 28px;
+    }
+}
+
 /* Add right padding to the auth container for better dropdown visibility */
 #auth-container {
     padding-right: 20px;
@@ -484,7 +520,6 @@ body {
   .navbar-drawer-toggle {
     display: block; /* Only show on mobile/tablet */
   }
-=======
   
   /* Hide regular navbar toggler on mobile */
   .navbar-toggler {
