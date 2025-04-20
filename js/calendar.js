@@ -123,14 +123,11 @@ async function loadPrayerCalendar() {
             });
         }
         
-        // Add divider if we have both types
+        // Add simple divider if we have both types
         if (membersToDisplay.length > 0 && topicsToDisplay.length > 0) {
             html += `
                 <div class="col-12 my-4">
-                    <div class="divider-container">
-                        <hr class="divider">
-                        <span class="divider-text">Prayer Topics</span>
-                    </div>
+                    <hr class="divider">
                 </div>
             `;
         }
