@@ -75,8 +75,8 @@ async function loadPrayerCalendar() {
             
         if (topicError) throw topicError;
         
-        // Transform user data to match the old format for compatibility
-        let prayerEntries = userData.map(user => ({
+        // Map data directly to separate arrays for members and topics
+        const membersToDisplay = userData.map(user => ({
             id: user.id,
             day_of_month: user.pray_day,
             name: user.full_name,
@@ -87,8 +87,8 @@ async function loadPrayerCalendar() {
             type: 'member'
         }));
         
-        // Add topics to prayer entries
-        const topicEntries = topicData.map(topic => ({
+        // Map topics directly
+        const topicsToDisplay = topicData.map(topic => ({
             id: topic.id,
             day_of_month: topic.pray_day,
             name: topic.topic_title,
@@ -98,9 +98,8 @@ async function loadPrayerCalendar() {
             type: 'topic'
         }));
         
-        // We'll use separate variables for display
-        const membersToDisplay = prayerEntries.filter(entry => entry.type === 'member');
-        const topicsToDisplay = prayerEntries.filter(entry => entry.type === 'topic');
+        // Combine both types of entries for checking if any exist
+        const prayerEntries = [...membersToDisplay, ...topicsToDisplay];
         
         // Check if we have any entries to display
         if (prayerEntries.length === 0) {
