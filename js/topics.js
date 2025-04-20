@@ -363,6 +363,8 @@ async function saveTopic() {
         const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
         if (currentView) {
             sessionStorage.setItem('lastView', currentView);
+            // Remember we were on the topics tab
+            sessionStorage.setItem('activeCalendarTab', 'topics');
         }
         
         // Refresh the page after a short delay
@@ -414,6 +416,8 @@ async function deleteTopic(topicId) {
         const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
         if (currentView) {
             sessionStorage.setItem('lastView', currentView);
+            // Remember we were on the topics tab
+            sessionStorage.setItem('activeCalendarTab', 'topics');
         }
         
         // Close the modal if it's open
@@ -602,6 +606,8 @@ async function assignTopicToDay(topicId) {
         const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
         if (currentView) {
             sessionStorage.setItem('lastView', currentView);
+            // Remember we were on the topics tab
+            sessionStorage.setItem('activeCalendarTab', 'topics');
         }
         
         // Refresh the page after a short delay
@@ -639,6 +645,8 @@ async function updateTopicMonths(topicId, months) {
         const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
         if (currentView) {
             sessionStorage.setItem('lastView', currentView);
+            // Remember we were on the topics tab
+            sessionStorage.setItem('activeCalendarTab', 'topics');
         }
         
         // Refresh the page after a short delay
@@ -729,6 +737,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             showNotification('Success', message, 'success');
             sessionStorage.removeItem('lastAction');
+        }
+        
+        // Navigate back to the Topics tab if that's where we were
+        if (sessionStorage.getItem('activeCalendarTab') === 'topics') {
+            // First show the manage-calendar-view
+            showView('manage-calendar-view');
+            
+            // Then activate the Topics tab
+            const topicsTab = document.getElementById('other-tab');
+            if (topicsTab) {
+                // Use Bootstrap's tab API to activate the tab
+                const tabInstance = new bootstrap.Tab(topicsTab);
+                tabInstance.show();
+                
+                // Initialize the topics functionality
+                initTopics();
+            }
+            
+            // Clear the flag
+            sessionStorage.removeItem('activeCalendarTab');
         }
     }
 });
