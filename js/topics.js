@@ -176,16 +176,18 @@ async function openTopicManagement() {
         html = '<div class="list-group">';
         allTopics.forEach(topic => {
             html += `
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="mb-1">${topic.topic_title}</h5>
-                    <small class="text-muted">Day: ${topic.pray_day > 0 ? topic.pray_day : 'Unassigned'}</small>
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <h5 class="mb-1">${topic.topic_title}</h5>
+                        <small class="text-muted">Day: ${topic.pray_day > 0 ? topic.pray_day : 'Unassigned'}</small>
+                    </div>
                 </div>
-                <div>
-                    <button class="btn btn-sm btn-primary edit-topic-btn" data-topic-id="${topic.id}">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary edit-topic-btn flex-grow-1" data-topic-id="${topic.id}">
                         <i class="bi bi-pencil"></i> Edit
                     </button>
-                    <button class="btn btn-sm btn-danger delete-topic-btn" data-topic-id="${topic.id}">
+                    <button class="btn btn-sm btn-danger delete-topic-btn flex-grow-1" data-topic-id="${topic.id}">
                         <i class="bi bi-trash"></i> Delete
                     </button>
                 </div>

@@ -112,16 +112,42 @@ async function loadPrayerCalendar() {
             return;
         }
         
+        // Split entries into members and topics
+        const memberEntries = prayerEntries.filter(entry => entry.type === 'member');
+        const topicEntries = prayerEntries.filter(entry => entry.type === 'topic');
+        
         // Generate HTML for prayer cards
         let html = '';
-        prayerEntries.forEach(entry => {
-            html += createPrayerCard(entry);
-        });
+        
+        // Add member entries
+        if (memberEntries.length > 0) {
+            memberEntries.forEach(entry => {
+                html += createPrayerCard(entry);
+            });
+        }
+        
+        // Add divider if we have both types
+        if (memberEntries.length > 0 && topicEntries.length > 0) {
+            html += `
+                <div class="col-12 my-4">
+                    <div class="divider-container">
+                        <hr class="divider">
+                        <span class="divider-text">Prayer Topics</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Add topic entries
+        if (topicEntries.length > 0) {
+            topicEntries.forEach(entry => {
+                html += createPrayerCard(entry);
+            });
+        }
         
         container.innerHTML = html;
         
-        // Set up event listeners for prayer cards
-        setupPrayerCardListeners();
+        // No event listeners needed as cards are not interactive
         
     } catch (error) {
         console.error('Error loading prayer calendar:', error);
@@ -173,32 +199,12 @@ function createPrayerCard(entry) {
                     ${prayerPointsDisplay}
                 </div>
             </div>
-            <div class="card-footer bg-transparent">
-                <button class="btn btn-primary btn-sm w-100 view-prayer-card">
-                    View Details
-                </button>
-            </div>
         </div>
     </div>
     `;
 }
 
-// Set up event listeners for prayer cards
-function setupPrayerCardListeners() {
-    document.querySelectorAll('.view-prayer-card').forEach(button => {
-        button.addEventListener('click', function() {
-            const card = this.closest('.prayer-card');
-            const entryId = card.dataset.entryId;
-            const entryType = card.dataset.entryType || 'member';
-            
-            if (entryType === 'topic') {
-                viewTopicCard(entryId);
-            } else {
-                viewPrayerCard(entryId);
-            }
-        });
-    });
-}
+// Prayer card listeners function is no longer needed since cards display all information directly
 
 // View prayer card details
 async function viewPrayerCard(userId) {
