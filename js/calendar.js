@@ -164,16 +164,25 @@ function createPrayerCard(entry) {
         ? '<span class="badge bg-info position-absolute top-0 end-0 m-2">Topic</span>' 
         : '';
     
-    // Format prayer points: for topics, use first 100 characters of HTML content
+    // Format prayer points: preserve HTML formatting for topics
     let prayerPointsDisplay = 'No prayer points available.';
     
     if (entry.prayer_points) {
         if (entry.type === 'topic') {
-            // For topics, show just the first portion of the formatted text
+            // For topics, preserve HTML formatting but limit length
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = entry.prayer_points;
-            const textContent = tempDiv.textContent || tempDiv.innerText || '';
-            prayerPointsDisplay = textContent.substring(0, 100) + (textContent.length > 100 ? '...' : '');
+            
+            // Get a preview of the HTML content
+            if (tempDiv.textContent && tempDiv.textContent.length > 100) {
+                // If content is too long, get a portion of the HTML
+                // This keeps some formatting but truncates the content
+                const truncatedHTML = entry.prayer_points.substring(0, 250);
+                prayerPointsDisplay = truncatedHTML + '...';
+            } else {
+                // If content is short enough, display all HTML
+                prayerPointsDisplay = entry.prayer_points;
+            }
         } else {
             // For members, display as is
             prayerPointsDisplay = entry.prayer_points;
@@ -190,7 +199,7 @@ function createPrayerCard(entry) {
             <div class="card-body">
                 <h5 class="card-title prayer-card-title">${entry.name}</h5>
                 <div class="card-text prayer-points-preview">
-                    ${prayerPointsDisplay}
+                    ${entry.type === 'topic' ? prayerPointsDisplay : `<p>${prayerPointsDisplay}</p>`}
                 </div>
             </div>
         </div>

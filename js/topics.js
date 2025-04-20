@@ -310,6 +310,7 @@ async function saveTopic() {
         
         // Get form data
         const topicTitle = document.getElementById('topic-title').value.trim();
+        // Get HTML content from Quill editor to preserve formatting
         const topicText = topicEditor ? topicEditor.root.innerHTML : '';
         
         // Prepare data for the Edge function
