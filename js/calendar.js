@@ -98,9 +98,11 @@ async function loadPrayerCalendar() {
             type: 'topic'
         }));
         
-        // Combine both types of entries
-        prayerEntries = [...prayerEntries, ...topicEntries];
+        // We'll use separate variables for display
+        const membersToDisplay = prayerEntries.filter(entry => entry.type === 'member');
+        const topicsToDisplay = prayerEntries.filter(entry => entry.type === 'topic');
         
+        // Check if we have any entries to display
         if (prayerEntries.length === 0) {
             container.innerHTML = `
                 <div class="col-12">
@@ -112,22 +114,18 @@ async function loadPrayerCalendar() {
             return;
         }
         
-        // Split entries into members and topics
-        const memberEntries = prayerEntries.filter(entry => entry.type === 'member');
-        const topicEntries = prayerEntries.filter(entry => entry.type === 'topic');
-        
         // Generate HTML for prayer cards
         let html = '';
         
         // Add member entries
-        if (memberEntries.length > 0) {
-            memberEntries.forEach(entry => {
+        if (membersToDisplay.length > 0) {
+            membersToDisplay.forEach(entry => {
                 html += createPrayerCard(entry);
             });
         }
         
         // Add divider if we have both types
-        if (memberEntries.length > 0 && topicEntries.length > 0) {
+        if (membersToDisplay.length > 0 && topicsToDisplay.length > 0) {
             html += `
                 <div class="col-12 my-4">
                     <div class="divider-container">
@@ -139,8 +137,8 @@ async function loadPrayerCalendar() {
         }
         
         // Add topic entries
-        if (topicEntries.length > 0) {
-            topicEntries.forEach(entry => {
+        if (topicsToDisplay.length > 0) {
+            topicsToDisplay.forEach(entry => {
                 html += createPrayerCard(entry);
             });
         }
