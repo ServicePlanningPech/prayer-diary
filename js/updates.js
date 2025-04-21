@@ -20,7 +20,7 @@ function initUpdateEditor() {
                     ['clean']
                 ]
             },
-            placeholder: 'Compose prayer update...',
+            // Removed placeholder
         });
     }
     
@@ -44,6 +44,11 @@ function initUpdateEditor() {
     
     // Set up form submission for creating updates
     document.getElementById('update-form').addEventListener('submit', createPrayerUpdate);
+    
+    // Set today's date in the date field
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    document.getElementById('update-date').value = formattedDate;
 }
 
 // Load all prayer updates (both current and archived)
@@ -64,7 +69,7 @@ async function loadPrayerUpdates() {
             .from('prayer_updates')
             .select('*')
             .eq('is_archived', false)
-            .order('created_at', { ascending: false });
+            .order('update_date', { ascending: false });
             
         if (currentError) throw currentError;
         
@@ -73,7 +78,7 @@ async function loadPrayerUpdates() {
             .from('prayer_updates')
             .select('*')
             .eq('is_archived', true)
-            .order('created_at', { ascending: false });
+            .order('update_date', { ascending: false });
             
         if (archivedError) throw archivedError;
         
@@ -140,7 +145,7 @@ async function loadUpdatesAdmin() {
             .from('prayer_updates')
             .select('*')
             .eq('is_archived', false)
-            .order('created_at', { ascending: false });
+            .order('update_date', { ascending: false });
             
         if (currentError) throw currentError;
         
@@ -149,7 +154,7 @@ async function loadUpdatesAdmin() {
             .from('prayer_updates')
             .select('*')
             .eq('is_archived', true)
-            .order('created_at', { ascending: false });
+            .order('update_date', { ascending: false });
             
         if (archivedError) throw archivedError;
         
@@ -243,22 +248,36 @@ async function loadUpdatesAdmin() {
 async function createPrayerUpdate(e) {
     e.preventDefault();
     
+    // Identify which button was clicked
     const submitBtn = e.submitter;
+    const action = submitBtn.value; // Will be either 'saveAndSend' or 'saveOnly'
     const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Creating...';
+    submitBtn.textContent = 'Saving...';
     submitBtn.disabled = true;
     
     try {
-        const title = document.getElementById('update-title').value.trim();
+        const titleInput = document.getElementById('update-title').value.trim();
+        const dateInput = document.getElementById('update-date').value;
         const content = updateEditor.root.innerHTML;
         
-        if (!title) {
+        // Validate inputs
+        if (!titleInput) {
             throw new Error('Please enter a title for the prayer update');
+        }
+        
+        if (!dateInput) {
+            throw new Error('Please select a date for the prayer update');
         }
         
         if (!content || content === '<p><br></p>') {
             throw new Error('Please enter content for the prayer update');
         }
+        
+        // Create the full title with prefix
+        const title = `PECH Prayer Update ${titleInput}`;
+        
+        // Archive any existing non-archived updates
+        await archiveExistingUpdates();
         
         // Create the prayer update
         const { data, error } = await supabase
@@ -266,7 +285,9 @@ async function createPrayerUpdate(e) {
             .insert({
                 title,
                 content,
-                created_by: getUserId()
+                created_by: getUserId(),
+                is_archived: false,
+                update_date: dateInput
             });
             
         if (error) throw error;
@@ -275,13 +296,22 @@ async function createPrayerUpdate(e) {
         document.getElementById('update-form').reset();
         updateEditor.setContents([]);
         
+        // Set today's date in the date field
+        const today = new Date();
+        const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        document.getElementById('update-date').value = formattedDate;
+        
         // Reload updates
         loadUpdatesAdmin();
         
-        // Send notifications
-        sendUpdateNotifications(title);
-        
-        showNotification('Success', 'Prayer update created successfully.');
+        // Send notifications if that button was clicked
+        if (action === 'saveAndSend') {
+            // Call the distribution function
+            await sendPrayerUpdates(title, content, dateInput);
+            showNotification('Success', 'Prayer update saved and sent successfully.');
+        } else {
+            showNotification('Success', 'Prayer update saved successfully.');
+        }
         
     } catch (error) {
         console.error('Error creating prayer update:', error);
@@ -292,11 +322,35 @@ async function createPrayerUpdate(e) {
     }
 }
 
+// Archive any existing non-archived updates
+async function archiveExistingUpdates() {
+    try {
+        const { data, error } = await supabase
+            .from('prayer_updates')
+            .update({ is_archived: true })
+            .eq('is_archived', false);
+            
+        if (error) throw error;
+        
+        return true;
+    } catch (error) {
+        console.error('Error archiving existing updates:', error);
+        return false;
+    }
+}
+
 // Open edit update modal
 function openEditUpdateModal(update) {
     // Populate form
     document.getElementById('edit-update-id').value = update.id;
-    document.getElementById('edit-update-title-input').value = update.title;
+    
+    // Extract the title without the prefix if it exists
+    let titleWithoutPrefix = update.title;
+    if (update.title.startsWith('PECH Prayer Update ')) {
+        titleWithoutPrefix = update.title.replace('PECH Prayer Update ', '');
+    }
+    
+    document.getElementById('edit-update-title-input').value = titleWithoutPrefix;
     
     // Set content in Quill editor
     editUpdateEditor.root.innerHTML = update.content;
@@ -330,16 +384,19 @@ async function saveUpdate() {
     
     try {
         const updateId = document.getElementById('edit-update-id').value;
-        const title = document.getElementById('edit-update-title-input').value.trim();
+        const titleInput = document.getElementById('edit-update-title-input').value.trim();
         const content = editUpdateEditor.root.innerHTML;
         
-        if (!title) {
+        if (!titleInput) {
             throw new Error('Please enter a title for the prayer update');
         }
         
         if (!content || content === '<p><br></p>') {
             throw new Error('Please enter content for the prayer update');
         }
+        
+        // Create the full title with prefix
+        const title = `PECH Prayer Update ${titleInput}`;
         
         // Update the prayer update
         const { data, error } = await supabase
@@ -426,6 +483,43 @@ async function deleteUpdate(updateId) {
         console.error('Error deleting prayer update:', error);
         showNotification('Error', `Failed to delete prayer update: ${error.message}`);
     }
+}
+
+// Create an update card (for both admin and regular views)
+function createUpdateCard(update, isAdmin = false) {
+    // Format the date - include the update_date if available, otherwise use created_at
+    const date = update.update_date ? new Date(update.update_date) : new Date(update.created_at);
+    const formattedDate = date.toLocaleDateString(undefined, { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    // Create card HTML
+    let cardHtml = `
+    <div class="card update-card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">${update.title}</h5>
+            <p class="update-date text-muted"><i class="bi bi-calendar"></i> ${formattedDate}</p>
+            <div class="update-content">
+                ${update.content}
+            </div>
+            ${isAdmin ? `
+            <div class="mt-3">
+                <button class="btn btn-sm btn-primary edit-update" data-id="${update.id}">
+                    <i class="bi bi-pencil"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-secondary archive-update" data-id="${update.id}">
+                    <i class="bi bi-archive"></i> Archive
+                </button>
+            </div>
+            ` : ''}
+        </div>
+    </div>
+    `;
+    
+    return cardHtml;
 }
 
 // Send notifications for a new prayer update

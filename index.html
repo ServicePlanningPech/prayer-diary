@@ -614,18 +614,26 @@
 
             <!-- Manage Prayer Updates View -->
             <div id="manage-updates-view" class="view-content d-none">
-                <h2 class="fw-bold mb-4">Manage Prayer Updates</h2>
+                <h3 class="mb-4">Manage Prayer Updates</h3>
                 <div class="row">
-                    <div class="col-md-4 mb-4">
+                    <div class="col-md-7 mb-4">
                         <div class="card shadow">
                             <div class="card-header bg-primary text-white py-2">
-                                <h5 class="card-title mb-0">Create Prayer Update</h5>
+                                <h5 class="card-title mb-0">Edit Prayer Update</h5>
                             </div>
                             <div class="card-body">
                                 <form id="update-form">
                                     <div class="mb-3">
                                         <label for="update-title" class="form-label">Title</label>
-                                        <input type="text" class="form-control" id="update-title" placeholder="Weekly Prayer Update - [date]">
+                                        <div class="input-group">
+                                            <span class="input-group-text">PECH Prayer Update</span>
+                                            <input type="text" class="form-control" id="update-title" placeholder="- [Date]">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="update-date" class="form-label">Date</label>
+                                        <input type="date" class="form-control" id="update-date">
                                     </div>
                                     
                                     <div class="mb-3">
@@ -633,16 +641,19 @@
                                         <div id="update-editor"></div>
                                     </div>
                                     
-                                    <div class="d-grid">
-                                        <button class="btn btn-primary" type="submit">
-                                            Create Update
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-primary" type="submit" id="save-and-send-btn" name="action" value="saveAndSend">
+                                            Save and Send
+                                        </button>
+                                        <button class="btn btn-secondary" type="submit" id="save-only-btn" name="action" value="saveOnly">
+                                            Save
                                         </button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-5">
                         <div class="card shadow">
                             <div class="card-header bg-primary text-white py-2">
                                 <h5 class="card-title mb-0">Existing Prayer Updates</h5>
@@ -1467,6 +1478,7 @@
         loadScript("js/ui.js");
         loadScript("js/calendar.js");
         loadScript("js/topics.js");
+        loadScript("js/distribution.js");
         loadScript("js/updates.js");
         loadScript("js/urgent.js");
         loadScript("js/profile.js");
