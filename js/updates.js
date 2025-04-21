@@ -172,40 +172,35 @@ function initUpdateEditor() {
 // Clear the editor with confirmation
 function clearEditor() {
     console.log('DEBUG: clearEditor - Starting clear operation');
-    // Show confirmation modal
-    if (confirm('Are you sure you want to clear the current content? Any unsaved changes will be lost.')) {
-        console.log('DEBUG: clearEditor - User confirmed clear');
-        // Reset form
-        console.log('DEBUG: clearEditor - Resetting form');
-        document.getElementById('update-form').reset();
-        
-        console.log('DEBUG: clearEditor - Clearing Quill editor');
-        updateEditor.setContents([]);
-        
-        // Set today's date in the date field
-        console.log('DEBUG: clearEditor - Setting default date');
-        const today = new Date();
-        const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-        document.getElementById('update-date').value = formattedDate;
-        
-        // Reset default title
-        console.log('DEBUG: clearEditor - Setting default title');
-        document.getElementById('update-title').value = 'PECH Prayer Update';
-        
-        // Reset selection
-        console.log('DEBUG: clearEditor - Resetting selection state');
-        selectedUpdateId = null;
-        updateButtonStates();
-        
-        // Clear selection highlight in the updates list
-        console.log('DEBUG: clearEditor - Clearing selection highlight');
-        const allRows = document.querySelectorAll('.update-list-item');
-        allRows.forEach(row => row.classList.remove('selected'));
-        
-        console.log('DEBUG: clearEditor - Clear operation complete');
-    } else {
-        console.log('DEBUG: clearEditor - User cancelled clear operation');
-    }
+    
+    // Reset form directly without confirmation
+    console.log('DEBUG: clearEditor - Resetting form');
+    document.getElementById('update-form').reset();
+    
+    console.log('DEBUG: clearEditor - Clearing Quill editor');
+    updateEditor.setContents([]);
+    
+    // Set today's date in the date field
+    console.log('DEBUG: clearEditor - Setting default date');
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    document.getElementById('update-date').value = formattedDate;
+    
+    // Reset default title
+    console.log('DEBUG: clearEditor - Setting default title');
+    document.getElementById('update-title').value = 'PECH Prayer Update';
+    
+    // Reset selection
+    console.log('DEBUG: clearEditor - Resetting selection state');
+    selectedUpdateId = null;
+    updateButtonStates();
+    
+    // Clear selection highlight in the updates list
+    console.log('DEBUG: clearEditor - Clearing selection highlight');
+    const allRows = document.querySelectorAll('.update-list-item');
+    allRows.forEach(row => row.classList.remove('selected'));
+    
+    console.log('DEBUG: clearEditor - Clear operation complete');
 }
 
 // Update button states based on current content and selection
@@ -499,7 +494,7 @@ function createUpdateListItem(update) {
         <div>
             ${update.is_archived ? 
                 '<span class="badge bg-secondary">Archived</span>' : 
-                '<span class="badge bg-success">Active</span>'}
+                ''}
         </div>
     </div>
     `;
@@ -538,10 +533,6 @@ function loadUpdateIntoEditor(update) {
     // Scroll to the editor
     console.log('DEBUG: loadUpdateIntoEditor - Scrolling to the editor');
     document.getElementById('update-form').scrollIntoView({ behavior: 'smooth' });
-    
-    // Show a notification that we've loaded the update for editing
-    console.log('DEBUG: loadUpdateIntoEditor - Displaying toast notification');
-    showToast('Update Loaded', 'The prayer update has been loaded into the editor for you to modify.', 'info', 3000);
     
     console.log('DEBUG: loadUpdateIntoEditor - Function complete');
 }
@@ -764,8 +755,7 @@ async function deleteUpdate(updateId) {
         console.log('DEBUG: deleteUpdate - User cancelled deletion');
         return;
     }
-    
-    try {
+	try {
         // Delete the prayer update
         console.log('DEBUG: deleteUpdate - Executing Supabase delete query');
         const { data, error } = await supabase

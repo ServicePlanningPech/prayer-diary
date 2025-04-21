@@ -655,21 +655,24 @@
 							</div>
 						</div>
 					</div>
+					<!-- Replace the existing "All Prayer Updates" panel in index.html with this HTML -->
 					<div class="col-md-5">
 						<div class="card shadow">
-							<div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
-								<h5 class="card-title mb-0">All Prayer Updates</h5>
-								<div>
-									<button id="edit-update-btn" class="btn btn-sm btn-light">
-										<i class="bi bi-pencil"></i> Edit
-									</button>
-									<button id="delete-update-btn" class="btn btn-sm btn-danger">
-										<i class="bi bi-trash"></i> Delete
-									</button>
+							<div class="card-header bg-primary text-white py-2">
+								<div class="d-flex justify-content-between align-items-center flex-wrap">
+									<h5 class="card-title mb-0">All Prayer Updates</h5>
+									<div class="btn-group mt-2 mt-md-0">
+										<button id="edit-update-btn" class="btn btn-sm btn-light me-1">
+											<i class="bi bi-pencil"></i> Edit
+										</button>
+										<button id="delete-update-btn" class="btn btn-sm btn-danger">
+											<i class="bi bi-trash"></i> Delete
+										</button>
+									</div>
 								</div>
 							</div>
 							<div class="card-body">
-								<!-- Removed tabs and replaced with a single container -->
+								<!-- Prayer updates container will be here -->
 								<div id="admin-updates-container">
 									<!-- Prayer updates will be dynamically inserted here -->
 								</div>

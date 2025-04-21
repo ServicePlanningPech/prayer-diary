@@ -748,3 +748,35 @@ body {
         font-size: 0.9rem;
     }
 }
+/* Add these styles to the end of your style.css file */
+
+/* Style for selected update in the list */
+.update-list-item {
+    transition: background-color 0.2s ease;
+}
+
+.update-list-item.selected {
+    background-color: #f0f4ff; /* Light blue background for selected item */
+    border-left: 3px solid #483D8B; /* Left border in primary color */
+}
+
+/* Improved layout for update list header on mobile */
+@media (max-width: 767.98px) {
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .card-header .d-flex .btn-group,
+    .card-header .d-flex div {
+        margin-top: 10px;
+        width: 100%;
+    }
+    
+    .card-header .d-flex div .btn {
+        width: 100%;
+        margin-bottom: 5px;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
