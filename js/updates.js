@@ -3,7 +3,7 @@
 // Global variables for editors
 let updateEditor;
 let editUpdateEditor;
-let initUpdateEditorFlag = false;
+let initUpdateEditorFlag = true;
 
 // Initialize the Rich Text Editor for updates
 function initUpdateEditor() {
@@ -199,10 +199,12 @@ async function loadUpdatesAdmin() {
                 </div>
             `;
         } else {
-            let currentHtml = '';
+            // Create a list group to hold the update items
+            let currentHtml = '<div class="list-group">';
             currentUpdates.forEach(update => {
                 currentHtml += createUpdateCard(update, true);
             });
+            currentHtml += '</div>';
             currentContainer.innerHTML = currentHtml;
             
             // Add edit event listeners
@@ -211,7 +213,8 @@ async function loadUpdatesAdmin() {
                     const updateId = button.getAttribute('data-id');
                     const update = currentUpdates.find(u => u.id === updateId);
                     if (update) {
-                        openEditUpdateModal(update);
+                        // Load the update directly into the main editor
+                        loadUpdateIntoEditor(update);
                     }
                 });
             });
@@ -233,10 +236,12 @@ async function loadUpdatesAdmin() {
                 </div>
             `;
         } else {
-            let archivedHtml = '';
+            // Create a list group to hold the archived update items
+            let archivedHtml = '<div class="list-group">';
             archivedUpdates.forEach(update => {
                 archivedHtml += createUpdateCard(update, true);
             });
+            archivedHtml += '</div>';
             archivedContainer.innerHTML = archivedHtml;
             
             // Add edit event listeners
@@ -245,16 +250,22 @@ async function loadUpdatesAdmin() {
                     const updateId = button.getAttribute('data-id');
                     const update = archivedUpdates.find(u => u.id === updateId);
                     if (update) {
-                        openEditUpdateModal(update);
+                        // Load the update directly into the main editor
+                        loadUpdateIntoEditor(update);
                     }
                 });
             });
             
-            // Add unarchive event listeners (replacing the archive buttons in archived view)
+            // Add delete event listeners for archived updates
+            archivedContainer.querySelectorAll('.delete-update').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const updateId = button.getAttribute('data-id');
+                    await deleteUpdate(updateId);
+                });
+            });
+            
+            // Add unarchive event listeners
             archivedContainer.querySelectorAll('.archive-update').forEach(button => {
-                button.textContent = 'Unarchive';
-                button.querySelector('i').classList.remove('bi-archive');
-                button.querySelector('i').classList.add('bi-inbox-fill');
                 button.addEventListener('click', async () => {
                     const updateId = button.getAttribute('data-id');
                     await toggleArchiveUpdate(updateId, false);
@@ -275,6 +286,32 @@ async function loadUpdatesAdmin() {
             </div>
         `;
     }
+}
+
+// Load an update into the main editor
+function loadUpdateIntoEditor(update) {
+    // Extract the title without the prefix if it exists
+    let titleWithoutPrefix = update.title;
+    if (update.title.startsWith('PECH Prayer Update ')) {
+        titleWithoutPrefix = update.title.replace('PECH Prayer Update ', '');
+    }
+    
+    // Set the title in the form
+    document.getElementById('update-title').value = titleWithoutPrefix;
+    
+    // Set the date if available
+    if (update.update_date) {
+        document.getElementById('update-date').value = update.update_date;
+    }
+    
+    // Set content in main Quill editor
+    updateEditor.root.innerHTML = update.content;
+    
+    // Scroll to the editor
+    document.getElementById('update-form').scrollIntoView({ behavior: 'smooth' });
+    
+    // Show a notification that we've loaded the update for editing
+    showToast('Update Loaded', 'The prayer update has been loaded into the editor for you to modify.', 'info', 3000);
 }
 
 // Create a new prayer update
@@ -542,36 +579,57 @@ function createUpdateCard(update, isAdmin = false) {
     // Format the date - include the update_date if available, otherwise use created_at
     const date = update.update_date ? new Date(update.update_date) : new Date(update.created_at);
     const formattedDate = date.toLocaleDateString(undefined, { 
-        weekday: 'long', 
         year: 'numeric', 
-        month: 'long', 
+        month: 'short', 
         day: 'numeric' 
     });
     
-    // Create card HTML
-    let cardHtml = `
-    <div class="card update-card mb-3">
-        <div class="card-body">
-            <h5 class="card-title">${update.title}</h5>
-            <p class="update-date text-muted"><i class="bi bi-calendar"></i> ${formattedDate}</p>
-            <div class="update-content">
-                ${update.content}
+    // Create different HTML based on whether it's for admin view or regular view
+    if (isAdmin) {
+        // Simple list item for admin view
+        let listItemHtml = `
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-0">${update.title}</h6>
+                <small class="text-muted"><i class="bi bi-calendar"></i> ${formattedDate}</small>
             </div>
-            ${isAdmin ? `
-            <div class="mt-3">
+            <div>
                 <button class="btn btn-sm btn-primary edit-update" data-id="${update.id}">
                     <i class="bi bi-pencil"></i> Edit
                 </button>
+                ${update.is_archived ? `
+                <button class="btn btn-sm btn-danger delete-update" data-id="${update.id}">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+                <button class="btn btn-sm btn-success archive-update" data-id="${update.id}">
+                    <i class="bi bi-inbox-fill"></i> Unarchive
+                </button>
+                ` : `
                 <button class="btn btn-sm btn-secondary archive-update" data-id="${update.id}">
                     <i class="bi bi-archive"></i> Archive
                 </button>
+                `}
             </div>
-            ` : ''}
         </div>
-    </div>
-    `;
-    
-    return cardHtml;
+        `;
+        
+        return listItemHtml;
+    } else {
+        // Full card for regular user view
+        let cardHtml = `
+        <div class="card update-card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">${update.title}</h5>
+                <p class="update-date text-muted"><i class="bi bi-calendar"></i> ${formattedDate}</p>
+                <div class="update-content">
+                    ${update.content}
+                </div>
+            </div>
+        </div>
+        `;
+        
+        return cardHtml;
+    }
 }
 
 // Send notifications for a new prayer update
