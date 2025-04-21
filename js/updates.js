@@ -3,7 +3,7 @@
 // Global variables for editors
 let updateEditor;
 let editUpdateEditor;
-let initUpdateEditorFlag;
+let initUpdateEditorFlag = false;
 
 // Initialize the Rich Text Editor for updates
 function initUpdateEditor() {
@@ -81,7 +81,7 @@ function initUpdateEditor() {
     } else {
         console.error('Save only button not found');
     }
-	initUpdateEditorFlag = false;
+	initUpdateEditorFlag = true;
 }
 
 // Load all prayer updates (both current and archived)
