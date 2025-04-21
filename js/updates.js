@@ -6,6 +6,8 @@ let editUpdateEditor;
 
 // Initialize the Rich Text Editor for updates
 function initUpdateEditor() {
+    console.log('Initializing update editor');
+    
     // Initialize update editor if not already initialized
     if (!updateEditor) {
         updateEditor = new Quill('#update-editor', {
@@ -42,13 +44,37 @@ function initUpdateEditor() {
         });
     }
     
-    // Set up form submission for creating updates
-    document.getElementById('update-form').addEventListener('submit', createPrayerUpdate);
-    
     // Set today's date in the date field
     const today = new Date();
     const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-    document.getElementById('update-date').value = formattedDate;
+    const dateField = document.getElementById('update-date');
+    if (dateField) {
+        dateField.value = formattedDate;
+    } else {
+        console.error('Date field not found');
+    }
+    
+    // Set up direct click handlers for buttons instead of form submission
+    const saveAndSendBtn = document.getElementById('save-and-send-btn');
+    const saveOnlyBtn = document.getElementById('save-only-btn');
+    
+    if (saveAndSendBtn) {
+        saveAndSendBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            createPrayerUpdate('saveAndSend', this);
+        });
+    } else {
+        console.error('Save and send button not found');
+    }
+    
+    if (saveOnlyBtn) {
+        saveOnlyBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            createPrayerUpdate('saveOnly', this);
+        });
+    } else {
+        console.error('Save only button not found');
+    }
 }
 
 // Load all prayer updates (both current and archived)
@@ -69,7 +95,7 @@ async function loadPrayerUpdates() {
             .from('prayer_updates')
             .select('*')
             .eq('is_archived', false)
-            .order('update_date', { ascending: false });
+            .order('created_at', { ascending: false });
             
         if (currentError) throw currentError;
         
@@ -78,7 +104,7 @@ async function loadPrayerUpdates() {
             .from('prayer_updates')
             .select('*')
             .eq('is_archived', true)
-            .order('update_date', { ascending: false });
+            .order('created_at', { ascending: false });
             
         if (archivedError) throw archivedError;
         
@@ -145,7 +171,7 @@ async function loadUpdatesAdmin() {
             .from('prayer_updates')
             .select('*')
             .eq('is_archived', false)
-            .order('update_date', { ascending: false });
+            .order('created_at', { ascending: false });
             
         if (currentError) throw currentError;
         
@@ -154,7 +180,7 @@ async function loadUpdatesAdmin() {
             .from('prayer_updates')
             .select('*')
             .eq('is_archived', true)
-            .order('update_date', { ascending: false });
+            .order('created_at', { ascending: false });
             
         if (archivedError) throw archivedError;
         
@@ -245,12 +271,10 @@ async function loadUpdatesAdmin() {
 }
 
 // Create a new prayer update
-async function createPrayerUpdate(e) {
-    e.preventDefault();
+async function createPrayerUpdate(action, submitBtn) {
+    console.log('Creating prayer update with action:', action);
     
-    // Identify which button was clicked
-    const submitBtn = e.submitter;
-    const action = submitBtn.value; // Will be either 'saveAndSend' or 'saveOnly'
+    // Get the original button text and disable the button
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Saving...';
     submitBtn.disabled = true;
@@ -259,6 +283,9 @@ async function createPrayerUpdate(e) {
         const titleInput = document.getElementById('update-title').value.trim();
         const dateInput = document.getElementById('update-date').value;
         const content = updateEditor.root.innerHTML;
+        
+        console.log('Form values:', { titleInput, dateInput });
+        console.log('Content:', content);
         
         // Validate inputs
         if (!titleInput) {
@@ -276,9 +303,11 @@ async function createPrayerUpdate(e) {
         // Create the full title with prefix
         const title = `PECH Prayer Update ${titleInput}`;
         
+        console.log('Archiving existing updates...');
         // Archive any existing non-archived updates
         await archiveExistingUpdates();
         
+        console.log('Creating new prayer update...');
         // Create the prayer update
         const { data, error } = await supabase
             .from('prayer_updates')
@@ -290,7 +319,12 @@ async function createPrayerUpdate(e) {
                 update_date: dateInput
             });
             
-        if (error) throw error;
+        if (error) {
+            console.error('Database error:', error);
+            throw error;
+        }
+        
+        console.log('Prayer update created successfully:', data);
         
         // Reset form
         document.getElementById('update-form').reset();
@@ -307,8 +341,14 @@ async function createPrayerUpdate(e) {
         // Send notifications if that button was clicked
         if (action === 'saveAndSend') {
             // Call the distribution function
-            await sendPrayerUpdates(title, content, dateInput);
-            showNotification('Success', 'Prayer update saved and sent successfully.');
+            console.log('Sending prayer update...');
+            if (typeof sendPrayerUpdates === 'function') {
+                await sendPrayerUpdates(title, content, dateInput);
+                showNotification('Success', 'Prayer update saved and sent successfully.');
+            } else {
+                console.error('sendPrayerUpdates function not found');
+                showNotification('Warning', 'Prayer update saved but not sent - distribution module not loaded.');
+            }
         } else {
             showNotification('Success', 'Prayer update saved successfully.');
         }
@@ -325,13 +365,18 @@ async function createPrayerUpdate(e) {
 // Archive any existing non-archived updates
 async function archiveExistingUpdates() {
     try {
+        console.log('Attempting to archive existing updates...');
         const { data, error } = await supabase
             .from('prayer_updates')
             .update({ is_archived: true })
             .eq('is_archived', false);
             
-        if (error) throw error;
+        if (error) {
+            console.error('Error in archiveExistingUpdates:', error);
+            throw error;
+        }
         
+        console.log('Existing updates archived:', data);
         return true;
     } catch (error) {
         console.error('Error archiving existing updates:', error);

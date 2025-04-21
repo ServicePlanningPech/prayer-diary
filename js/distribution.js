@@ -14,7 +14,7 @@ async function sendPrayerUpdates(title, content, date) {
     console.log('========== SENDING PRAYER UPDATE ==========');
     console.log('Title:', title);
     console.log('Date:', date);
-    console.log('Content:', content);
+    console.log('Content length:', content.length);
     console.log('===========================================');
     
     try {
@@ -38,3 +38,6 @@ async function sendPrayerUpdates(title, content, date) {
         return false;
     }
 }
+
+// Make sure the function is available globally
+window.sendPrayerUpdates = sendPrayerUpdates;
