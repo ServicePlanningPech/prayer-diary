@@ -1,10 +1,14 @@
-// Prayer Updates Module - Debug Version with console logs
+// Prayer Updates Module - Fixed version with loading flags
 
 // Global variables for editors
 let updateEditor;
 let editUpdateEditor;
 let initUpdateEditorFlag = false;
 let selectedUpdateId = null; // Track selected update
+
+// Loading flags to prevent duplicate calls
+let isLoadingUpdatesAdmin = false;
+let isCheckingDateExists = false;
 
 // Initialize the Rich Text Editor for updates
 function initUpdateEditor() {
@@ -340,11 +344,22 @@ async function loadPrayerUpdates() {
     console.log('DEBUG: loadPrayerUpdates - Function complete');
 }
 
-// Load updates for admin view
+// Load updates for admin view - MODIFIED with loading flag
 async function loadUpdatesAdmin() {
     console.log('DEBUG: loadUpdatesAdmin - Starting to load updates for admin view');
+    
+    // Check if already loading to prevent duplicate calls
+    if (isLoadingUpdatesAdmin) {
+        console.log('DEBUG: loadUpdatesAdmin - Already loading, aborting duplicate call');
+        return;
+    }
+    
+    // Set loading flag
+    isLoadingUpdatesAdmin = true;
+    
     if (!hasPermission('prayer_update_editor')) {
         console.error('DEBUG: loadUpdatesAdmin - User lacks permission, aborting');
+        isLoadingUpdatesAdmin = false; // Reset flag
         return;
     }
     
@@ -352,6 +367,7 @@ async function loadUpdatesAdmin() {
     const container = document.getElementById('admin-updates-container');
     if (!container) {
         console.error('DEBUG: loadUpdatesAdmin - Container not found in DOM');
+        isLoadingUpdatesAdmin = false; // Reset flag
         return;
     }
     
@@ -454,6 +470,10 @@ async function loadUpdatesAdmin() {
                 Error loading prayer updates: ${error.message}
             </div>
         `;
+    } finally {
+        // Reset loading flag when done, regardless of success/failure
+        isLoadingUpdatesAdmin = false;
+        console.log('DEBUG: loadUpdatesAdmin - Reset loading flag');
     }
     
     console.log('DEBUG: loadUpdatesAdmin - Function complete');
@@ -526,9 +546,19 @@ function loadUpdateIntoEditor(update) {
     console.log('DEBUG: loadUpdateIntoEditor - Function complete');
 }
 
-// Check if an update already exists for the specified date
+// Check if an update already exists for the specified date - MODIFIED with loading flag
 async function checkDateExists(dateStr, updateId = null) {
     console.log('DEBUG: checkDateExists - Checking if date exists:', dateStr, 'Excluding ID:', updateId);
+    
+    // Check if already running to prevent duplicate calls
+    if (isCheckingDateExists) {
+        console.log('DEBUG: checkDateExists - Already checking, aborting duplicate call');
+        return false;
+    }
+    
+    // Set loading flag
+    isCheckingDateExists = true;
+    
     try {
         console.log('DEBUG: checkDateExists - Building Supabase query');
         let query = supabase
@@ -556,7 +586,13 @@ async function checkDateExists(dateStr, updateId = null) {
         return data.length > 0;
     } catch (error) {
         console.error('DEBUG: checkDateExists - Error checking date existence:', error);
+        // Display error to user
+        alert('Error checking if date exists: ' + error.message);
         return false;
+    } finally {
+        // Reset loading flag when done, regardless of success/failure
+        isCheckingDateExists = false;
+        console.log('DEBUG: checkDateExists - Reset loading flag');
     }
 }
 
