@@ -13,65 +13,102 @@ function initUI() {
 
 // Setup navigation between views
 function setupNavigation() {
+    // Initialize global flag to track navigation
+    window.navigationInProgress = false;
+    
+    // Event handler creator to prevent duplicate calls
+    const createNavHandler = (viewId, loaderFunction) => {
+        return function(e) {
+            // Prevent default if it's a link
+            if (e) e.preventDefault();
+            
+            // Check if navigation is already in progress to prevent duplicate calls
+            if (window.navigationInProgress) {
+                console.log(`Navigation to ${viewId} ignored - already in progress`);
+                return;
+            }
+            
+            // Set the flag to prevent duplicate calls
+            window.navigationInProgress = true;
+            console.log(`Navigation started: ${viewId}`);
+            
+            // Show the view
+            showView(viewId);
+            
+            // Call the loader function if provided
+            if (typeof loaderFunction === 'function') {
+                try {
+                    loaderFunction();
+                } catch (err) {
+                    console.error(`Error in loader function for ${viewId}:`, err);
+                    showToast('Error', `Could not load ${viewId}. Please refresh the page.`, 'error');
+                }
+            }
+            
+            // Reset the flag after a delay to prevent rapid clicking
+            setTimeout(() => {
+                window.navigationInProgress = false;
+                console.log(`Navigation completed: ${viewId}`);
+            }, 500);
+        };
+    };
+    
     // Main navigation items
-    document.getElementById('nav-calendar').addEventListener('click', () => {
-        showView('calendar-view');
-        loadPrayerCalendar();
-    });
+    document.getElementById('nav-calendar').addEventListener('click', 
+        createNavHandler('calendar-view', loadPrayerCalendar));
     
-    document.getElementById('nav-updates').addEventListener('click', () => {
-        showView('updates-view');
-        loadPrayerUpdates();
-    });
+    document.getElementById('nav-updates').addEventListener('click', 
+        createNavHandler('updates-view', loadPrayerUpdates));
     
-    document.getElementById('nav-urgent').addEventListener('click', () => {
-        showView('urgent-view');
-        loadUrgentPrayers();
-    });
+    document.getElementById('nav-urgent').addEventListener('click', 
+        createNavHandler('urgent-view', loadUrgentPrayers));
     
-    document.getElementById('nav-profile').addEventListener('click', () => {
-        showView('profile-view');
-        // Load profile with a slight delay to ensure DOM is ready
-        setTimeout(() => {
-            loadUserProfile();
-        }, 50);
-    });
+    document.getElementById('nav-profile').addEventListener('click', 
+        createNavHandler('profile-view', () => {
+            // Load profile with a slight delay to ensure DOM is ready
+            setTimeout(loadUserProfile, 50);
+        }));
     
     // Admin navigation
-    document.getElementById('nav-manage-users').addEventListener('click', () => {
-        // Show view first
-        showView('manage-users-view');
-        
-        // Then load users - simple and direct
-        if (typeof loadUsers === 'function') {
-            loadUsers();
-        } else {
-            console.error('loadUsers function is not defined');
-            showToast('Error', 'Could not load users. Please refresh the page.', 'error');
-        }
-    });
+    document.getElementById('nav-manage-users').addEventListener('click', 
+        createNavHandler('manage-users-view', loadUsers));
     
-    document.getElementById('nav-manage-calendar').addEventListener('click', () => {
-        showView('manage-calendar-view');
-        loadCalendarAdmin();
-    });
+    document.getElementById('nav-manage-calendar').addEventListener('click', 
+        createNavHandler('manage-calendar-view', loadCalendarAdmin));
     
-    document.getElementById('nav-manage-updates').addEventListener('click', () => {
-        showView('manage-updates-view');
-        initUpdateEditor();
-        loadUpdatesAdmin();
-    });
+    document.getElementById('nav-manage-updates').addEventListener('click', 
+        createNavHandler('manage-updates-view', () => {
+            initUpdateEditor();
+            loadUpdatesAdmin();
+        }));
     
-    document.getElementById('nav-manage-urgent').addEventListener('click', () => {
-        showView('manage-urgent-view');
-        initUrgentEditor();
-        loadUrgentAdmin();
-    });
+    document.getElementById('nav-manage-urgent').addEventListener('click', 
+        createNavHandler('manage-urgent-view', () => {
+            initUrgentEditor();
+            loadUrgentAdmin();
+        }));
     
-    document.getElementById('nav-test-email').addEventListener('click', () => {
-        showView('test-email-view');
-        initEmailTestView();
-    });
+    document.getElementById('nav-test-email').addEventListener('click', 
+        createNavHandler('test-email-view', initEmailTestView));
+    
+    // Make the nav handlers available globally for direct calls
+    window.navHandlers = {
+        calendar: createNavHandler('calendar-view', loadPrayerCalendar),
+        updates: createNavHandler('updates-view', loadPrayerUpdates),
+        urgent: createNavHandler('urgent-view', loadUrgentPrayers),
+        profile: createNavHandler('profile-view', () => setTimeout(loadUserProfile, 50)),
+        manageUsers: createNavHandler('manage-users-view', loadUsers),
+        manageCalendar: createNavHandler('manage-calendar-view', loadCalendarAdmin),
+        manageUpdates: createNavHandler('manage-updates-view', () => {
+            initUpdateEditor();
+            loadUpdatesAdmin();
+        }),
+        manageUrgent: createNavHandler('manage-urgent-view', () => {
+            initUrgentEditor();
+            loadUrgentAdmin();
+        }),
+        testEmail: createNavHandler('test-email-view', initEmailTestView)
+    };
 }
 
 // Setup the date picker trigger for testing

@@ -95,6 +95,11 @@ function initDrawerNavigation() {
 
 // Setup link handlers for both regular nav links and dropdown items
 function setupDrawerLinks(drawerMenu, closeDrawer) {
+    // Keep track of navigation actions that might be in progress
+    if (!window.navigationInProgress) {
+        window.navigationInProgress = false;
+    }
+    
     // Process all navigation links
     const linkSelectors = [
         // Main nav links
@@ -122,36 +127,78 @@ function setupDrawerLinks(drawerMenu, closeDrawer) {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
                 
+                // Check if navigation is already in progress to prevent multiple calls
+                if (window.navigationInProgress) {
+                    console.log("Navigation already in progress, ignoring click");
+                    return;
+                }
+                
+                // Set the flag to prevent duplicate calls
+                window.navigationInProgress = true;
+                console.log("Navigation started from drawer");
+                
                 // Get the original id for later use
                 const id = this.id;
                 
                 // Close drawer
                 closeDrawer();
                 
-                // Add delay to ensure drawer is closed before action
+                // Directly handle the navigation instead of triggering another event
                 setTimeout(() => {
-                    // Find the original element in the main navigation
-                    const originalElement = document.querySelector(`#${id}:not(.nav-drawer *)`);
-                    
-                    if (originalElement) {
-                        console.log(`Triggering click on original element: ${id}`);
-                        originalElement.click();
-                    } else if (id === 'btn-logout' && typeof window.logout === 'function') {
-                        // Special case for logout
-                        console.log('Calling logout function directly');
-                        window.logout();
-                    } else {
-                        console.warn(`Could not find original element: ${id}`);
-                        
-                        // Try to determine the view based on the id pattern
-                        if (id.startsWith('nav-')) {
-                            const viewId = id.replace('nav-', '') + '-view';
-                            if (typeof window.showView === 'function') {
-                                console.log(`Attempting to show view: ${viewId}`);
-                                window.showView(viewId);
-                            }
-                        }
+                    // Handle based on the ID
+                    if (id === 'nav-calendar') {
+                        window.showView('calendar-view');
+                        if (typeof loadPrayerCalendar === 'function') loadPrayerCalendar();
+                    } 
+                    else if (id === 'nav-updates') {
+                        window.showView('updates-view');
+                        if (typeof loadPrayerUpdates === 'function') loadPrayerUpdates();
+                    } 
+                    else if (id === 'nav-urgent') {
+                        window.showView('urgent-view');
+                        if (typeof loadUrgentPrayers === 'function') loadUrgentPrayers();
+                    } 
+                    else if (id === 'nav-profile') {
+                        window.showView('profile-view');
+                        if (typeof loadUserProfile === 'function') setTimeout(loadUserProfile, 50);
+                    } 
+                    else if (id === 'nav-manage-users') {
+                        window.showView('manage-users-view');
+                        if (typeof loadUsers === 'function') loadUsers();
+                    } 
+                    else if (id === 'nav-manage-calendar') {
+                        window.showView('manage-calendar-view');
+                        if (typeof loadCalendarAdmin === 'function') loadCalendarAdmin();
+                    } 
+                    else if (id === 'nav-manage-updates') {
+                        window.showView('manage-updates-view');
+                        if (typeof initUpdateEditor === 'function') initUpdateEditor();
+                        if (typeof loadUpdatesAdmin === 'function') loadUpdatesAdmin();
+                    } 
+                    else if (id === 'nav-manage-urgent') {
+                        window.showView('manage-urgent-view');
+                        if (typeof initUrgentEditor === 'function') initUrgentEditor();
+                        if (typeof loadUrgentAdmin === 'function') loadUrgentAdmin();
+                    } 
+                    else if (id === 'nav-test-email') {
+                        window.showView('test-email-view');
+                        if (typeof initEmailTestView === 'function') initEmailTestView();
+                    } 
+                    else if (id === 'nav-change-password') {
+                        if (typeof openChangePasswordModal === 'function') openChangePasswordModal();
+                    } 
+                    else if (id === 'btn-logout') {
+                        if (typeof logout === 'function') logout();
+                    } 
+                    else {
+                        console.warn(`Unknown navigation id: ${id}`);
                     }
+                    
+                    // Reset the flag with a small delay to prevent rapid clicks
+                    setTimeout(() => {
+                        window.navigationInProgress = false;
+                        console.log("Navigation completed");
+                    }, 500);
                 }, 300);
             });
         });
