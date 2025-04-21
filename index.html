@@ -612,84 +612,72 @@
                 </div>
             </div>
 
-            <!-- Manage Prayer Updates View -->
-            <div id="manage-updates-view" class="view-content d-none">
-                <h3 class="mb-4">Manage Prayer Updates</h3>
-                <div class="row">
-                    <div class="col-md-7 mb-4">
-                        <div class="card shadow">
-                            <div class="card-header bg-primary text-white py-2">
-                                <h5 class="card-title mb-0">Edit Prayer Update</h5>
-                            </div>
-                            <div class="card-body">
-                                <form id="update-form">
-                                    <div class="mb-3">
-                                        <label for="update-title" class="form-label">Title</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">PECH Prayer Update</span>
-                                            <input type="text" class="form-control" id="update-title" placeholder="- [Date]">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label for="update-date" class="form-label">Date</label>
-                                        <input type="date" class="form-control" id="update-date">
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label for="update-editor" class="form-label">Content</label>
-                                        <div id="update-editor"></div>
-                                    </div>
-                                    
-                                    <div class="d-flex gap-2">
-                                        <button class="btn btn-primary" type="submit" id="save-and-send-btn" name="action" value="saveAndSend">
-                                            Save and Send
-                                        </button>
-                                        <button class="btn btn-secondary" type="submit" id="save-only-btn" name="action" value="saveOnly">
-                                            Save
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-5">
-                        <div class="card shadow">
-                            <div class="card-header bg-primary text-white py-2">
-                                <h5 class="card-title mb-0">Existing Prayer Updates</h5>
-                            </div>
-                            <div class="card-body">
-                                <ul class="nav nav-tabs mb-3" id="adminUpdatesTab" role="tablist">
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link active" id="current-updates-admin-tab" data-bs-toggle="tab" 
-                                                data-bs-target="#current-updates-admin" type="button" role="tab" 
-                                                aria-controls="current-updates-admin" aria-selected="true">Current</button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="archived-updates-admin-tab" data-bs-toggle="tab" 
-                                                data-bs-target="#archived-updates-admin" type="button" role="tab" 
-                                                aria-controls="archived-updates-admin" aria-selected="false">Archived</button>
-                                    </li>
-                                </ul>
-                                <div class="tab-content" id="adminUpdatesTabContent">
-                                    <div class="tab-pane fade show active" id="current-updates-admin" role="tabpanel" 
-                                         aria-labelledby="current-updates-admin-tab">
-                                        <div id="admin-updates-container">
-                                            <!-- Prayer updates will be dynamically inserted here -->
-                                        </div>
-                                    </div>
-                                    <div class="tab-pane fade" id="archived-updates-admin" role="tabpanel" 
-                                         aria-labelledby="archived-updates-admin-tab">
-                                        <div id="admin-archived-updates-container">
-                                            <!-- Archived prayer updates will be dynamically inserted here -->
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
+			<!-- Only changing the "Manage Prayer Updates View" section to match the JS changes -->
+			<!-- Manage Prayer Updates View -->
+			<div id="manage-updates-view" class="view-content d-none">
+				<h3 class="mb-4">Manage Prayer Updates</h3>
+				<div class="row">
+					<div class="col-md-7 mb-4">
+						<div class="card shadow">
+							<div class="card-header bg-primary text-white py-2">
+								<h5 class="card-title mb-0">Edit Prayer Update</h5>
+							</div>
+							<div class="card-body">
+								<form id="update-form">
+									<div class="mb-3">
+										<label for="update-title" class="form-label">Title</label>
+										<input type="text" class="form-control" id="update-title" value="PECH Prayer Update">
+									</div>
+									
+									<div class="mb-3">
+										<label for="update-date" class="form-label">Date</label>
+										<input type="date" class="form-control" id="update-date">
+									</div>
+									
+									<div class="mb-3">
+										<label for="update-editor" class="form-label">Content</label>
+										<div id="update-editor"></div>
+									</div>
+									
+									<div class="d-flex gap-2">
+										<button class="btn btn-primary" type="button" id="save-and-send-btn" name="action" value="saveAndSend">
+											Save and Send
+										</button>
+										<button class="btn btn-secondary" type="button" id="save-only-btn" name="action" value="saveOnly">
+											Save
+										</button>
+										<button class="btn btn-warning" type="button" id="clear-btn">
+											Clear
+										</button>
+									</div>
+								</form>
+							</div>
+						</div>
+					</div>
+					<div class="col-md-5">
+						<div class="card shadow">
+							<div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
+								<h5 class="card-title mb-0">All Prayer Updates</h5>
+								<div>
+									<button id="edit-update-btn" class="btn btn-sm btn-light">
+										<i class="bi bi-pencil"></i> Edit
+									</button>
+									<button id="delete-update-btn" class="btn btn-sm btn-danger">
+										<i class="bi bi-trash"></i> Delete
+									</button>
+								</div>
+							</div>
+							<div class="card-body">
+								<!-- Removed tabs and replaced with a single container -->
+								<div id="admin-updates-container">
+									<!-- Prayer updates will be dynamically inserted here -->
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 
             <!-- Manage Urgent Prayers View -->
             <div id="manage-urgent-view" class="view-content d-none">
