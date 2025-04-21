@@ -1,4 +1,4 @@
-// Prayer Updates Module
+// Prayer Updates Module - Debug Version with console logs
 
 // Global variables for editors
 let updateEditor;
@@ -8,14 +8,15 @@ let selectedUpdateId = null; // Track selected update
 
 // Initialize the Rich Text Editor for updates
 function initUpdateEditor() {
-    console.log('Initializing update editor');
+    console.log('DEBUG: initUpdateEditor - Start initialization');
     if (initUpdateEditorFlag) {
-        console.log('Initializing update editor - duplicate call');
+        console.log('DEBUG: initUpdateEditor - Duplicate call detected, aborting');
         return;
     }
         
     // Initialize update editor if not already initialized
     if (!updateEditor) {
+        console.log('DEBUG: initUpdateEditor - Creating main update editor');
         updateEditor = new Quill('#update-editor', {
             theme: 'snow',
             modules: {
@@ -31,13 +32,16 @@ function initUpdateEditor() {
         });
         
         // Add editor change handler to update button states
+        console.log('DEBUG: initUpdateEditor - Setting up text-change event handler');
         updateEditor.on('text-change', function() {
+            console.log('DEBUG: Quill text-change event triggered');
             updateButtonStates();
         });
     }
     
     // Initialize edit update editor if not already initialized
     if (!editUpdateEditor) {
+        console.log('DEBUG: initUpdateEditor - Creating edit update editor');
         editUpdateEditor = new Quill('#edit-update-editor', {
             theme: 'snow',
             modules: {
@@ -58,21 +62,24 @@ function initUpdateEditor() {
     const today = new Date();
     const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
     const dateField = document.getElementById('update-date');
+    console.log('DEBUG: initUpdateEditor - Setting default date:', formattedDate);
     if (dateField) {
         dateField.value = formattedDate;
     } else {
-        console.error('Date field not found');
+        console.error('DEBUG: initUpdateEditor - Date field not found in DOM');
     }
     
     // Set default title with prefix
     const titleField = document.getElementById('update-title');
+    console.log('DEBUG: initUpdateEditor - Setting default title');
     if (titleField) {
         titleField.value = 'PECH Prayer Update';
     } else {
-        console.error('Title field not found');
+        console.error('DEBUG: initUpdateEditor - Title field not found in DOM');
     }
     
     // Set up direct click handlers for buttons
+    console.log('DEBUG: initUpdateEditor - Setting up button handlers');
     const saveAndSendBtn = document.getElementById('save-and-send-btn');
     const saveOnlyBtn = document.getElementById('save-only-btn');
     const clearBtn = document.getElementById('clear-btn');
@@ -80,196 +87,302 @@ function initUpdateEditor() {
     const deleteBtn = document.getElementById('delete-update-btn');
     
     if (saveAndSendBtn) {
+        console.log('DEBUG: initUpdateEditor - Found save-and-send-btn, adding click handler');
         saveAndSendBtn.addEventListener('click', function(e) {
+            console.log('DEBUG: saveAndSendBtn click event triggered');
             e.preventDefault();
             createPrayerUpdate('saveAndSend', this);
         });
     } else {
-        console.error('Save and send button not found');
+        console.error('DEBUG: initUpdateEditor - Save and send button not found in DOM');
     }
     
     if (saveOnlyBtn) {
+        console.log('DEBUG: initUpdateEditor - Found save-only-btn, adding click handler');
         saveOnlyBtn.addEventListener('click', function(e) {
+            console.log('DEBUG: saveOnlyBtn click event triggered');
             e.preventDefault();
             createPrayerUpdate('saveOnly', this);
         });
     } else {
-        console.error('Save only button not found');
+        console.error('DEBUG: initUpdateEditor - Save only button not found in DOM');
     }
     
     if (clearBtn) {
+        console.log('DEBUG: initUpdateEditor - Found clear-btn, adding click handler');
         clearBtn.addEventListener('click', function(e) {
+            console.log('DEBUG: clearBtn click event triggered');
             e.preventDefault();
             clearEditor();
         });
     } else {
-        console.error('Clear button not found');
+        console.error('DEBUG: initUpdateEditor - Clear button not found in DOM');
     }
     
     if (editBtn) {
+        console.log('DEBUG: initUpdateEditor - Found edit-update-btn, adding click handler');
         editBtn.addEventListener('click', function(e) {
+            console.log('DEBUG: editBtn click event triggered');
             e.preventDefault();
             if (selectedUpdateId) {
+                console.log('DEBUG: editBtn - selectedUpdateId exists:', selectedUpdateId);
                 const selectedUpdate = getSelectedUpdate();
                 if (selectedUpdate) {
+                    console.log('DEBUG: editBtn - Found selected update:', selectedUpdate);
                     loadUpdateIntoEditor(selectedUpdate);
+                } else {
+                    console.error('DEBUG: editBtn - Could not find selected update object');
                 }
+            } else {
+                console.log('DEBUG: editBtn - No update selected');
             }
         });
     } else {
-        console.error('Edit update button not found');
+        console.error('DEBUG: initUpdateEditor - Edit update button not found in DOM');
     }
     
     if (deleteBtn) {
+        console.log('DEBUG: initUpdateEditor - Found delete-update-btn, adding click handler');
         deleteBtn.addEventListener('click', function(e) {
+            console.log('DEBUG: deleteBtn click event triggered');
             e.preventDefault();
             if (selectedUpdateId) {
+                console.log('DEBUG: deleteBtn - Calling deleteUpdate with id:', selectedUpdateId);
                 deleteUpdate(selectedUpdateId);
+            } else {
+                console.log('DEBUG: deleteBtn - No update selected');
             }
         });
     } else {
-        console.error('Delete update button not found');
+        console.error('DEBUG: initUpdateEditor - Delete update button not found in DOM');
     }
     
     // Initial button state update
+    console.log('DEBUG: initUpdateEditor - Initial button state update');
     updateButtonStates();
     
     initUpdateEditorFlag = true;
+    console.log('DEBUG: initUpdateEditor - Initialization complete');
 }
 
 // Clear the editor with confirmation
 function clearEditor() {
+    console.log('DEBUG: clearEditor - Starting clear operation');
     // Show confirmation modal
     if (confirm('Are you sure you want to clear the current content? Any unsaved changes will be lost.')) {
+        console.log('DEBUG: clearEditor - User confirmed clear');
         // Reset form
+        console.log('DEBUG: clearEditor - Resetting form');
         document.getElementById('update-form').reset();
+        
+        console.log('DEBUG: clearEditor - Clearing Quill editor');
         updateEditor.setContents([]);
         
         // Set today's date in the date field
+        console.log('DEBUG: clearEditor - Setting default date');
         const today = new Date();
         const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
         document.getElementById('update-date').value = formattedDate;
         
         // Reset default title
+        console.log('DEBUG: clearEditor - Setting default title');
         document.getElementById('update-title').value = 'PECH Prayer Update';
         
         // Reset selection
+        console.log('DEBUG: clearEditor - Resetting selection state');
         selectedUpdateId = null;
         updateButtonStates();
         
         // Clear selection highlight in the updates list
+        console.log('DEBUG: clearEditor - Clearing selection highlight');
         const allRows = document.querySelectorAll('.update-list-item');
         allRows.forEach(row => row.classList.remove('selected'));
+        
+        console.log('DEBUG: clearEditor - Clear operation complete');
+    } else {
+        console.log('DEBUG: clearEditor - User cancelled clear operation');
     }
 }
 
 // Update button states based on current content and selection
 function updateButtonStates() {
+    console.log('DEBUG: updateButtonStates - Updating button states');
     const saveAndSendBtn = document.getElementById('save-and-send-btn');
     const saveOnlyBtn = document.getElementById('save-only-btn');
     const editBtn = document.getElementById('edit-update-btn');
     const deleteBtn = document.getElementById('delete-update-btn');
     
     // Get current editor content
-    const editorContent = updateEditor.root.innerHTML;
+    let editorContent = '';
+    if (updateEditor && updateEditor.root) {
+        editorContent = updateEditor.root.innerHTML;
+        console.log('DEBUG: updateButtonStates - Current editor content length:', editorContent.length);
+    } else {
+        console.error('DEBUG: updateButtonStates - updateEditor or root element is not available');
+    }
+    
     const isEmpty = !editorContent || editorContent === '<p><br></p>';
-    const titleContent = document.getElementById('update-title').value.trim();
+    console.log('DEBUG: updateButtonStates - Editor is empty:', isEmpty);
+    
+    let titleContent = '';
+    const titleElement = document.getElementById('update-title');
+    if (titleElement) {
+        titleContent = titleElement.value.trim();
+        console.log('DEBUG: updateButtonStates - Title content:', titleContent);
+    } else {
+        console.error('DEBUG: updateButtonStates - Title element not found');
+    }
     
     // Update Save buttons - enabled if both title and content exist
     if (saveAndSendBtn) {
         saveAndSendBtn.disabled = isEmpty || !titleContent;
+        console.log('DEBUG: updateButtonStates - saveAndSendBtn disabled:', saveAndSendBtn.disabled);
+    } else {
+        console.log('DEBUG: updateButtonStates - saveAndSendBtn not found');
     }
     
     if (saveOnlyBtn) {
         saveOnlyBtn.disabled = isEmpty || !titleContent;
+        console.log('DEBUG: updateButtonStates - saveOnlyBtn disabled:', saveOnlyBtn.disabled);
+    } else {
+        console.log('DEBUG: updateButtonStates - saveOnlyBtn not found');
     }
     
     // Update Edit button - enabled if editor is empty and an update is selected
     if (editBtn) {
         editBtn.disabled = !isEmpty || !selectedUpdateId;
+        console.log('DEBUG: updateButtonStates - editBtn disabled:', editBtn.disabled);
+    } else {
+        console.log('DEBUG: updateButtonStates - editBtn not found');
     }
     
     // Update Delete button - enabled if an update is selected
     if (deleteBtn) {
         deleteBtn.disabled = !selectedUpdateId;
+        console.log('DEBUG: updateButtonStates - deleteBtn disabled:', deleteBtn.disabled);
+    } else {
+        console.log('DEBUG: updateButtonStates - deleteBtn not found');
     }
+    
+    console.log('DEBUG: updateButtonStates - Button states updated');
 }
 
 // Get the currently selected update object
 function getSelectedUpdate() {
+    console.log('DEBUG: getSelectedUpdate - Getting selected update with ID:', selectedUpdateId);
     // This will be defined by the loadUpdatesAdmin function
     const allUpdatesData = window.allPrayerUpdates || [];
-    return allUpdatesData.find(update => update.id === selectedUpdateId);
+    console.log('DEBUG: getSelectedUpdate - Total updates in memory:', allUpdatesData.length);
+    const update = allUpdatesData.find(update => update.id === selectedUpdateId);
+    console.log('DEBUG: getSelectedUpdate - Found update:', update ? 'yes' : 'no');
+    return update;
 }
 
 // Load all prayer updates (both current and archived)
 async function loadPrayerUpdates() {
-    if (!isApproved()) return;
+    console.log('DEBUG: loadPrayerUpdates - Starting to load updates for user view');
+    if (!isApproved()) {
+        console.log('DEBUG: loadPrayerUpdates - User not approved, aborting');
+        return;
+    }
     
     // Get container element
     const container = document.getElementById('updates-container');
     
     // Show loading indicator
+    console.log('DEBUG: loadPrayerUpdates - Showing loading spinner');
     container.innerHTML = createLoadingSpinner();
     
     try {
         // Load all updates
+        console.log('DEBUG: loadPrayerUpdates - Executing Supabase query');
         const { data: updates, error } = await supabase
             .from('prayer_updates')
             .select('*')
             .order('update_date', { ascending: false });
             
-        if (error) throw error;
+        console.log('DEBUG: loadPrayerUpdates - Query complete');
+        
+        if (error) {
+            console.error('DEBUG: loadPrayerUpdates - Supabase error:', error);
+            throw error;
+        }
+        
+        console.log('DEBUG: loadPrayerUpdates - Retrieved updates count:', updates ? updates.length : 0);
         
         // Display updates
         if (updates.length === 0) {
+            console.log('DEBUG: loadPrayerUpdates - No updates to display');
             container.innerHTML = `
                 <div class="alert alert-info">
                     No prayer updates available.
                 </div>
             `;
         } else {
+            console.log('DEBUG: loadPrayerUpdates - Building HTML for updates');
             let html = '';
             updates.forEach(update => {
                 html += createUpdateCard(update);
             });
             container.innerHTML = html;
+            console.log('DEBUG: loadPrayerUpdates - Updates displayed');
         }
         
     } catch (error) {
-        console.error('Error loading prayer updates:', error);
+        console.error('DEBUG: loadPrayerUpdates - Error loading prayer updates:', error);
         container.innerHTML = `
             <div class="alert alert-danger">
                 Error loading prayer updates: ${error.message}
             </div>
         `;
     }
+    
+    console.log('DEBUG: loadPrayerUpdates - Function complete');
 }
 
 // Load updates for admin view
 async function loadUpdatesAdmin() {
-    if (!hasPermission('prayer_update_editor')) return;
+    console.log('DEBUG: loadUpdatesAdmin - Starting to load updates for admin view');
+    if (!hasPermission('prayer_update_editor')) {
+        console.error('DEBUG: loadUpdatesAdmin - User lacks permission, aborting');
+        return;
+    }
     
     // Get container element for all updates
     const container = document.getElementById('admin-updates-container');
+    if (!container) {
+        console.error('DEBUG: loadUpdatesAdmin - Container not found in DOM');
+        return;
+    }
     
     // Show loading indicator
+    console.log('DEBUG: loadUpdatesAdmin - Showing loading spinner');
     container.innerHTML = createLoadingSpinner();
     
     try {
         // Load all updates ordered by date (most recent first)
+        console.log('DEBUG: loadUpdatesAdmin - Executing Supabase query');
         const { data: updates, error } = await supabase
             .from('prayer_updates')
             .select('*')
             .order('update_date', { ascending: false });
             
-        if (error) throw error;
+        console.log('DEBUG: loadUpdatesAdmin - Query complete');
+        
+        if (error) {
+            console.error('DEBUG: loadUpdatesAdmin - Supabase error:', error);
+            throw error;
+        }
+        
+        console.log('DEBUG: loadUpdatesAdmin - Retrieved updates count:', updates ? updates.length : 0);
         
         // Store the updates data for later reference
+        console.log('DEBUG: loadUpdatesAdmin - Storing updates in window.allPrayerUpdates');
         window.allPrayerUpdates = updates;
         
         // Display updates
         if (updates.length === 0) {
+            console.log('DEBUG: loadUpdatesAdmin - No updates to display');
             container.innerHTML = `
                 <div class="alert alert-info">
                     No prayer updates available. Create one using the form.
@@ -277,18 +390,23 @@ async function loadUpdatesAdmin() {
             `;
         } else {
             // Create a list to hold the update items
+            console.log('DEBUG: loadUpdatesAdmin - Building HTML for updates');
             let html = '<div class="list-group">';
             updates.forEach(update => {
                 html += createUpdateListItem(update);
             });
             html += '</div>';
             container.innerHTML = html;
+            console.log('DEBUG: loadUpdatesAdmin - Updates displayed');
             
             // Add selection event listeners
+            console.log('DEBUG: loadUpdatesAdmin - Adding event listeners to list items');
             container.querySelectorAll('.update-list-item').forEach(item => {
                 // Single click to select
                 item.addEventListener('click', (e) => {
+                    console.log('DEBUG: update-list-item click event triggered');
                     const updateId = item.getAttribute('data-id');
+                    console.log('DEBUG: update-list-item - Update ID clicked:', updateId);
                     
                     // Remove selected class from all items
                     container.querySelectorAll('.update-list-item').forEach(row => {
@@ -300,6 +418,7 @@ async function loadUpdatesAdmin() {
                     
                     // Update selected ID
                     selectedUpdateId = updateId;
+                    console.log('DEBUG: update-list-item - selectedUpdateId set to:', selectedUpdateId);
                     
                     // Update button states
                     updateButtonStates();
@@ -307,16 +426,21 @@ async function loadUpdatesAdmin() {
                 
                 // Double click to edit
                 item.addEventListener('dblclick', (e) => {
+                    console.log('DEBUG: update-list-item dblclick event triggered');
                     const updateId = item.getAttribute('data-id');
+                    console.log('DEBUG: update-list-item - Update ID double-clicked:', updateId);
                     const update = updates.find(u => u.id === updateId);
                     
                     // Check if editor is empty before loading
                     const editorContent = updateEditor.root.innerHTML;
                     const isEmpty = !editorContent || editorContent === '<p><br></p>';
+                    console.log('DEBUG: update-list-item - Editor is empty:', isEmpty);
                     
                     if (isEmpty && update) {
+                        console.log('DEBUG: update-list-item - Loading update into editor');
                         loadUpdateIntoEditor(update);
                     } else if (!isEmpty) {
+                        console.log('DEBUG: update-list-item - Editor not empty, showing warning');
                         showNotification('Warning', 'Please clear the editor before editing an existing update.', 'warning');
                     }
                 });
@@ -324,17 +448,20 @@ async function loadUpdatesAdmin() {
         }
         
     } catch (error) {
-        console.error('Error loading admin prayer updates:', error);
+        console.error('DEBUG: loadUpdatesAdmin - Error loading admin prayer updates:', error);
         container.innerHTML = `
             <div class="alert alert-danger">
                 Error loading prayer updates: ${error.message}
             </div>
         `;
     }
+    
+    console.log('DEBUG: loadUpdatesAdmin - Function complete');
 }
 
 // Create a list item for an update in the admin view
 function createUpdateListItem(update) {
+    console.log('DEBUG: createUpdateListItem - Creating item for update ID:', update.id);
     // Format the date
     const date = update.update_date ? new Date(update.update_date) : new Date(update.created_at);
     const formattedDate = date.toLocaleDateString(undefined, { 
@@ -362,33 +489,48 @@ function createUpdateListItem(update) {
 
 // Load an update into the main editor
 function loadUpdateIntoEditor(update) {
+    console.log('DEBUG: loadUpdateIntoEditor - Loading update into editor, ID:', update.id);
+    
     // Set the title (full title including prefix)
+    console.log('DEBUG: loadUpdateIntoEditor - Setting title:', update.title);
     document.getElementById('update-title').value = update.title;
     
     // Set the date if available
     if (update.update_date) {
+        console.log('DEBUG: loadUpdateIntoEditor - Setting date:', update.update_date);
         document.getElementById('update-date').value = update.update_date;
+    } else {
+        console.log('DEBUG: loadUpdateIntoEditor - No update_date available');
     }
     
     // Set content in main Quill editor
+    console.log('DEBUG: loadUpdateIntoEditor - Setting content in Quill editor');
     updateEditor.root.innerHTML = update.content;
     
     // Set the selected ID to prevent re-editing
     selectedUpdateId = update.id;
+    console.log('DEBUG: loadUpdateIntoEditor - Set selectedUpdateId to:', selectedUpdateId);
     
     // Update button states
+    console.log('DEBUG: loadUpdateIntoEditor - Updating button states');
     updateButtonStates();
     
     // Scroll to the editor
+    console.log('DEBUG: loadUpdateIntoEditor - Scrolling to the editor');
     document.getElementById('update-form').scrollIntoView({ behavior: 'smooth' });
     
     // Show a notification that we've loaded the update for editing
+    console.log('DEBUG: loadUpdateIntoEditor - Displaying toast notification');
     showToast('Update Loaded', 'The prayer update has been loaded into the editor for you to modify.', 'info', 3000);
+    
+    console.log('DEBUG: loadUpdateIntoEditor - Function complete');
 }
 
 // Check if an update already exists for the specified date
 async function checkDateExists(dateStr, updateId = null) {
+    console.log('DEBUG: checkDateExists - Checking if date exists:', dateStr, 'Excluding ID:', updateId);
     try {
+        console.log('DEBUG: checkDateExists - Building Supabase query');
         let query = supabase
             .from('prayer_updates')
             .select('id')
@@ -396,62 +538,107 @@ async function checkDateExists(dateStr, updateId = null) {
             
         // If we're editing an existing update, exclude it from the check
         if (updateId) {
+            console.log('DEBUG: checkDateExists - Excluding update with ID:', updateId);
             query = query.neq('id', updateId);
         }
         
+        console.log('DEBUG: checkDateExists - Executing Supabase query');
         const { data, error } = await query;
         
-        if (error) throw error;
+        console.log('DEBUG: checkDateExists - Query complete');
         
+        if (error) {
+            console.error('DEBUG: checkDateExists - Supabase error:', error);
+            throw error;
+        }
+        
+        console.log('DEBUG: checkDateExists - Check result (exists):', data.length > 0);
         return data.length > 0;
     } catch (error) {
-        console.error('Error checking date existence:', error);
+        console.error('DEBUG: checkDateExists - Error checking date existence:', error);
         return false;
     }
 }
 
 // Create a new prayer update or update an existing one
 async function createPrayerUpdate(action, submitBtn) {
-    console.log('Creating prayer update with action:', action);
+    console.log('DEBUG: createPrayerUpdate - Starting with action:', action);
+    console.log('DEBUG: createPrayerUpdate - Current selectedUpdateId:', selectedUpdateId);
     
     // Get the original button text and disable the button
     const originalText = submitBtn.textContent;
+    console.log('DEBUG: createPrayerUpdate - Original button text:', originalText);
+    console.log('DEBUG: createPrayerUpdate - Disabling button and changing text');
     submitBtn.textContent = 'Saving...';
     submitBtn.disabled = true;
     
     try {
-        const title = document.getElementById('update-title').value.trim();
-        const dateInput = document.getElementById('update-date').value;
-        const content = updateEditor.root.innerHTML;
+        // Get form values
+        console.log('DEBUG: createPrayerUpdate - Getting form values');
+        const titleElement = document.getElementById('update-title');
+        const dateElement = document.getElementById('update-date');
         
-        console.log('Form values:', { title, dateInput });
-        console.log('Content:', content);
+        if (!titleElement) {
+            console.error('DEBUG: createPrayerUpdate - Title element not found in DOM');
+            throw new Error('Title element not found in DOM');
+        }
+        
+        if (!dateElement) {
+            console.error('DEBUG: createPrayerUpdate - Date element not found in DOM');
+            throw new Error('Date element not found in DOM');
+        }
+        
+        const title = titleElement.value.trim();
+        const dateInput = dateElement.value;
+        
+        console.log('DEBUG: createPrayerUpdate - Retrieved title:', title);
+        console.log('DEBUG: createPrayerUpdate - Retrieved date:', dateInput);
+        
+        // Get content from Quill editor
+        let content = '';
+        if (updateEditor && updateEditor.root) {
+            content = updateEditor.root.innerHTML;
+            console.log('DEBUG: createPrayerUpdate - Retrieved content length:', content.length);
+        } else {
+            console.error('DEBUG: createPrayerUpdate - updateEditor or root element is not available');
+            throw new Error('Editor not properly initialized');
+        }
         
         // Validate inputs
+        console.log('DEBUG: createPrayerUpdate - Validating inputs');
         if (!title) {
+            console.error('DEBUG: createPrayerUpdate - Title is empty');
             throw new Error('Please enter a title for the prayer update');
         }
         
         if (!dateInput) {
+            console.error('DEBUG: createPrayerUpdate - Date is empty');
             throw new Error('Please select a date for the prayer update');
         }
         
         if (!content || content === '<p><br></p>') {
+            console.error('DEBUG: createPrayerUpdate - Content is empty');
             throw new Error('Please enter content for the prayer update');
         }
         
         // Check if we're editing an existing update or creating a new one
         const isEditing = selectedUpdateId !== null;
+        console.log('DEBUG: createPrayerUpdate - Is editing existing update:', isEditing);
         
         // Check if the date already exists (for new entries or if changing date on edit)
+        console.log('DEBUG: createPrayerUpdate - Checking if date exists');
         const dateExists = await checkDateExists(dateInput, isEditing ? selectedUpdateId : null);
+        console.log('DEBUG: createPrayerUpdate - Date exists check result:', dateExists);
+        
         if (dateExists) {
+            console.error('DEBUG: createPrayerUpdate - A prayer update for this date already exists');
             throw new Error('A prayer update for this date already exists. Please edit the existing update or choose a different date.');
         }
         
         if (isEditing) {
-            console.log('Updating existing prayer update...');
+            console.log('DEBUG: createPrayerUpdate - Updating existing prayer update with ID:', selectedUpdateId);
             // Update the existing prayer update
+            console.log('DEBUG: createPrayerUpdate - Executing Supabase update query');
             const { data, error } = await supabase
                 .from('prayer_updates')
                 .update({
@@ -461,97 +648,127 @@ async function createPrayerUpdate(action, submitBtn) {
                 })
                 .eq('id', selectedUpdateId);
                 
+            console.log('DEBUG: createPrayerUpdate - Update query complete');
+            
             if (error) {
-                console.error('Database error:', error);
+                console.error('DEBUG: createPrayerUpdate - Supabase error on update:', error);
                 throw error;
             }
             
-            console.log('Prayer update updated successfully:', data);
+            console.log('DEBUG: createPrayerUpdate - Prayer update updated successfully:', data);
         } else {
-            console.log('Creating new prayer update...');
+            console.log('DEBUG: createPrayerUpdate - Creating new prayer update');
             // Create the prayer update
+            console.log('DEBUG: createPrayerUpdate - Getting user ID');
+            const userId = getUserId();
+            console.log('DEBUG: createPrayerUpdate - User ID:', userId);
+            
+            console.log('DEBUG: createPrayerUpdate - Executing Supabase insert query');
             const { data, error } = await supabase
                 .from('prayer_updates')
                 .insert({
                     title,
                     content,
-                    created_by: getUserId(),
+                    created_by: userId,
                     is_archived: false,
                     update_date: dateInput
                 });
                 
+            console.log('DEBUG: createPrayerUpdate - Insert query complete');
+            
             if (error) {
-                console.error('Database error:', error);
+                console.error('DEBUG: createPrayerUpdate - Supabase error on insert:', error);
                 throw error;
             }
             
-            console.log('Prayer update created successfully:', data);
+            console.log('DEBUG: createPrayerUpdate - Prayer update created successfully:', data);
         }
         
         // Reset form and selection
+        console.log('DEBUG: createPrayerUpdate - Clearing editor');
         clearEditor();
         
         // Reload updates
+        console.log('DEBUG: createPrayerUpdate - Reloading updates list');
         loadUpdatesAdmin();
         
         // Send notifications if that button was clicked
         if (action === 'saveAndSend') {
             // Call the distribution function
-            console.log('Sending prayer update...');
+            console.log('DEBUG: createPrayerUpdate - Action is saveAndSend, attempting to send notifications');
             if (typeof sendPrayerUpdates === 'function') {
+                console.log('DEBUG: createPrayerUpdate - sendPrayerUpdates function exists, calling it');
                 await sendPrayerUpdates(title, content, dateInput);
+                console.log('DEBUG: createPrayerUpdate - sendPrayerUpdates completed');
                 showNotification('Success', `Prayer update ${isEditing ? 'updated' : 'saved'} and sent successfully.`);
             } else {
-                console.error('sendPrayerUpdates function not found');
+                console.error('DEBUG: createPrayerUpdate - sendPrayerUpdates function not found');
                 showNotification('Warning', `Prayer update ${isEditing ? 'updated' : 'saved'} but not sent - distribution module not loaded.`);
             }
         } else {
+            console.log('DEBUG: createPrayerUpdate - Action is saveOnly, not sending notifications');
             showNotification('Success', `Prayer update ${isEditing ? 'updated' : 'saved'} successfully.`);
         }
         
     } catch (error) {
-        console.error('Error creating/updating prayer update:', error);
+        console.error('DEBUG: createPrayerUpdate - Error:', error);
         showNotification('Error', `Failed to ${selectedUpdateId ? 'update' : 'create'} prayer update: ${error.message}`);
     } finally {
+        console.log('DEBUG: createPrayerUpdate - Restoring button state');
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
+        console.log('DEBUG: createPrayerUpdate - Function complete');
     }
 }
 
 // Delete a prayer update
 async function deleteUpdate(updateId) {
+    console.log('DEBUG: deleteUpdate - Starting delete for update ID:', updateId);
     if (!confirm('Are you sure you want to delete this prayer update? This action cannot be undone.')) {
+        console.log('DEBUG: deleteUpdate - User cancelled deletion');
         return;
     }
     
     try {
         // Delete the prayer update
+        console.log('DEBUG: deleteUpdate - Executing Supabase delete query');
         const { data, error } = await supabase
             .from('prayer_updates')
             .delete()
             .eq('id', updateId);
             
-        if (error) throw error;
+        console.log('DEBUG: deleteUpdate - Delete query complete');
+        
+        if (error) {
+            console.error('DEBUG: deleteUpdate - Supabase error:', error);
+            throw error;
+        }
         
         // Reset selected ID if we deleted the currently selected update
         if (selectedUpdateId === updateId) {
+            console.log('DEBUG: deleteUpdate - Resetting selectedUpdateId');
             selectedUpdateId = null;
             updateButtonStates();
         }
         
         // Reload updates
+        console.log('DEBUG: deleteUpdate - Reloading updates list');
         loadUpdatesAdmin();
         
+        console.log('DEBUG: deleteUpdate - Showing success notification');
         showNotification('Success', 'Prayer update deleted successfully.');
         
     } catch (error) {
-        console.error('Error deleting prayer update:', error);
+        console.error('DEBUG: deleteUpdate - Error deleting prayer update:', error);
         showNotification('Error', `Failed to delete prayer update: ${error.message}`);
     }
+    
+    console.log('DEBUG: deleteUpdate - Function complete');
 }
 
 // Create an update card (for regular view)
 function createUpdateCard(update) {
+    console.log('DEBUG: createUpdateCard - Creating card for update ID:', update.id);
     // Format the date - include the update_date if available, otherwise use created_at
     const date = update.update_date ? new Date(update.update_date) : new Date(update.created_at);
     const formattedDate = date.toLocaleDateString(undefined, { 
@@ -578,10 +795,14 @@ function createUpdateCard(update) {
 
 // Send notifications for a new prayer update
 async function sendUpdateNotifications(title) {
+    console.log('DEBUG: sendUpdateNotifications - Starting for title:', title);
     try {
         // This will be implemented in notifications.js
+        console.log('DEBUG: sendUpdateNotifications - Calling sendNotification function');
         await sendNotification('prayer_update', title, 'All users who opt in for notifications');
+        console.log('DEBUG: sendUpdateNotifications - Notifications sent successfully');
     } catch (error) {
-        console.error('Error sending update notifications:', error);
+        console.error('DEBUG: sendUpdateNotifications - Error sending update notifications:', error);
     }
+    console.log('DEBUG: sendUpdateNotifications - Function complete');
 }
