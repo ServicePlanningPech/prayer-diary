@@ -3,16 +3,16 @@
 // Global variables for editors
 let updateEditor;
 let editUpdateEditor;
-let initUpdateEditor;
+let initUpdateEditorFlag;
 
 // Initialize the Rich Text Editor for updates
 function initUpdateEditor() {
     console.log('Initializing update editor');
-	if (initUpdateEditor) {
+	if (initUpdateEditorFlag) {
 		console.log('Initializing update editor - duplicate call');
 		return;
 	}
-	initUpdateEditor = true;
+	initUpdateEditorFlag = true;
     
     // Initialize update editor if not already initialized
     if (!updateEditor) {
@@ -81,7 +81,7 @@ function initUpdateEditor() {
     } else {
         console.error('Save only button not found');
     }
-	initUpdateEditor = false;
+	initUpdateEditorFlag = false;
 }
 
 // Load all prayer updates (both current and archived)
