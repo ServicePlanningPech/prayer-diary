@@ -3,7 +3,7 @@
 // Global variables for editors
 let updateEditor;
 let editUpdateEditor;
-let initUpdateEditorFlag = true;
+let initUpdateEditorFlag = false;
 
 // Initialize the Rich Text Editor for updates
 function initUpdateEditor() {
@@ -12,8 +12,7 @@ function initUpdateEditor() {
 		console.log('Initializing update editor - duplicate call');
 		return;
 	}
-	initUpdateEditorFlag = true;
-    
+	    
     // Initialize update editor if not already initialized
     if (!updateEditor) {
         updateEditor = new Quill('#update-editor', {
