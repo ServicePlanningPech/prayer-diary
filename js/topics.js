@@ -587,36 +587,24 @@ async function assignTopicToDay(topicId) {
     }
     
     try {
-        // Call the Edge function
-        const response = await callTopicEdgeFunction('assignTopicToDay', { 
-            topicId, 
-            day: selectedDay 
-        });
+        // Directly update the database using Supabase
+        const { data, error } = await supabase
+            .from('prayer_topics')
+            .update({ pray_day: selectedDay })
+            .eq('id', topicId);
+            
+        if (error) throw error;
         
-        if (!response.success) {
-            throw new Error(response.error || 'Failed to assign topic');
+        // Update local data
+        const topicIndex = allTopics.findIndex(topic => topic.id === topicId);
+        if (topicIndex >= 0) {
+            allTopics[topicIndex].pray_day = selectedDay;
         }
         
-        // Show success notification
-        showNotification('Success', response.message + ' - Refreshing to update data...', 'success');
+        // Refresh display
+        filterAndDisplayTopics();
         
-        // Save state before refreshing
-        sessionStorage.setItem('topicAssigned', 'true');
-        sessionStorage.setItem('lastAssignedDay', selectedDay.toString());
-        sessionStorage.setItem('lastAction', 'assignTopic');
-        
-        // Save current view to restore after refresh
-        const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
-        if (currentView) {
-            sessionStorage.setItem('lastView', currentView);
-            // Remember we were on the topics tab
-            sessionStorage.setItem('activeCalendarTab', 'topics');
-        }
-        
-        // Refresh the page after a short delay
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+        showNotification('Success', 'Topic assigned to day ' + selectedDay, 'success');
         
     } catch (error) {
         console.error('Error assigning topic:', error);
@@ -627,35 +615,24 @@ async function assignTopicToDay(topicId) {
 // Update the topic's months settings
 async function updateTopicMonths(topicId, months) {
     try {
-        // Call the Edge function
-        const response = await callTopicEdgeFunction('updateTopicMonths', { 
-            topicId, 
-            months
-        });
+        // Directly update the database using Supabase
+        const { data, error } = await supabase
+            .from('prayer_topics')
+            .update({ pray_months: months })
+            .eq('id', topicId);
+            
+        if (error) throw error;
         
-        if (!response.success) {
-            throw new Error(response.error || 'Failed to update months');
+        // Update local data
+        const topicIndex = allTopics.findIndex(topic => topic.id === topicId);
+        if (topicIndex >= 0) {
+            allTopics[topicIndex].pray_months = months;
         }
         
-        // Show success notification
-        showNotification('Success', response.message + ' - Refreshing to update data...', 'success');
+        // Refresh display
+        filterAndDisplayTopics();
         
-        // Save state before refreshing
-        sessionStorage.setItem('topicMonthsUpdated', 'true');
-        sessionStorage.setItem('lastAction', 'updateMonths');
-        
-        // Save current view to restore after refresh
-        const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
-        if (currentView) {
-            sessionStorage.setItem('lastView', currentView);
-            // Remember we were on the topics tab
-            sessionStorage.setItem('activeCalendarTab', 'topics');
-        }
-        
-        // Refresh the page after a short delay
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+        showNotification('Success', 'Month settings updated', 'success');
         
     } catch (error) {
         console.error('Error updating months:', error);
