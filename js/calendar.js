@@ -256,21 +256,37 @@ function createLoadingSpinner() {
 async function initCalendarManagement() {
     if (!hasPermission('prayer_calendar_editor')) return;
 
-    createCalendarDaysGrid();
+    await createCalendarDaysGrid();
     await loadAllUsers();
     setupEventListeners();
 }
 
 // Create the calendar days grid (1-31)
-function createCalendarDaysGrid() {
+async function createCalendarDaysGrid() {
     const container = document.querySelector('.calendar-days-grid');
     container.innerHTML = '';
+    
+    // Get the count of users assigned to each day
+    const memberCounts = await getMemberCountsByDay();
     
     for (let day = 1; day <= 31; day++) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
-        dayElement.textContent = day;
         dayElement.dataset.day = day;
+        
+        // Create a span for the day number
+        const dayNumber = document.createElement('span');
+        dayNumber.textContent = day;
+        dayElement.appendChild(dayNumber);
+        
+        // Add the member count if it exists
+        const count = memberCounts[day] || 0;
+        if (count > 0) {
+            const countElement = document.createElement('span');
+            countElement.className = 'member-count';
+            countElement.textContent = count;
+            dayElement.appendChild(countElement);
+        }
         
         dayElement.addEventListener('click', () => {
             // Remove selected class from all days
@@ -285,6 +301,32 @@ function createCalendarDaysGrid() {
         });
         
         container.appendChild(dayElement);
+    }
+}
+
+// Get member counts by day
+async function getMemberCountsByDay() {
+    try {
+        // Get all users with a pray_day assigned
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('pray_day')
+            .eq('approval_state', 'Approved')
+            .gt('pray_day', 0);
+            
+        if (error) throw error;
+        
+        // Count the members for each day
+        const counts = {};
+        data.forEach(user => {
+            const day = user.pray_day;
+            counts[day] = (counts[day] || 0) + 1;
+        });
+        
+        return counts;
+    } catch (error) {
+        console.error('Error getting member counts:', error);
+        return {};
     }
 }
 
@@ -443,6 +485,9 @@ async function assignUserToDay(userId) {
         
         // Refresh display
         filterAndDisplayUsers();
+        
+        // Update the day count in the days grid
+        await createCalendarDaysGrid();
         
         showNotification('Success', 'User assigned to day ' + selectedDay, 'success');
         

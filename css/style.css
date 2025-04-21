@@ -330,6 +330,17 @@ body {
     font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.2s;
+    position: relative; /* Added for member count positioning */
+}
+
+/* Added style for the member count */
+.calendar-day .member-count {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 0.7rem;
+    color: #6c757d;
+    font-weight: normal;
 }
 
 .calendar-day:hover {
@@ -669,7 +680,7 @@ body {
     justify-content: center;
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: 4px; /* Changed from 50% to 4px to make it square like main calendar */
     background-color: #f8f9fa;
     cursor: pointer;
     transition: all 0.2s ease;
