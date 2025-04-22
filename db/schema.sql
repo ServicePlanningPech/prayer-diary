@@ -42,7 +42,8 @@ CREATE TABLE prayer_updates (
   created_by UUID REFERENCES auth.users ON DELETE SET NULL,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
-  is_archived BOOLEAN DEFAULT FALSE
+  is_archived BOOLEAN DEFAULT FALSE,
+  update_date DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
 -- Create a table for urgent prayer requests

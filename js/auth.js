@@ -3,9 +3,56 @@
 // Variables
 let currentUser = null;
 let userProfile = null;
+let lastTokenRefresh = Date.now();
+const MIN_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes minimum between refreshes
+let tokenRefreshInProgress = false;
 
 // Initialize auth on load
 document.addEventListener('DOMContentLoaded', initAuth);
+
+// Check if we should refresh the token based on time elapsed
+function shouldRefreshToken() {
+    const timeSinceLastRefresh = Date.now() - lastTokenRefresh;
+    return timeSinceLastRefresh > MIN_REFRESH_INTERVAL;
+}
+
+// Get session with throttling to prevent unnecessary refreshes
+async function getSessionSafely() {
+    if (tokenRefreshInProgress) {
+        console.log('Token refresh already in progress, waiting...');
+        // Wait for the current refresh to complete
+        await new Promise(resolve => {
+            const checkInterval = setInterval(() => {
+                if (!tokenRefreshInProgress) {
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 100);
+        });
+        return supabase.auth.getSession();
+    }
+    
+    // If we've refreshed recently, use cached data
+    if (!shouldRefreshToken() && currentUser) {
+        console.log('Using cached session - skipping unnecessary token refresh');
+        return { data: { session: { user: currentUser } } };
+    }
+    
+    try {
+        tokenRefreshInProgress = true;
+        const sessionResult = await supabase.auth.getSession();
+        
+        if (sessionResult?.data?.session) {
+            lastTokenRefresh = Date.now();
+            currentUser = sessionResult.data.session.user;
+            window.authToken = sessionResult.data.session.access_token;
+        }
+        
+        return sessionResult;
+    } finally {
+        tokenRefreshInProgress = false;
+    }
+}
 
 // Init auth
 async function initAuth() {
@@ -29,7 +76,7 @@ async function initAuth() {
             await new Promise(resolve => setTimeout(resolve, 100));
             
             // Check if we now have a session (from the recovery token)
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await getSessionSafely();
             
             if (session) {
                 console.log("Recovery session detected - forcing password reset");
@@ -45,7 +92,7 @@ async function initAuth() {
         
         // If we reach here, this is a normal login flow (not password reset)
         // Normal session check
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error } = await getSessionSafely();
         
         if (session) {
             console.log("Normal session found, user is logged in");
@@ -79,10 +126,14 @@ async function initAuth() {
 function setupAuthListeners() {
     // Auth state changes
     supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log("Auth state change detected:", event);
+        
         if (event === 'SIGNED_IN') {
             currentUser = session.user;
             // Update the stored token on sign in
             window.authToken = session.access_token;
+            // Set last token refresh time
+            lastTokenRefresh = Date.now();
             console.log("Access token updated on sign in");
             await fetchUserProfile();
             showLoggedInState();
@@ -90,6 +141,15 @@ function setupAuthListeners() {
             currentUser = null;
             userProfile = null;
             showLoggedOutState();
+        } else if (event === 'TOKEN_REFRESHED') {
+            // Only log and update if we should refresh
+            if (shouldRefreshToken()) {
+                lastTokenRefresh = Date.now();
+                window.authToken = session.access_token;
+                console.log("Access token updated on refresh");
+            } else {
+                console.log("Skipping unnecessary token refresh");
+            }
         }
     });
     
@@ -260,9 +320,6 @@ function openAuthModal(mode) {
             window.location.reload();
         }, 2000);
     }
-    
-    // The event listeners and validation are already set up in the try block above
-    // Remove duplicate code that's causing the error
 }
 
 // Toggle between login and signup
@@ -437,6 +494,9 @@ async function handleAuth(e) {
             
             // If successful, clear the timeout
             clearTimeout(loginTimeout);
+            
+            // Set last token refresh time
+            lastTokenRefresh = Date.now();
             
             // Close modal on success
             const modal = bootstrap.Modal.getInstance(document.getElementById('auth-modal'));
@@ -786,6 +846,19 @@ function clearLocalAppState() {
 async function fetchUserProfile() {
     try {
         if (!currentUser) return null;
+        
+        // Wait for any token refresh to complete first
+        if (tokenRefreshInProgress) {
+            console.log('Token refresh in progress, waiting before fetching profile...');
+            await new Promise(resolve => {
+                const checkInterval = setInterval(() => {
+                    if (!tokenRefreshInProgress) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
         
         // First attempt to get the profile
         let { data, error } = await supabase
