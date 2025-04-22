@@ -748,6 +748,24 @@ body {
         font-size: 0.9rem;
     }
 }
+/* Custom styling for buttons */
+#save-only-btn {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+#save-only-btn:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+#save-only-btn:disabled {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    opacity: 0.65;
+}
+
 /* Add these styles to the end of your style.css file */
 
 /* Style for selected update in the list */

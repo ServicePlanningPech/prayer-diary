@@ -788,14 +788,38 @@ async function createPrayerUpdate(action, submitBtn) {
 async function deleteUpdate(updateId) {
     console.log('DEBUG: deleteUpdate - Starting delete for update ID:', updateId);
 	
-	// NEW: Wait for auth stability before proceeding
+	// Wait for auth stability before proceeding
     await window.waitForAuthStability();
 	
-    if (!confirm('Are you sure you want to delete this prayer update? This action cannot be undone.')) {
-        console.log('DEBUG: deleteUpdate - User cancelled deletion');
-        return;
-    }
-	try {
+    // Show the deletion confirmation modal instead of using confirm()
+    const selectedUpdate = getSelectedUpdate();
+    const confirmModal = document.getElementById('delete-update-confirm-modal');
+    const updateTitleElement = document.getElementById('delete-update-title');
+    const confirmIdInput = document.getElementById('delete-update-id');
+    
+    if (confirmModal && updateTitleElement && confirmIdInput) {
+        // Set the update title and ID in the modal
+        updateTitleElement.textContent = selectedUpdate ? selectedUpdate.title : 'this prayer update';
+        confirmIdInput.value = updateId;
+        
+        // Show the modal
+        const modal = new bootstrap.Modal(confirmModal);
+        modal.show();
+        
+        // Set up one-time event handler for the confirm button
+        const confirmButton = document.getElementById('confirm-delete-update');
+        if (confirmButton) {
+            // Remove any existing listeners to prevent duplicates
+            const newConfirmButton = confirmButton.cloneNode(true);
+            confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
+            
+            // Add the event listener to the new button
+            newConfirmButton.addEventListener('click', async function() {
+                // Hide the modal
+                modal.hide();
+                
+                // Proceed with deletion
+                try {
         // Delete the prayer update
         console.log('DEBUG: deleteUpdate - Executing Supabase delete query');
         const { data, error } = await supabase
@@ -827,6 +851,52 @@ async function deleteUpdate(updateId) {
     } catch (error) {
         console.error('DEBUG: deleteUpdate - Error deleting prayer update:', error);
         showNotification('Error', `Failed to delete prayer update: ${error.message}`);
+    }
+            });
+        }
+        
+        return; // Exit the function - deletion will happen via the event handler if confirmed
+    } else {
+        console.error('DEBUG: deleteUpdate - Could not find confirmation modal elements');
+        // Fallback to simple confirm if modal elements not found
+        if (!confirm('Are you sure you want to delete this prayer update? This action cannot be undone.')) {
+            console.log('DEBUG: deleteUpdate - User cancelled deletion');
+            return;
+        }
+        
+        // If confirmed with fallback, proceed with deletion
+        try {
+            // Delete the prayer update
+            console.log('DEBUG: deleteUpdate - Executing Supabase delete query');
+            const { data, error } = await supabase
+                .from('prayer_updates')
+                .delete()
+                .eq('id', updateId);
+                
+            console.log('DEBUG: deleteUpdate - Delete query complete');
+            
+            if (error) {
+                console.error('DEBUG: deleteUpdate - Supabase error:', error);
+                throw error;
+            }
+            
+            // Reset selected ID if we deleted the currently selected update
+            if (selectedUpdateId === updateId) {
+                console.log('DEBUG: deleteUpdate - Resetting selectedUpdateId');
+                selectedUpdateId = null;
+                updateButtonStates();
+            }
+            
+            // Reload updates
+            console.log('DEBUG: deleteUpdate - Reloading updates list');
+            loadUpdatesAdmin();
+            
+            console.log('DEBUG: deleteUpdate - Showing success notification');
+            showNotification('Success', 'Prayer update deleted successfully.');
+        } catch (error) {
+            console.error('DEBUG: deleteUpdate - Error deleting prayer update:', error);
+            showNotification('Error', `Failed to delete prayer update: ${error.message}`);
+        }
     }
     
     console.log('DEBUG: deleteUpdate - Function complete');
