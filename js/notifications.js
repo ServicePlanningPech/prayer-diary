@@ -38,6 +38,7 @@ async function sendNotification(type, title, notificationMethods = []) {
 
 // Send email notifications for the specified type
 async function sendEmailNotifications(type, title) {
+	 await window.waitForAuthStability();
     try {
         // Get appropriate notification field based on type
         const notificationField = type === 'prayer_update' 
@@ -83,6 +84,7 @@ async function sendEmailNotifications(type, title) {
 
 // Send SMS notifications for the specified type
 async function sendSmsNotifications(type, title) {
+	 await window.waitForAuthStability();
     try {
         // Get appropriate notification field based on type
         const notificationField = type === 'prayer_update' 
@@ -127,6 +129,7 @@ async function sendSmsNotifications(type, title) {
 
 // Send WhatsApp notifications for the specified type
 async function sendWhatsAppNotifications(type, title) {
+	 await window.waitForAuthStability();
     try {
         // Get appropriate notification field based on type
         const notificationField = type === 'prayer_update' 
@@ -298,6 +301,7 @@ function urlBase64ToUint8Array(base64String) {
 // Implementation of email sending via Supabase Edge Function with Google SMTP
 // This is a general purpose function that can be used throughout the app
 async function sendEmail(options) {
+	 await window.waitForAuthStability();
     // Set default values if not provided
     const {
         to,                    // Recipient email (required)

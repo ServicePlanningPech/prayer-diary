@@ -284,6 +284,8 @@ async function loadPrayerUpdates() {
         console.log('DEBUG: loadPrayerUpdates - User not approved, aborting');
         return;
     }
+	
+	 await window.waitForAuthStability();
     
     // Get container element
     const container = document.getElementById('updates-container');

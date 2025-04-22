@@ -6,12 +6,16 @@ let profileLoadInProgress = false;
 // Load and display the user's profile
 async function loadUserProfile() {
     if (!isLoggedIn()) return;
+	
+	
     
     // Prevent multiple simultaneous calls
     if (profileLoadInProgress) {
         console.log('Profile load already in progress, skipping duplicate call');
         return;
     }
+	
+	 await window.waitForAuthStability();
     
     profileLoadInProgress = true;
     
@@ -838,6 +842,7 @@ async function updateProfileViaEdgeFunction(data) {
 
 // Helper function to get auth token
 async function getAuthToken() {
+	 await window.waitForAuthStability();
     try {
         const { data } = await supabase.auth.getSession();
         return data?.session?.access_token;

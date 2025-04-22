@@ -49,6 +49,8 @@ function initUrgentEditor() {
 // Load all urgent prayer requests
 async function loadUrgentPrayers() {
     if (!isApproved()) return;
+	
+	 await window.waitForAuthStability();
     
     // Get container element
     const container = document.getElementById('urgent-prayers-container');
@@ -94,6 +96,8 @@ async function loadUrgentPrayers() {
 // Load urgent prayers for admin view
 async function loadUrgentAdmin() {
     if (!hasPermission('urgent_prayer_editor')) return;
+	
+	 await window.waitForAuthStability();
     
     // Get container element
     const container = document.getElementById('admin-urgent-container');
@@ -213,6 +217,8 @@ async function createUrgentPrayer(e) {
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Creating...';
     submitBtn.disabled = true;
+	
+	 await window.waitForAuthStability();
     
     try {
         const title = document.getElementById('urgent-title').value.trim();
@@ -318,6 +324,8 @@ async function saveUrgentPrayer() {
     const originalText = saveBtn.textContent;
     saveBtn.textContent = 'Saving...';
     saveBtn.disabled = true;
+	
+	 await window.waitForAuthStability();
     
     try {
         const prayerId = document.getElementById('edit-urgent-id').value;
@@ -363,6 +371,7 @@ async function saveUrgentPrayer() {
 
 // Toggle active/inactive for an urgent prayer
 async function toggleUrgentActive(prayerId, active) {
+	 await window.waitForAuthStability();
     try {
         // Update the urgent prayer
         const { data, error } = await supabase
@@ -390,6 +399,8 @@ async function deleteUrgentPrayer(prayerId) {
     if (!confirm('Are you sure you want to delete this urgent prayer request? This action cannot be undone.')) {
         return;
     }
+	
+	 await window.waitForAuthStability();
     
     try {
         // Delete the urgent prayer

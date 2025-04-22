@@ -442,6 +442,7 @@ async function deleteTopic(topicId) {
 
 // Load all topics
 async function loadTopics() {
+	 await window.waitForAuthStability();
     try {
         const { data, error } = await supabase
             .from('prayer_topics')
@@ -585,6 +586,8 @@ async function assignTopicToDay(topicId) {
         showNotification('Warning', 'Please select a valid day first', 'warning');
         return;
     }
+	
+	 await window.waitForAuthStability();
     
     try {
         // Directly update the database using Supabase
@@ -614,6 +617,7 @@ async function assignTopicToDay(topicId) {
 
 // Update the topic's months settings
 async function updateTopicMonths(topicId, months) {
+	 await window.waitForAuthStability();
     try {
         // Directly update the database using Supabase
         const { data, error } = await supabase
@@ -649,6 +653,7 @@ async function updateTopicMonths(topicId, months) {
 
 // Function to view a topic card
 async function viewTopicCard(topicId) {
+	 await window.waitForAuthStability();
     try {
         // Get the topic details
         const { data, error } = await supabase

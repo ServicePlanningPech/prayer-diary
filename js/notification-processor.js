@@ -8,6 +8,8 @@ async function processNotificationQueue() {
         console.log('Only administrators can process the notification queue');
         return;
     }
+	
+	 await window.waitForAuthStability();
     
     try {
         // Get pending notifications from the queue
@@ -53,6 +55,7 @@ async function processNotificationQueue() {
 
 // Handle new user registration notification
 async function handleNewUserRegistrationNotification(notification) {
+	 await window.waitForAuthStability();
     try {
         // Parse the notification content
         const content = JSON.parse(notification.content);
@@ -119,6 +122,7 @@ async function handleNewUserRegistrationNotification(notification) {
 
 // Update notification status
 async function updateNotificationStatus(notificationId, status, errorMessage = null) {
+	 await window.waitForAuthStability();
     try {
         const updateData = {
             status,
