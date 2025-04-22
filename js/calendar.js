@@ -24,6 +24,8 @@ function getEffectiveDate() {
 // Load prayer calendar entries
 async function loadPrayerCalendar() {
     if (!isApproved()) return;
+	
+	await window.waitForAuthStability();
     
     const container = document.getElementById('prayer-cards-container');
     const titleElement = document.getElementById('daily-prayer-title');
@@ -211,6 +213,7 @@ function createPrayerCard(entry) {
 
 // View prayer card details
 async function viewPrayerCard(userId) {
+	 await window.waitForAuthStability();
     try {
         // Get user details
         const { data, error } = await supabase
@@ -306,6 +309,7 @@ async function createCalendarDaysGrid() {
 
 // Get member counts by day
 async function getMemberCountsByDay() {
+	 await window.waitForAuthStability();
     try {
         // Get all users with a pray_day assigned
         const { data, error } = await supabase
@@ -332,6 +336,7 @@ async function getMemberCountsByDay() {
 
 // Load all users from the profiles table
 async function loadAllUsers() {
+	 await window.waitForAuthStability();
     try {
         const { data, error } = await supabase
             .from('profiles')
@@ -468,6 +473,7 @@ async function assignUserToDay(userId) {
         showNotification('Warning', 'Please select a day first', 'warning');
         return;
     }
+	 await window.waitForAuthStability();
     
     try {
         const { data, error } = await supabase
@@ -499,6 +505,7 @@ async function assignUserToDay(userId) {
 
 // Update the user's months settings
 async function updateUserMonths(userId, months) {
+	 await window.waitForAuthStability();
     try {
         const { data, error } = await supabase
             .from('profiles')
