@@ -124,11 +124,38 @@ async function initAuth() {
 
 // Setup auth event listeners
 function setupAuthListeners() {
+    // Track last navigation time for debouncing auth events
+    let lastNavigationTime = 0;
+    
+    // Listen for navigation events to debounce auth events
+    document.addEventListener('navigation-completed', () => {
+        lastNavigationTime = Date.now();
+        console.log("Navigation completed timestamp recorded:", lastNavigationTime);
+    });
+    
     // Auth state changes
     supabase.auth.onAuthStateChange(async (event, session) => {
         console.log("Auth state change detected:", event);
         
-        if (event === 'SIGNED_IN') {
+        // Set auth busy flag during processing
+        isAuthBusy = true;
+        
+        try {
+            // Prevent processing SIGNED_IN events right after navigation
+            // This prevents the auth refresh that's causing database stalls
+            const timeSinceNavigation = Date.now() - lastNavigationTime;
+            if (event === 'SIGNED_IN' && timeSinceNavigation < 2000) {
+                console.log("Ignoring SIGNED_IN event immediately after navigation");
+                return;
+            }
+            
+            if (event === 'SIGNED_IN') {
+            // Check if we already have this user logged in
+            if (currentUser && currentUser.id === session.user.id) {
+                console.log("Duplicate SIGNED_IN event detected - skipping processing");
+                return;
+            }
+            
             currentUser = session.user;
             // Update the stored token on sign in
             window.authToken = session.access_token;
@@ -150,6 +177,10 @@ function setupAuthListeners() {
             } else {
                 console.log("Skipping unnecessary token refresh");
             }
+        }
+        } finally {
+            // Always reset the busy flag when done
+            isAuthBusy = false;
         }
     });
     
@@ -847,6 +878,12 @@ async function fetchUserProfile() {
     try {
         if (!currentUser) return null;
         
+        // Check if we already have a profile cached
+        if (userProfile && userProfile.id === currentUser.id) {
+            console.log('Using cached user profile data');
+            return userProfile;
+        }
+        
         // Wait for any token refresh to complete first
         if (tokenRefreshInProgress) {
             console.log('Token refresh in progress, waiting before fetching profile...');
@@ -1531,6 +1568,32 @@ function isAdmin() {
 function isApproved() {
     return userProfile && userProfile.approval_state === 'Approved';
 }
+
+// Critical function to help other modules wait for auth to be stable
+// before performing database operations
+let isAuthBusy = false;
+
+async function waitForAuthStability() {
+    // If auth is currently busy processing events, wait
+    if (isAuthBusy || tokenRefreshInProgress) {
+        console.log('Auth is busy, waiting before database operation...');
+        await new Promise(resolve => {
+            const checkInterval = setInterval(() => {
+                if (!isAuthBusy && !tokenRefreshInProgress) {
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 100);
+        });
+    }
+    
+    // Force a quick session check but use the cached session if available
+    await getSessionSafely();
+    return true;
+}
+
+// Make this function available globally
+window.waitForAuthStability = waitForAuthStability;
 
 function hasPermission(permission) {
     if (!userProfile) return false;

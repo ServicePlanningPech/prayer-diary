@@ -348,6 +348,9 @@ async function loadUpdatesAdmin() {
         console.log('DEBUG: loadUpdatesAdmin - Already loading, aborting duplicate call');
         return;
     }
+	
+	// NEW: Wait for auth stability before proceeding
+    await window.waitForAuthStability();
     
     // Set loading flag
     isLoadingUpdatesAdmin = true;
@@ -546,6 +549,9 @@ async function checkDateExists(dateStr, updateId = null) {
         console.log('DEBUG: checkDateExists - Already checking, aborting duplicate call');
         return false;
     }
+	
+	// NEW: Wait for auth stability before proceeding
+    await window.waitForAuthStability();
     
     // Set loading flag
     isCheckingDateExists = true;
@@ -616,6 +622,9 @@ async function checkDateExists(dateStr, updateId = null) {
 async function createPrayerUpdate(action, submitBtn) {
     console.log('DEBUG: createPrayerUpdate - Starting with action:', action);
     console.log('DEBUG: createPrayerUpdate - Current selectedUpdateId:', selectedUpdateId);
+	
+	// NEW: Wait for auth stability before proceeding
+    await window.waitForAuthStability();
     
     // Get the original button text and disable the button
     const originalText = submitBtn.textContent;
@@ -776,6 +785,10 @@ async function createPrayerUpdate(action, submitBtn) {
 // Delete a prayer update
 async function deleteUpdate(updateId) {
     console.log('DEBUG: deleteUpdate - Starting delete for update ID:', updateId);
+	
+	// NEW: Wait for auth stability before proceeding
+    await window.waitForAuthStability();
+	
     if (!confirm('Are you sure you want to delete this prayer update? This action cannot be undone.')) {
         console.log('DEBUG: deleteUpdate - User cancelled deletion');
         return;
