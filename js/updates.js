@@ -537,7 +537,7 @@ function loadUpdateIntoEditor(update) {
     console.log('DEBUG: loadUpdateIntoEditor - Function complete');
 }
 
-// Check if an update already exists for the specified date - MODIFIED with loading flag
+// Check if an update already exists for the specified date - MODIFIED with loading flag and timeout
 async function checkDateExists(dateStr, updateId = null) {
     console.log('DEBUG: checkDateExists - Checking if date exists:', dateStr, 'Excluding ID:', updateId);
     
@@ -563,10 +563,30 @@ async function checkDateExists(dateStr, updateId = null) {
             query = query.neq('id', updateId);
         }
         
-        console.log('DEBUG: checkDateExists - Executing Supabase query');
-        const { data, error } = await query;
+        console.log('DEBUG: checkDateExists - Executing Supabase query with 5-second timeout');
         
-        console.log('DEBUG: checkDateExists - Query complete');
+        // Create a promise that will reject after 5 seconds
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Query timeout exceeded')), 5000);
+        });
+        
+        // Race the query against the timeout
+        const result = await Promise.race([
+            query,
+            timeoutPromise
+        ]).catch(error => {
+            // If error is from timeout
+            if (error.message === 'Query timeout exceeded') {
+                console.warn('DEBUG: checkDateExists - Query timed out after 5 seconds');
+                return { data: [], error: null }; // Return empty data if timeout occurs
+            }
+            throw error; // Re-throw other errors
+        });
+        
+        // Destructure the result (this is safe even if result is from the timeout)
+        const { data, error } = result || { data: [], error: null };
+        
+        console.log('DEBUG: checkDateExists - Query complete or timed out');
         
         if (error) {
             console.error('DEBUG: checkDateExists - Supabase error:', error);
@@ -577,7 +597,12 @@ async function checkDateExists(dateStr, updateId = null) {
         return data.length > 0;
     } catch (error) {
         console.error('DEBUG: checkDateExists - Error checking date existence:', error);
-        // Display error to user
+        // Log error but don't alert user for timeouts
+        if (error.message === 'Query timeout exceeded') {
+            console.warn('DEBUG: checkDateExists - Query timed out, returning false');
+            return false;
+        }
+        // Only alert for non-timeout errors
         alert('Error checking if date exists: ' + error.message);
         return false;
     } finally {
