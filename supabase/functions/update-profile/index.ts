@@ -105,6 +105,7 @@ Deno.serve(async (req) => {
         // Use the signed URL instead of a public URL
         finalImageUrl = signedUrlData.signedUrl;
         console.log(`New image uploaded, signed URL created with 20-year expiry`);
+		console.log(finalImageUrl);
 
         // Delete old image if provided and different from the new one
         if (oldImageUrl && oldImageUrl !== finalImageUrl) {
