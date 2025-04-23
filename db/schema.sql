@@ -53,7 +53,9 @@ CREATE TABLE urgent_prayers (
   created_by UUID REFERENCES auth.users ON DELETE SET NULL,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
-  is_active BOOLEAN DEFAULT TRUE
+  is_archived BOOLEAN DEFAULT FALSE,
+  update_date DATE NOT NULL DEFAULT CURRENT_DATE
+
 );
 
 -- Create a table for notification logs

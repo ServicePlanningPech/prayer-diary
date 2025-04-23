@@ -1,3 +1,10 @@
+    // Update Delete button - enabled if an urgent prayer is selected
+    if (deleteUrgentBtn) {
+        deleteUrgentBtn.disabled = !selectedUrgentId;
+        console.log('DEBUG: updateUrgentButtonStates - deleteUrgentBtn disabled:', deleteUrgentBtn.disabled);
+    } else {
+        console.log('DEBUG: updateUrgentButtonStates - deleteUrgentBtn not found');
+    }
 // Urgent Prayer Requests Module - Restructured to match updates.js pattern
 
 // Global variables for editors
@@ -31,8 +38,7 @@ function initUrgentEditor() {
                     ['link'],
                     ['clean']
                 ]
-            },
-
+            }
         });
         
         // Add editor change handler to update button states
@@ -60,6 +66,17 @@ function initUrgentEditor() {
             },
             placeholder: 'Edit urgent prayer request...',
         });
+    }
+    
+    // Set today's date in the date field
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    const dateField = document.getElementById('urgent-date');
+    console.log('DEBUG: initUrgentEditor - Setting default date:', formattedDate);
+    if (dateField) {
+        dateField.value = formattedDate;
+    } else {
+        console.error('DEBUG: initUrgentEditor - Date field not found in DOM');
     }
     
     // Set up direct click handlers for buttons
@@ -141,16 +158,6 @@ function initUrgentEditor() {
         console.error('DEBUG: initUrgentEditor - Delete urgent button not found in DOM');
     }
     
-    // Set up notification checkboxes
-    const sendEmailCheck = document.getElementById('send-email');
-    const sendSmsCheck = document.getElementById('send-sms');
-    const sendWhatsappCheck = document.getElementById('send-whatsapp');
-    const sendPushCheck = document.getElementById('send-push');
-    
-    if (sendEmailCheck) {
-        sendEmailCheck.checked = true; // Email notifications on by default
-    }
-    
     // Initial button state update
     console.log('DEBUG: initUrgentEditor - Initial button state update');
     updateUrgentButtonStates();
@@ -170,6 +177,15 @@ function clearUrgentEditor() {
     console.log('DEBUG: clearUrgentEditor - Clearing Quill editor');
     urgentEditor.setContents([]);
     
+    // Set today's date in the date field
+    console.log('DEBUG: clearUrgentEditor - Setting default date');
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    const dateField = document.getElementById('urgent-date');
+    if (dateField) {
+        dateField.value = formattedDate;
+    }
+    
     // Reset selection
     console.log('DEBUG: clearUrgentEditor - Resetting selection state');
     selectedUrgentId = null;
@@ -179,12 +195,6 @@ function clearUrgentEditor() {
     console.log('DEBUG: clearUrgentEditor - Clearing selection highlight');
     const allRows = document.querySelectorAll('.urgent-list-item');
     allRows.forEach(row => row.classList.remove('selected'));
-    
-    // Reset notification checkboxes default state
-    const sendEmailCheck = document.getElementById('send-email');
-    if (sendEmailCheck) {
-        sendEmailCheck.checked = true; // Email notifications on by default
-    }
     
     console.log('DEBUG: clearUrgentEditor - Clear operation complete');
 }
@@ -281,13 +291,12 @@ async function loadUrgentPrayers() {
     container.innerHTML = createLoadingSpinner();
     
     try {
-        // Load active urgent prayers
+        // Load urgent prayers ordered by date (most recent first)
         console.log('DEBUG: loadUrgentPrayers - Executing Supabase query');
         const { data, error } = await supabase
             .from('urgent_prayers')
             .select('*')
-            .eq('is_active', true)
-            .order('created_at', { ascending: false });
+            .order('update_date', { ascending: false });
             
         console.log('DEBUG: loadUrgentPrayers - Query complete');
         
@@ -370,7 +379,7 @@ async function loadUrgentAdmin() {
         const { data: urgentPrayers, error } = await supabase
             .from('urgent_prayers')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('update_date', { ascending: false });
             
         console.log('DEBUG: loadUrgentAdmin - Query complete');
         
@@ -472,7 +481,7 @@ async function loadUrgentAdmin() {
 function createUrgentListItem(prayer) {
     console.log('DEBUG: createUrgentListItem - Creating item for urgent ID:', prayer.id);
     // Format the date
-    const date = new Date(prayer.created_at);
+    const date = prayer.update_date ? new Date(prayer.update_date) : new Date(prayer.created_at);
     const formattedDate = date.toLocaleDateString(undefined, { 
         year: 'numeric', 
         month: 'short', 
@@ -484,11 +493,6 @@ function createUrgentListItem(prayer) {
         <div>
             <h6 class="mb-0">${prayer.title}</h6>
             <small class="text-muted"><i class="bi bi-calendar"></i> ${formattedDate}</small>
-        </div>
-        <div>
-            ${prayer.is_active ? 
-                '<span class="badge bg-danger">Active</span>' : 
-                '<span class="badge bg-secondary">Inactive</span>'}
         </div>
     </div>
     `;
@@ -503,6 +507,18 @@ function loadUrgentIntoEditor(prayer) {
     // Set the title
     console.log('DEBUG: loadUrgentIntoEditor - Setting title:', prayer.title);
     document.getElementById('urgent-title').value = prayer.title;
+    
+    // Set the date if available
+    if (prayer.update_date) {
+        console.log('DEBUG: loadUrgentIntoEditor - Setting date:', prayer.update_date);
+        document.getElementById('urgent-date').value = prayer.update_date;
+    } else {
+        console.log('DEBUG: loadUrgentIntoEditor - No update_date available');
+        // Set today's date as fallback
+        const today = new Date();
+        const formattedDate = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        document.getElementById('urgent-date').value = formattedDate;
+    }
     
     // Set content in main Quill editor
     console.log('DEBUG: loadUrgentIntoEditor - Setting content in Quill editor');
@@ -542,14 +558,23 @@ async function createUrgentPrayer(action, submitBtn) {
         // Get form values
         console.log('DEBUG: createUrgentPrayer - Getting form values');
         const titleElement = document.getElementById('urgent-title');
+        const dateElement = document.getElementById('urgent-date');
         
         if (!titleElement) {
             console.error('DEBUG: createUrgentPrayer - Title element not found in DOM');
             throw new Error('Title element not found in DOM');
         }
         
+        if (!dateElement) {
+            console.error('DEBUG: createUrgentPrayer - Date element not found in DOM');
+            throw new Error('Date element not found in DOM');
+        }
+        
         const title = titleElement.value.trim();
+        const dateInput = dateElement.value;
+        
         console.log('DEBUG: createUrgentPrayer - Retrieved title:', title);
+        console.log('DEBUG: createUrgentPrayer - Retrieved date:', dateInput);
         
         // Get content from Quill editor
         let content = '';
@@ -566,6 +591,11 @@ async function createUrgentPrayer(action, submitBtn) {
         if (!title) {
             console.error('DEBUG: createUrgentPrayer - Title is empty');
             throw new Error('Please enter a title for the urgent prayer request');
+        }
+        
+        if (!dateInput) {
+            console.error('DEBUG: createUrgentPrayer - Date is empty');
+            throw new Error('Please select a date for the urgent prayer request');
         }
         
         if (!content || content === '<p><br></p>') {
@@ -585,7 +615,8 @@ async function createUrgentPrayer(action, submitBtn) {
                 .from('urgent_prayers')
                 .update({
                     title,
-                    content
+                    content,
+                    update_date: dateInput
                 })
                 .eq('id', selectedUrgentId);
                 
@@ -611,7 +642,7 @@ async function createUrgentPrayer(action, submitBtn) {
                     title,
                     content,
                     created_by: userId,
-                    is_active: true
+                    update_date: dateInput
                 });
                 
             console.log('DEBUG: createUrgentPrayer - Insert query complete');
@@ -778,50 +809,12 @@ async function deleteUrgentPrayer(urgentId) {
     console.log('DEBUG: deleteUrgentPrayer - Function complete');
 }
 
-// Toggle active/inactive for an urgent prayer
-async function toggleUrgentActive(urgentId, active) {
-    console.log('DEBUG: toggleUrgentActive - Starting toggle for urgent ID:', urgentId, 'to active state:', active);
-    
-    await window.waitForAuthStability();
-    
-    try {
-        // Update the urgent prayer
-        console.log('DEBUG: toggleUrgentActive - Executing Supabase update query');
-        const { data, error } = await supabase
-            .from('urgent_prayers')
-            .update({
-                is_active: active
-            })
-            .eq('id', urgentId);
-            
-        console.log('DEBUG: toggleUrgentActive - Update query complete');
-        
-        if (error) {
-            console.error('DEBUG: toggleUrgentActive - Supabase error:', error);
-            throw error;
-        }
-        
-        // Reload urgent prayers
-        console.log('DEBUG: toggleUrgentActive - Reloading urgent prayers list');
-        loadUrgentAdmin();
-        
-        console.log('DEBUG: toggleUrgentActive - Showing success notification');
-        showNotification('Success', `Urgent prayer request ${active ? 'activated' : 'deactivated'} successfully.`);
-        
-    } catch (error) {
-        console.error('DEBUG: toggleUrgentActive - Error toggling urgent prayer state:', error);
-        showNotification('Error', `Failed to ${active ? 'activate' : 'deactivate'} urgent prayer request: ${error.message}`);
-    }
-    
-    console.log('DEBUG: toggleUrgentActive - Function complete');
-}
-
 // Create an urgent prayer card (for regular view)
 function createUrgentCard(prayer) {
     console.log('DEBUG: createUrgentCard - Creating card for urgent ID:', prayer.id);
     
     // Format the date
-    const date = new Date(prayer.created_at);
+    const date = prayer.update_date ? new Date(prayer.update_date) : new Date(prayer.created_at);
     const formattedDate = date.toLocaleDateString(undefined, { 
         year: 'numeric', 
         month: 'short', 
