@@ -450,13 +450,13 @@ async function generatePDF() {
         
         // Also set a timeout in case the message event doesn't fire, but don't show duplicate toast
         // Use a flag to track if print has been initiated
-        let printInitiated = false;
+        let printTimeoutControl = false;
         
         setTimeout(() => {
-            if (printInitiated) return; // Skip if already handled by message event
+            if (printTimeoutControl) return; // Skip if already handled by message event
             
             try {
-                printInitiated = true;
+                printTimeoutControl = true;
                 dismissToast(loadingToastId);
                 // Print the iframe
                 iframe.contentWindow.print();
