@@ -277,6 +277,9 @@ function getSelectedUpdate() {
     return update;
 }
 
+// Global variable to track selected update in the 'Previous' tab
+let selectedPreviousUpdateId = null;
+
 // Load all prayer updates (both current and archived)
 async function loadPrayerUpdates() {
     console.log('DEBUG: loadPrayerUpdates - Starting to load updates for user view');
@@ -287,12 +290,14 @@ async function loadPrayerUpdates() {
 	
 	 await window.waitForAuthStability();
     
-    // Get container element
-    const container = document.getElementById('updates-container');
+    // Get container elements
+    const latestContainer = document.getElementById('updates-container');
+    const previousContainer = document.getElementById('archived-updates-container');
     
-    // Show loading indicator
-    console.log('DEBUG: loadPrayerUpdates - Showing loading spinner');
-    container.innerHTML = createLoadingSpinner();
+    // Show loading indicators
+    console.log('DEBUG: loadPrayerUpdates - Showing loading spinners');
+    latestContainer.innerHTML = createLoadingSpinner();
+    previousContainer.innerHTML = createLoadingSpinner();
     
     try {
         // Load all updates
@@ -311,27 +316,82 @@ async function loadPrayerUpdates() {
         
         console.log('DEBUG: loadPrayerUpdates - Retrieved updates count:', updates ? updates.length : 0);
         
-        // Display updates
+        // Store updates for later reference
+        window.allPrayerUpdates = updates || [];
+        
+        // Display latest update
         if (updates.length === 0) {
             console.log('DEBUG: loadPrayerUpdates - No updates to display');
-            container.innerHTML = `
+            latestContainer.innerHTML = `
                 <div class="alert alert-info">
                     No prayer updates available.
                 </div>
             `;
+            previousContainer.innerHTML = `
+                <div class="alert alert-info">
+                    No previous updates available.
+                </div>
+            `;
         } else {
-            console.log('DEBUG: loadPrayerUpdates - Building HTML for updates');
-            let html = '';
-            updates.forEach(update => {
-                html += createUpdateCard(update);
-            });
-            container.innerHTML = html;
-            console.log('DEBUG: loadPrayerUpdates - Updates displayed');
+            // Display the latest update in the 'Latest' tab
+            const latestUpdate = updates[0]; // First item is most recent due to descending order
+            let latestHtml = createUpdateCard(latestUpdate);
+            latestContainer.innerHTML = latestHtml;
+            console.log('DEBUG: loadPrayerUpdates - Latest update displayed');
+            
+            // Display previous updates as a list in the 'Previous' tab with minimal info
+            if (updates.length > 1) {
+                let previousHtml = '<div class="list-group">';
+                // Start from index 1 to skip the latest update
+                for (let i = 1; i < updates.length; i++) {
+                    previousHtml += createPreviousUpdateListItem(updates[i]);
+                }
+                previousHtml += '</div>';
+                previousContainer.innerHTML = previousHtml;
+                
+                // Add event listeners to previous update items
+                previousContainer.querySelectorAll('.previous-update-item').forEach(item => {
+                    // Single click to select
+                    item.addEventListener('click', function() {
+                        selectPreviousUpdate(this);
+                    });
+                    
+                    // Double click to view
+                    item.addEventListener('dblclick', function() {
+                        const updateId = this.dataset.id;
+                        viewUpdateDetails(updateId);
+                    });
+                });
+                
+                // Setup open selected update button
+                const openSelectedBtn = document.getElementById('open-selected-update');
+                if (openSelectedBtn) {
+                    openSelectedBtn.addEventListener('click', function() {
+                        if (selectedPreviousUpdateId) {
+                            viewUpdateDetails(selectedPreviousUpdateId);
+                        }
+                    });
+                }
+                
+                console.log('DEBUG: loadPrayerUpdates - Previous updates displayed');
+            } else {
+                // No previous updates
+                previousContainer.innerHTML = `
+                    <div class="alert alert-info">
+                        No previous updates available.
+                    </div>
+                `;
+            }
         }
         
     } catch (error) {
         console.error('DEBUG: loadPrayerUpdates - Error loading prayer updates:', error);
-        container.innerHTML = `
+        latestContainer.innerHTML = `
+            <div class="alert alert-danger">
+                Error loading prayer updates: ${error.message}
+            </div>
+        `;
+        previousContainer.innerHTML = `
             <div class="alert alert-danger">
                 Error loading prayer updates: ${error.message}
             </div>
@@ -339,6 +399,75 @@ async function loadPrayerUpdates() {
     }
     
     console.log('DEBUG: loadPrayerUpdates - Function complete');
+}
+
+// Function to select a previous update
+function selectPreviousUpdate(element) {
+    // Remove selected class from all items
+    document.querySelectorAll('.previous-update-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked item
+    element.classList.add('selected');
+    
+    // Update the selected ID
+    selectedPreviousUpdateId = element.dataset.id;
+    
+    // Enable the open button
+    const openButton = document.getElementById('open-selected-update');
+    if (openButton) {
+        openButton.disabled = false;
+    }
+}
+
+// Function to create a list item for a previous update
+function createPreviousUpdateListItem(update) {
+    // Format the date
+    const date = update.update_date ? new Date(update.update_date) : new Date(update.created_at);
+    const formattedDate = date.toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+    
+    return `
+    <div class="list-group-item d-flex justify-content-between align-items-center previous-update-item" data-id="${update.id}">
+        <div>
+            <h6 class="mb-0">${update.title}</h6>
+            <small class="text-muted"><i class="bi bi-calendar"></i> ${formattedDate}</small>
+        </div>
+    </div>
+    `;
+}
+
+// Function to view update details in a modal
+async function viewUpdateDetails(updateId) {
+    const updates = window.allPrayerUpdates || [];
+    const update = updates.find(u => u.id === updateId);
+    
+    if (!update) {
+        console.error('DEBUG: viewUpdateDetails - Update not found with ID:', updateId);
+        showNotification('Error', 'Update not found', 'error');
+        return;
+    }
+    
+    // Format the date
+    const date = update.update_date ? new Date(update.update_date) : new Date(update.created_at);
+    const formattedDate = date.toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+    
+    // Set modal content
+    document.getElementById('view-update-title').textContent = update.title;
+    document.getElementById('view-update-date').querySelector('span').textContent = formattedDate;
+    document.getElementById('view-update-content').innerHTML = update.content;
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('view-update-modal'));
+    modal.show();
 }
 
 // Load updates for admin view - MODIFIED with loading flag
