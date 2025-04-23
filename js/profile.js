@@ -289,46 +289,90 @@ function handleProfileImageChange() {
             lastModified: new Date(file.lastModified).toISOString()
         });
         
-        // Always use the createLightweightPreview
-        createLightweightPreview(file, previewImage);
+        // Create canvas for square cropping
+        cropImageToSquare(file);
     }
 }
 
-// Create a lightweight preview that uses createObjectURL
-function createLightweightPreview(file, previewImage) {
-    console.log('Creating lightweight preview');
+// Create a square cropped version of the selected image
+function cropImageToSquare(file) {
+    const previewImage = document.getElementById('profile-image-preview');
+    const secondPreviewImage = document.getElementById('preview-profile-image');
     
-    try {
-        const objectUrl = URL.createObjectURL(file);
+    // Create temporary URL for the file
+    const objectUrl = URL.createObjectURL(file);
+    
+    // Load the image to get its dimensions
+    const img = new Image();
+    img.onload = function() {
+        // Create a canvas element for cropping
+        const canvas = document.createElement('canvas');
+        canvas.width = 300;  // Same size as the square camera photos
+        canvas.height = 300;
         
-        // Update both preview elements
-        previewImage.src = objectUrl;
-        document.getElementById('preview-profile-image').src = objectUrl;
+        // Get the dimensions for cropping
+        const size = Math.min(img.width, img.height);
+        const offsetX = (img.width - size) / 2;
+        const offsetY = (img.height - size) / 2;
         
-        // Clean up the URL after the image loads to prevent memory leaks
-        previewImage.onload = () => {
-            console.log('Preview image loaded successfully');
-            // Schedule cleanup for later
-            setTimeout(() => {
-                URL.revokeObjectURL(objectUrl);
-                console.log('ObjectURL revoked to prevent memory leaks');
-            }, 3000); // Wait 3 seconds to ensure all uses of the URL are complete
-        };
+        // Draw the cropped image to the canvas
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(
+            img,
+            offsetX, offsetY,     // Start position of the crop in the original image
+            size, size,           // Size of the square to crop
+            0, 0,                 // Place at 0,0 on canvas
+            300, 300              // Size on canvas (300x300 square)
+        );
         
-        previewImage.onerror = () => {
-            console.error('Error loading preview image');
+        // Convert the canvas to a blob
+        canvas.toBlob(function(blob) {
+            // Create new object URLs from the blob
+            const croppedUrl = URL.createObjectURL(blob);
+            
+            // Update preview images
+            previewImage.src = croppedUrl;
+            secondPreviewImage.src = croppedUrl;
+            
+            // Store the blob for later upload when the profile form is submitted
+            window.capturedProfileImage = blob;
+            
+            // Create a File object from the blob to replace the original file input
+            const fileName = `profile-cropped-${Date.now()}.jpg`;
+            const file = new File([blob], fileName, { type: 'image/jpeg' });
+            
+            // Create a FileList-like object
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            
+            // Replace the file input's files property with our cropped image
+            const fileInput = document.getElementById('profile-image');
+            fileInput.files = dataTransfer.files;
+            
+            // Clean up to prevent memory leaks
             URL.revokeObjectURL(objectUrl);
             
-            // Set to placeholder if there's an error
-            previewImage.src = 'img/placeholder-profile.png';
-            document.getElementById('preview-profile-image').src = 'img/placeholder-profile.png';
-        };
-    } catch (error) {
-        console.error('Error creating lightweight preview:', error);
-        // Fallback to placeholder
+            // Schedule cleanup of the cropped URL after the images are loaded
+            previewImage.onload = function() {
+                setTimeout(() => URL.revokeObjectURL(croppedUrl), 3000);
+            };
+        }, 'image/jpeg', 0.9);
+    };
+    
+    img.onerror = function() {
+        console.error('Error loading image for cropping');
+        URL.revokeObjectURL(objectUrl);
+        
+        // Set to placeholder if there's an error
         previewImage.src = 'img/placeholder-profile.png';
-        document.getElementById('preview-profile-image').src = 'img/placeholder-profile.png';
-    }
+        secondPreviewImage.src = 'img/placeholder-profile.png';
+        
+        // Show notification about the error
+        showNotification('Error', 'Could not process the selected image. Please try another image.', 'error');
+    };
+    
+    // Set the source to trigger loading
+    img.src = objectUrl;
 }
 
 // Set up notification method change handlers
