@@ -1,10 +1,3 @@
-    // Update Delete button - enabled if an urgent prayer is selected
-    if (deleteUrgentBtn) {
-        deleteUrgentBtn.disabled = !selectedUrgentId;
-        console.log('DEBUG: updateUrgentButtonStates - deleteUrgentBtn disabled:', deleteUrgentBtn.disabled);
-    } else {
-        console.log('DEBUG: updateUrgentButtonStates - deleteUrgentBtn not found');
-    }
 // Urgent Prayer Requests Module - Restructured to match updates.js pattern
 
 // Global variables for editors
