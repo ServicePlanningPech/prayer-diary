@@ -1,7 +1,7 @@
 // Notifications Module
 
 // Send a notification of the specified type to eligible users
-async function sendNotification(type, title, notificationMethods = []) {
+async function sendNotification(type, title, content, date, notificationMethods = []) {
     try {
         // Log the notification
         console.log(`Sending ${type} notification: ${title}`);
@@ -12,21 +12,21 @@ async function sendNotification(type, title, notificationMethods = []) {
         
         // Depending on which notification services are enabled, send notifications
         if (EMAIL_ENABLED && (useAllMethods || notificationMethods.includes('email'))) {
-            await sendEmailNotifications(type, title);
+            await sendEmailNotifications(type, title, content, date);
         }
         
         if (TWILIO_ENABLED) {
             if (useAllMethods || notificationMethods.includes('sms')) {
-                await sendSmsNotifications(type, title);
+                await sendSmsNotifications(type, title, content, date);
             }
             
             if (useAllMethods || notificationMethods.includes('whatsapp')) {
-                await sendWhatsAppNotifications(type, title);
+                await sendWhatsAppNotifications(type, title, content, date);
             }
         }
         
         if (PUSH_NOTIFICATION_ENABLED && (useAllMethods || notificationMethods.includes('push'))) {
-            await sendPushNotifications(type, title);
+            await sendPushNotifications(type, title, content, date);
         }
         
         return true;
@@ -37,7 +37,7 @@ async function sendNotification(type, title, notificationMethods = []) {
 }
 
 // Send email notifications for the specified type
-async function sendEmailNotifications(type, title) {
+async function sendEmailNotifications(type, title, content, date) {
 	 await window.waitForAuthStability();
     try {
         // Get appropriate notification field based on type
@@ -83,7 +83,7 @@ async function sendEmailNotifications(type, title) {
 }
 
 // Send SMS notifications for the specified type
-async function sendSmsNotifications(type, title) {
+async function sendSmsNotifications(type, title, content, date) {
 	 await window.waitForAuthStability();
     try {
         // Get appropriate notification field based on type
@@ -128,7 +128,7 @@ async function sendSmsNotifications(type, title) {
 }
 
 // Send WhatsApp notifications for the specified type
-async function sendWhatsAppNotifications(type, title) {
+async function sendWhatsAppNotifications(type, title, content, date) {
 	 await window.waitForAuthStability();
     try {
         // Get appropriate notification field based on type
@@ -173,7 +173,7 @@ async function sendWhatsAppNotifications(type, title) {
 }
 
 // Send push notifications for the specified type
-async function sendPushNotifications(type, title) {
+async function sendPushNotifications(type, title, content, date) {
     try {
         // In a real implementation, we would use a push notification service
         // like Firebase Cloud Messaging (FCM) or OneSignal

@@ -890,7 +890,7 @@ async function createPrayerUpdate(action, submitBtn) {
             console.log('DEBUG: createPrayerUpdate - Action is saveAndSend, attempting to send notifications');
             if (typeof sendPrayerUpdates === 'function') {
                 console.log('DEBUG: createPrayerUpdate - sendPrayerUpdates function exists, calling it');
-                await sendPrayerUpdates(title, content, dateInput);
+                await sendUpdateNotifications(title, content, dateInput);
                 console.log('DEBUG: createPrayerUpdate - sendPrayerUpdates completed');
                 showNotification('Success', `Prayer update ${isEditing ? 'updated' : 'saved'} and sent successfully.`);
             } else {
@@ -1059,12 +1059,12 @@ function createUpdateCard(update) {
 }
 
 // Send notifications for a new prayer update
-async function sendUpdateNotifications(title) {
+async function sendUpdateNotifications(title, content,dateInput) {
     console.log('DEBUG: sendUpdateNotifications - Starting for title:', title);
     try {
         // This will be implemented in notifications.js
         console.log('DEBUG: sendUpdateNotifications - Calling sendNotification function');
-        await sendNotification('prayer_update', title, 'All users who opt in for notifications');
+        await sendNotification('prayer_update', title, content, dateInput, 'All users who opt in for notifications');
         console.log('DEBUG: sendUpdateNotifications - Notifications sent successfully');
     } catch (error) {
         console.error('DEBUG: sendUpdateNotifications - Error sending update notifications:', error);

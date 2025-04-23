@@ -661,7 +661,7 @@ async function createUrgentPrayer(action, submitBtn) {
             // Only send notifications for new urgent prayers with saveAndSend action
             console.log('DEBUG: createUrgentPrayer - Action is saveAndSend, attempting to send notifications');
             if (typeof sendNotification === 'function') {
-                await sendNotification('urgent_prayer', title);
+                await sendNotification('urgent_prayer', title, content, dateInput);
                 console.log('DEBUG: createUrgentPrayer - Notifications sent successfully');
                 showNotification('Success', `Urgent prayer request ${isEditing ? 'updated' : 'saved'} and sent successfully.`);
             } else {
