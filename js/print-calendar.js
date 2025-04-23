@@ -35,6 +35,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const generateBtn = document.getElementById('generate-pdf-btn');
     if (generateBtn) {
         generateBtn.addEventListener('click', function() {
+            // Prevent multiple clicks
+            if (this.dataset.generating === 'true') {
+                return;
+            }
+            
+            this.dataset.generating = 'true';
+            this.disabled = true;
+            
+            // Re-enable after a delay
+            setTimeout(() => {
+                this.dataset.generating = 'false';
+                this.disabled = false;
+            }, 5000);
+            
             generatePDF();
         });
     }
@@ -118,6 +132,7 @@ async function generatePreview() {
         
         // Get selected font family
         const fontFamily = document.getElementById('print-font-family').value || 'Arial, sans-serif';
+        console.log('Selected font family for preview:', fontFamily);
         
         iframeDoc.open();
         iframeDoc.write(`
@@ -150,13 +165,14 @@ async function generatePreview() {
                         display: flex;
                         flex-direction: column;
                         margin-bottom: 5mm;
-                        padding-bottom: 5mm;
-                        border-bottom: 1px dashed #ccc;
+                        padding: 3mm;
+                        border-radius: 2mm;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                        background-color: #fff;
+                        border: 1px solid #eee;
                     }
                     .print-prayer-card:last-child {
-                        border-bottom: none;
                         margin-bottom: 0;
-                        padding-bottom: 0;
                     }
                     .print-card-header {
                         margin-bottom: 3mm;
@@ -172,14 +188,14 @@ async function generatePreview() {
                     }
                     .print-image-container {
                         width: 35mm;
-                        height: auto;
+                        min-height: 30mm;
                         margin-right: 5mm;
                         flex-shrink: 0;
                     }
                     .print-profile-image {
                         width: 100%;
-                        height: 100%;
-                        object-fit: cover;
+                        min-height: 30mm;
+                        object-fit: contain;
                         border-radius: 3mm;
                         border: 1px solid #eee;
                     }
@@ -289,7 +305,7 @@ async function generatePDF() {
                         --print-font-family: ${fontFamily};
                     }
                     @page {
-                        size: A5;
+                        size: 148mm 210mm; /* A5 size in mm */
                         margin: 0mm;
                     }
                     body {
@@ -397,10 +413,16 @@ async function generatePDF() {
         iframeDoc.close();
         
         // Message handler for when content is ready
+        // Use a flag to track if print has been initiated
+        let printInitiated = false;
+        
         window.addEventListener('message', function printHandler(event) {
-            if (event.data === 'printContentReady') {
+            if (event.data === 'printContentReady' && !printInitiated) {
                 // Remove the message handler to avoid duplicates
                 window.removeEventListener('message', printHandler);
+                
+                // Set flag to prevent duplicate printing
+                printInitiated = true;
                 
                 // Wait a bit more to ensure images are loaded
                 setTimeout(() => {
@@ -426,9 +448,15 @@ async function generatePDF() {
             }
         });
         
-        // Also set a timeout in case the message event doesn't fire
+        // Also set a timeout in case the message event doesn't fire, but don't show duplicate toast
+        // Use a flag to track if print has been initiated
+        let printInitiated = false;
+        
         setTimeout(() => {
+            if (printInitiated) return; // Skip if already handled by message event
+            
             try {
+                printInitiated = true;
                 dismissToast(loadingToastId);
                 // Print the iframe
                 iframe.contentWindow.print();
@@ -551,7 +579,6 @@ function generatePrintHTML(prayerCards, cardsPerPage) {
     });
     
     let html = '';
-    const pageCount = Math.ceil(prayerCards.length / cardsPerPage);
     
     // Current date for footer
     const today = new Date();
@@ -561,75 +588,103 @@ function generatePrintHTML(prayerCards, cardsPerPage) {
         day: 'numeric' 
     });
     
-    // Create pages
-    for (let i = 0; i < pageCount; i++) {
-        // Start a new page
-        html += `<div class="print-page">`;
-        
-        // Add cards to this page
-        for (let j = 0; j < cardsPerPage; j++) {
-            const cardIndex = i * cardsPerPage + j;
-            
-            // Break if we've reached the end of the cards
-            if (cardIndex >= prayerCards.length) break;
-            
-            const card = prayerCards[cardIndex];
-            
-            // Default image if none provided
-            const imageUrl = card.profileImage || 'img/placeholder-profile.png';
-            
-            // Format prayer points - handle different data structures
-            let formattedPrayerPoints = '';
-            if (card.prayerPoints) {
-                // If content is already HTML, keep it as is
-                if (card.prayerPoints.includes('<')) {
-                    formattedPrayerPoints = card.prayerPoints;
-                } else {
-                    // Otherwise format as paragraphs
-                    formattedPrayerPoints = card.prayerPoints
-                        .split('\n')
-                        .filter(line => line.trim())
-                        .map(line => `<p>${line}</p>`)
-                        .join('');
-                }
-            } else {
-                formattedPrayerPoints = '<p>No prayer points provided.</p>';
-            }
-            
-            // Add day information if available
-            let dayInfo = '';
-            if (card.day) {
-                dayInfo = `<div class="print-date">Day ${card.day} of the month</div>`;
-            }
-            
-            // Add the card
-            html += `
-                <div class="print-prayer-card">
-                    <div class="print-card-header">
-                        <h3 class="print-name">${card.name}</h3>
-                        ${dayInfo}
-                    </div>
-                    <div class="print-card-body">
-                        <div class="print-image-container">
-                            <img src="${imageUrl}" class="print-profile-image" alt="${card.name}" 
-                                 onerror="this.onerror=null; this.src='img/placeholder-profile.png';">
-                        </div>
-                        <div class="print-prayer-points">
-                            ${formattedPrayerPoints}
-                        </div>
-                    </div>
-                </div>
-            `;
+    // Group cards by day
+    const cardsByDay = {};
+    prayerCards.forEach(card => {
+        const day = card.day || 'unassigned';
+        if (!cardsByDay[day]) {
+            cardsByDay[day] = [];
         }
-        
-        // Add page footer
-        html += `
-            <div class="print-footer">
-                Prayer Diary - Generated on ${dateStr} - Page ${i + 1} of ${pageCount}
-            </div>
-        </div><!-- End of print page -->
-        `;
-    }
+        cardsByDay[day].push(card);
+    });
+    
+    // Calculate total pages based on groups and cards per page
+    let pageCount = 0;
+    Object.keys(cardsByDay).forEach(day => {
+        pageCount += Math.ceil(cardsByDay[day].length / cardsPerPage);
+    });
+    
+    let currentPage = 1;
+    
+    // Process each day group
+    Object.keys(cardsByDay)
+        .sort((a, b) => {
+            if (a === 'unassigned') return 1;
+            if (b === 'unassigned') return -1;
+            return parseInt(a) - parseInt(b);
+        })
+        .forEach(day => {
+            const cardsForDay = cardsByDay[day];
+            const dayPageCount = Math.ceil(cardsForDay.length / cardsPerPage);
+            
+            // Create pages for this day
+            for (let i = 0; i < dayPageCount; i++) {
+                // Start a new page with day header
+                html += `<div class="print-page">`;
+                
+                // Add day header if it's a numbered day
+                if (day !== 'unassigned') {
+                    html += `<h2 style="text-align: center; margin-bottom: 5mm; color: #483D8B;">Day ${day}</h2>`;
+                }
+                
+                // Add cards to this page
+                for (let j = 0; j < cardsPerPage; j++) {
+                    const cardIndex = i * cardsPerPage + j;
+                    
+                    // Break if we've reached the end of the cards for this day
+                    if (cardIndex >= cardsForDay.length) break;
+                    
+                    const card = cardsForDay[cardIndex];
+                    
+                    // Default image if none provided
+                    const imageUrl = card.profileImage || 'img/placeholder-profile.png';
+                    
+                    // Format prayer points - handle different data structures
+                    let formattedPrayerPoints = '';
+                    if (card.prayerPoints && card.prayerPoints !== 'No prayer points provided.') {
+                        // If content is already HTML, keep it as is
+                        if (card.prayerPoints.includes('<')) {
+                            formattedPrayerPoints = card.prayerPoints;
+                        } else {
+                            // Otherwise format as paragraphs
+                            formattedPrayerPoints = card.prayerPoints
+                                .split('\n')
+                                .filter(line => line.trim())
+                                .map(line => `<p>${line}</p>`)
+                                .join('');
+                        }
+                    }
+                    
+                    // Add the card
+                    html += `
+                        <div class="print-prayer-card">
+                            <div class="print-card-header">
+                                <h3 class="print-name">${card.name}</h3>
+                            </div>
+                            <div class="print-card-body">
+                                <div class="print-image-container">
+                                    <img src="${imageUrl}" class="print-profile-image" alt="${card.name}" 
+                                         onerror="this.onerror=null; this.src='img/placeholder-profile.png';">
+                                </div>
+                                <div class="print-prayer-points">
+                                    ${formattedPrayerPoints}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Add page footer
+                html += `
+                    <div class="print-footer">
+                        Prayer Diary - Generated on ${dateStr} - Page ${currentPage} of ${pageCount}
+                    </div>
+                </div><!-- End of print page -->
+                `;
+                
+                currentPage++;
+            }
+        });
     
     return html;
 }
