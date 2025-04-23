@@ -3,6 +3,7 @@ const { defineConfig } = require('cypress');
 module.exports = defineConfig({
   e2e: {
     baseUrl: 'https://serviceplanningpech.github.io/prayer-diary/', // Change this to your development server URL
+
     supportFile: 'cypress/support/e2e.js',
     setupNodeEvents(on, config) {
       // Log to console for better visibility during test runs
