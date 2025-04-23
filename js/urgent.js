@@ -817,7 +817,7 @@ function createUrgentCard(prayer) {
     // Full card for regular user view
     let cardHtml = `
     <div class="card urgent-card mb-3 border-danger">
-        <div class="card-header bg-danger text-white">
+        <div class="card-header bg-primary text-white">
             <h5 class="card-title mb-0">${prayer.title}</h5>
         </div>
         <div class="card-body">

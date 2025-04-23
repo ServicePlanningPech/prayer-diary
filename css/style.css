@@ -810,3 +810,112 @@ body {
         margin-right: 0 !important;
     }
 }
+
+/* Print Calendar Styles */
+/* Print layout for A5 pages */
+.print-page {
+    width: 148mm; /* A5 width */
+    height: 210mm; /* A5 height */
+    padding: 10mm;
+    margin: 0 auto 20px auto;
+    border: 1px solid #ddd;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    page-break-after: always;
+    position: relative;
+}
+
+.print-page.landscape {
+    width: 210mm; /* A5 height */
+    height: 148mm; /* A5 width */
+}
+
+.print-prayer-card {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 5mm;
+    padding-bottom: 5mm;
+    border-bottom: 1px dashed #ccc;
+}
+
+.print-prayer-card:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.print-card-header {
+    margin-bottom: 3mm;
+}
+
+.print-name {
+    font-size: 14pt;
+    font-weight: bold;
+    margin: 0;
+    color: var(--primary-color);
+}
+
+.print-card-body {
+    display: flex;
+}
+
+.print-image-container {
+    width: 25mm;
+    margin-right: 5mm;
+}
+
+.print-profile-image {
+    width: 100%;
+    border-radius: 3mm;
+    border: 1px solid #eee;
+}
+
+.print-prayer-points {
+    flex: 1;
+    font-size: 10pt;
+}
+
+.print-prayer-points p {
+    margin-bottom: 0.5rem;
+}
+
+.print-footer {
+    position: absolute;
+    bottom: 5mm;
+    left: 10mm;
+    right: 10mm;
+    text-align: center;
+    font-size: 8pt;
+    color: #999;
+}
+
+.print-date {
+    font-style: italic;
+    color: #666;
+    font-size: 9pt;
+    margin-bottom: 1mm;
+}
+
+/* Print media styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    #print-container, #print-container * {
+        visibility: visible;
+    }
+    
+    #print-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    
+    .print-page {
+        border: none;
+        box-shadow: none;
+        margin: 0;
+    }
+}

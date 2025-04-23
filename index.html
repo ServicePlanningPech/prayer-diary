@@ -110,6 +110,12 @@
                                     <i class="bi bi-envelope"></i> Test Email Sending
                                 </a>
                             </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" id="nav-print-calendar" href="#">
+                                    <i class="bi bi-printer"></i> Print Prayer Calendar
+                                </a>
+                            </li>
                         </ul>
                     </li>
                 </ul>
@@ -755,6 +761,80 @@
                 </div>
             </div>
             
+            <!-- Print Prayer Calendar View -->
+            <div id="print-calendar-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">Print Prayer Calendar</h1>
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h5 class="card-title mb-0">Print Options</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="print-options-form">
+                                    <div class="mb-3">
+                                        <label class="form-label">Date Range</label>
+                                        <select class="form-select" id="print-date-range">
+                                            <option value="current-month">Current Month</option>
+                                            <option value="custom">Custom Range</option>
+                                            <option value="all">All Prayer Cards</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div id="custom-date-range" class="d-none">
+                                        <div class="mb-3">
+                                            <label for="print-start-date" class="form-label">Start Date</label>
+                                            <input type="date" class="form-control" id="print-start-date">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="print-end-date" class="form-label">End Date</label>
+                                            <input type="date" class="form-control" id="print-end-date">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Print Layout</label>
+                                        <select class="form-select" id="print-layout">
+                                            <option value="2">2 cards per page</option>
+                                            <option value="3">3 cards per page</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-primary" id="preview-pdf-btn">
+                                            <i class="bi bi-eye me-1"></i> Preview
+                                        </button>
+                                        <button type="button" class="btn btn-success" id="generate-pdf-btn">
+                                            <i class="bi bi-printer me-1"></i> Generate PDF
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-8">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h5 class="card-title mb-0">Preview</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="print-preview-container" class="border p-3" style="min-height: 500px;">
+                                    <div class="text-center text-muted">
+                                        <p>Preview will appear here</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden print container that will be used for PDF generation -->
+                <div id="print-container" class="d-none">
+                    <!-- Print pages will be dynamically added here -->
+                </div>
+            </div>
+
             <!-- Test Email Sending View -->
             <div id="test-email-view" class="view-content d-none">
                 <h1 class="display-6 mb-4">Test Email Sending</h1>
@@ -1595,6 +1675,7 @@
         loadScript("js/password-change.js");
         loadScript("js/drawer-navigation.js");
 		loadScript("js/refresh.js");
+        loadScript("js/print-calendar.js");
         loadScript("js/app.js");
         
         // Load mobile debug panel only in development mode
