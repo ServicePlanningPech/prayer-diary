@@ -32,7 +32,7 @@ function initUrgentEditor() {
                     ['clean']
                 ]
             },
-            placeholder: 'Compose urgent prayer request...',
+
         });
         
         // Add editor change handler to update button states
@@ -64,20 +64,32 @@ function initUrgentEditor() {
     
     // Set up direct click handlers for buttons
     console.log('DEBUG: initUrgentEditor - Setting up button handlers');
-    const createUrgentBtn = document.getElementById('create-urgent-btn');
+    const saveAndSendUrgentBtn = document.getElementById('save-and-send-urgent-btn');
+    const saveOnlyUrgentBtn = document.getElementById('save-only-urgent-btn');
     const clearUrgentBtn = document.getElementById('clear-urgent-btn');
     const editUrgentBtn = document.getElementById('edit-urgent-btn');
     const deleteUrgentBtn = document.getElementById('delete-urgent-btn');
     
-    if (createUrgentBtn) {
-        console.log('DEBUG: initUrgentEditor - Found create-urgent-btn, adding click handler');
-        createUrgentBtn.addEventListener('click', function(e) {
-            console.log('DEBUG: createUrgentBtn click event triggered');
+    if (saveAndSendUrgentBtn) {
+        console.log('DEBUG: initUrgentEditor - Found save-and-send-urgent-btn, adding click handler');
+        saveAndSendUrgentBtn.addEventListener('click', function(e) {
+            console.log('DEBUG: saveAndSendUrgentBtn click event triggered');
             e.preventDefault();
-            createUrgentPrayer(this);
+            createUrgentPrayer('saveAndSend', this);
         });
     } else {
-        console.error('DEBUG: initUrgentEditor - Create urgent button not found in DOM');
+        console.error('DEBUG: initUrgentEditor - Save and send button not found in DOM');
+    }
+    
+    if (saveOnlyUrgentBtn) {
+        console.log('DEBUG: initUrgentEditor - Found save-only-urgent-btn, adding click handler');
+        saveOnlyUrgentBtn.addEventListener('click', function(e) {
+            console.log('DEBUG: saveOnlyUrgentBtn click event triggered');
+            e.preventDefault();
+            createUrgentPrayer('saveOnly', this);
+        });
+    } else {
+        console.error('DEBUG: initUrgentEditor - Save only button not found in DOM');
     }
     
     if (clearUrgentBtn) {
@@ -180,7 +192,8 @@ function clearUrgentEditor() {
 // Update button states based on current content and selection
 function updateUrgentButtonStates() {
     console.log('DEBUG: updateUrgentButtonStates - Updating button states');
-    const createUrgentBtn = document.getElementById('create-urgent-btn');
+    const saveAndSendUrgentBtn = document.getElementById('save-and-send-urgent-btn');
+    const saveOnlyUrgentBtn = document.getElementById('save-only-urgent-btn');
     const editUrgentBtn = document.getElementById('edit-urgent-btn');
     const deleteUrgentBtn = document.getElementById('delete-urgent-btn');
     
@@ -205,12 +218,19 @@ function updateUrgentButtonStates() {
         console.error('DEBUG: updateUrgentButtonStates - Title element not found');
     }
     
-    // Update Create button - enabled if both title and content exist
-    if (createUrgentBtn) {
-        createUrgentBtn.disabled = isEmpty || !titleContent;
-        console.log('DEBUG: updateUrgentButtonStates - createUrgentBtn disabled:', createUrgentBtn.disabled);
+    // Update Save buttons - enabled if both title and content exist
+    if (saveAndSendUrgentBtn) {
+        saveAndSendUrgentBtn.disabled = isEmpty || !titleContent;
+        console.log('DEBUG: updateUrgentButtonStates - saveAndSendUrgentBtn disabled:', saveAndSendUrgentBtn.disabled);
     } else {
-        console.log('DEBUG: updateUrgentButtonStates - createUrgentBtn not found');
+        console.log('DEBUG: updateUrgentButtonStates - saveAndSendUrgentBtn not found');
+    }
+    
+    if (saveOnlyUrgentBtn) {
+        saveOnlyUrgentBtn.disabled = isEmpty || !titleContent;
+        console.log('DEBUG: updateUrgentButtonStates - saveOnlyUrgentBtn disabled:', saveOnlyUrgentBtn.disabled);
+    } else {
+        console.log('DEBUG: updateUrgentButtonStates - saveOnlyUrgentBtn not found');
     }
     
     // Update Edit button - enabled if editor is empty and an urgent prayer is selected
@@ -504,8 +524,8 @@ function loadUrgentIntoEditor(prayer) {
 }
 
 // Create a new urgent prayer request or update an existing one
-async function createUrgentPrayer(submitBtn) {
-    console.log('DEBUG: createUrgentPrayer - Starting');
+async function createUrgentPrayer(action, submitBtn) {
+    console.log('DEBUG: createUrgentPrayer - Starting with action:', action);
     console.log('DEBUG: createUrgentPrayer - Current selectedUrgentId:', selectedUrgentId);
 	
     // Wait for auth stability before proceeding
@@ -540,12 +560,6 @@ async function createUrgentPrayer(submitBtn) {
             console.error('DEBUG: createUrgentPrayer - urgentEditor or root element is not available');
             throw new Error('Editor not properly initialized');
         }
-        
-        // Get notification settings
-        const sendEmail = document.getElementById('send-email').checked;
-        const sendSms = document.getElementById('send-sms').checked;
-        const sendWhatsapp = document.getElementById('send-whatsapp').checked;
-        const sendPush = document.getElementById('send-push').checked;
         
         // Validate inputs
         console.log('DEBUG: createUrgentPrayer - Validating inputs');
@@ -618,26 +632,21 @@ async function createUrgentPrayer(submitBtn) {
         console.log('DEBUG: createUrgentPrayer - Reloading urgent prayers list');
         loadUrgentAdmin();
         
-        // Send notifications if applicable
-        const notificationTypes = [];
-        if (sendEmail) notificationTypes.push('email');
-        if (sendSms) notificationTypes.push('sms');
-        if (sendWhatsapp) notificationTypes.push('whatsapp');
-        if (sendPush) notificationTypes.push('push');
-        
-        if (notificationTypes.length > 0 && !isEditing) {
-            // Only send notifications for new urgent prayers, not edits
-            console.log('DEBUG: createUrgentPrayer - Sending notifications:', notificationTypes);
+        // Send notifications if that button was clicked
+        if (action === 'saveAndSend' && !isEditing) {
+            // Only send notifications for new urgent prayers with saveAndSend action
+            console.log('DEBUG: createUrgentPrayer - Action is saveAndSend, attempting to send notifications');
             if (typeof sendNotification === 'function') {
-                await sendNotification('urgent_prayer', title, notificationTypes);
+                await sendNotification('urgent_prayer', title);
                 console.log('DEBUG: createUrgentPrayer - Notifications sent successfully');
-                showNotification('Success', `Urgent prayer request ${isEditing ? 'updated' : 'created'} and notifications sent.`);
+                showNotification('Success', `Urgent prayer request ${isEditing ? 'updated' : 'saved'} and sent successfully.`);
             } else {
                 console.error('DEBUG: createUrgentPrayer - sendNotification function not found');
-                showNotification('Warning', `Urgent prayer request ${isEditing ? 'updated' : 'created'} but notifications not sent - function not available.`);
+                showNotification('Warning', `Urgent prayer request ${isEditing ? 'updated' : 'saved'} but not sent - notification function not available.`);
             }
         } else {
-            showNotification('Success', `Urgent prayer request ${isEditing ? 'updated' : 'created'} successfully.`);
+            console.log('DEBUG: createUrgentPrayer - Action is not saveAndSend or is an edit, not sending notifications');
+            showNotification('Success', `Urgent prayer request ${isEditing ? 'updated' : 'saved'} successfully.`);
         }
         
     } catch (error) {
