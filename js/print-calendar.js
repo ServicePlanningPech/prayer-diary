@@ -94,9 +94,9 @@ async function generatePreview() {
             return;
         }
         
-        // Generate the preview HTML
+        // Generate the preview HTML - show all cards in preview
         const cardsPerPage = parseInt(document.getElementById('print-layout').value) || 2;
-        const previewHTML = generatePrintHTML([prayerCards[0]].concat(prayerCards.length > 1 ? [prayerCards[1]] : []), cardsPerPage);
+        const previewHTML = generatePrintHTML(prayerCards, cardsPerPage);
         
         // Base URL for resolving relative paths
         const baseURL = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
@@ -116,14 +116,20 @@ async function generatePreview() {
         const previewIframe = document.getElementById('preview-iframe');
         const iframeDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
         
+        // Get selected font family
+        const fontFamily = document.getElementById('print-font-family').value || 'Arial, sans-serif';
+        
         iframeDoc.open();
         iframeDoc.write(`
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Prayer Calendar Preview</title>
+                <title>Prayer Diary Preview</title>
                 <base href="${baseURL}">
                 <style>
+                    :root {
+                        --print-font-family: ${fontFamily};
+                    }
                     body {
                         margin: 0;
                         padding: 0;
@@ -165,8 +171,8 @@ async function generatePreview() {
                         display: flex;
                     }
                     .print-image-container {
-                        width: 25mm;
-                        height: 25mm;
+                        width: 35mm;
+                        height: auto;
                         margin-right: 5mm;
                         flex-shrink: 0;
                     }
@@ -235,7 +241,7 @@ async function generatePreview() {
 async function generatePDF() {
     try {
         // Show loading notification
-        const loadingToastId = showToast('Processing', 'Generating prayer calendar PDF...', 'processing');
+        const loadingToastId = showToast('Processing', 'Generating prayer diary PDF...', 'processing');
         
         // Get the prayer cards based on the selected options
         const prayerCards = await getPrayerCards();
@@ -267,27 +273,34 @@ async function generatePDF() {
         
         // Write the HTML to the iframe
         const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        
+        // Get selected font family
+        const fontFamily = document.getElementById('print-font-family').value || 'Arial, sans-serif';
+        
         iframeDoc.open();
         iframeDoc.write(`
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Prayer Calendar</title>
+                <title>Prayer Diary</title>
                 <base href="${baseURL}">
                 <style>
+                    :root {
+                        --print-font-family: ${fontFamily};
+                    }
                     @page {
                         size: A5;
-                        margin: 0;
+                        margin: 0mm;
                     }
                     body {
                         margin: 0;
                         padding: 0;
-                        font-family: Arial, sans-serif;
+                        font-family: var(--print-font-family, Arial, sans-serif);
                     }
                     .print-page {
                         width: 148mm;
                         height: 210mm;
-                        padding: 10mm;
+                        padding: 5mm;
                         margin: 0;
                         page-break-after: always;
                         position: relative;
@@ -325,10 +338,10 @@ async function generatePDF() {
                     }
                     .print-profile-image {
                         width: 100%;
-                        height: 100%;
+                        max-height: 40mm;
                         border-radius: 3mm;
                         border: 1px solid #eee;
-                        object-fit: cover;
+                        object-fit: contain;
                     }
                     .print-prayer-points {
                         flex: 1;
@@ -397,7 +410,7 @@ async function generatePDF() {
                         iframe.contentWindow.print();
                         
                         // Show success notification
-                        showToast('Success', 'Prayer calendar generated successfully.', 'success');
+                        showToast('Success', 'Prayer diary generated successfully.', 'success');
                         
                         // Remove the iframe after printing (or after a timeout if print is cancelled)
                         setTimeout(() => {
@@ -420,7 +433,7 @@ async function generatePDF() {
                 // Print the iframe
                 iframe.contentWindow.print();
                 // Show success notification
-                showToast('Success', 'Prayer calendar generated successfully.', 'success');
+                showToast('Success', 'Prayer diary generated successfully.', 'success');
             } catch (e) {
                 console.error('Error during fallback print operation:', e);
                 dismissToast(loadingToastId);
@@ -474,7 +487,8 @@ async function getPrayerCards() {
         const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
             .select('id, full_name, profile_image_url, prayer_points, pray_day')
-            .eq('approval_state', 'Approved');
+            .eq('approval_state', 'Approved')
+            .neq('full_name', 'Super Admin'); // Exclude Super Admin
             
         if (profilesError) {
             console.error("Error fetching profiles:", profilesError);
