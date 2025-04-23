@@ -23,6 +23,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Font family change event listener to update preview
+    const fontFamilySelect = document.getElementById('print-font-family');
+    if (fontFamilySelect) {
+        fontFamilySelect.addEventListener('change', function() {
+            generatePreview(); // Regenerate preview when font changes
+        });
+    }
+    
     // Preview button event listener
     const previewBtn = document.getElementById('preview-pdf-btn');
     if (previewBtn) {
@@ -126,120 +134,177 @@ async function generatePreview() {
             </div>
         `;
         
-        // Get the iframe and write content to it
-        const previewIframe = document.getElementById('preview-iframe');
-        const iframeDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
-        
         // Get selected font family
-        const fontFamily = document.getElementById('print-font-family').value || 'Arial, sans-serif';
+        const fontFamilySelect = document.getElementById('print-font-family');
+        const fontFamily = fontFamilySelect ? fontFamilySelect.value : 'Arial, sans-serif';
         console.log('Selected font family for preview:', fontFamily);
         
-        iframeDoc.open();
-        iframeDoc.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Prayer Diary Preview</title>
-                <base href="${baseURL}">
-                <style>
-                    :root {
-                        --print-font-family: ${fontFamily};
+        // Important: Small delay to ensure the iframe is fully in the DOM
+        setTimeout(() => {
+            try {
+                // Get the iframe and write content to it
+                const previewIframe = document.getElementById('preview-iframe');
+                if (!previewIframe) {
+                    console.error('Preview iframe not found');
+                    return;
+                }
+                
+                const iframeDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+                if (!iframeDoc) {
+                    console.error('Could not access iframe document');
+                    return;
+                }
+                
+                iframeDoc.open();
+                iframeDoc.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Prayer Diary Preview</title>
+                        <base href="${baseURL}">
+                        <style>
+                            html, body {
+                                margin: 0;
+                                padding: 0;
+                                font-family: ${fontFamily} !important;
+                                background-color: white;
+                            }
+                            * {
+                                font-family: ${fontFamily} !important;
+                            }
+                            .print-page {
+                                width: 148mm;
+                                height: 210mm;
+                                padding: 5mm;
+                                margin: 0 auto;
+                                border: 1px solid #ddd;
+                                background-color: white;
+                                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                                position: relative;
+                                font-family: ${fontFamily} !important;
+                            }
+                            .print-prayer-card {
+                                display: flex;
+                                flex-direction: column;
+                                margin-bottom: 5mm;
+                                padding: 3mm;
+                                border-radius: 2mm;
+                                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                                background-color: #fff;
+                                border: 1px solid #eee;
+                                font-family: ${fontFamily} !important;
+                            }
+                            .print-prayer-card:last-child {
+                                margin-bottom: 0;
+                            }
+                            .print-card-header {
+                                margin-bottom: 3mm;
+                                font-family: ${fontFamily} !important;
+                            }
+                            .print-name {
+                                font-size: 14pt;
+                                font-weight: bold;
+                                margin: 0;
+                                color: #483D8B;
+                                font-family: ${fontFamily} !important;
+                            }
+                            .print-card-body {
+                                display: flex;
+                                font-family: ${fontFamily} !important;
+                            }
+                            .print-image-container {
+                                width: 35mm;
+                                margin-right: 5mm;
+                                flex-shrink: 0;
+                            }
+                            .print-profile-image {
+                                width: 100%;
+                                min-height: 50mm;
+                                object-fit: contain;
+                                border-radius: 3mm;
+                                border: 1px solid #eee;
+                            }
+                            .print-prayer-points {
+                                flex: 1;
+                                font-size: 10pt;
+                                font-family: ${fontFamily} !important;
+                            }
+                            .print-prayer-points p {
+                                margin-bottom: 0.5rem;
+                                font-family: ${fontFamily} !important;
+                            }
+                            .print-footer {
+                                position: absolute;
+                                bottom: 5mm;
+                                left: 10mm;
+                                right: 10mm;
+                                text-align: center;
+                                font-size: 8pt;
+                                color: #999;
+                                font-family: ${fontFamily} !important;
+                            }
+                            .print-date {
+                                font-style: italic;
+                                color: #666;
+                                font-size: 9pt;
+                                margin-bottom: 1mm;
+                                font-family: ${fontFamily} !important;
+                            }
+                            h1, h2, h3, h4, h5, h6, p, span, div {
+                                font-family: ${fontFamily} !important;
+                            }
+                        </style>
+                        <script>
+                            // Fix image loading errors
+                            window.addEventListener('load', function() {
+                                console.log("Preview iframe loaded with font family: '${fontFamily}'");
+                                document.body.style.fontFamily = '${fontFamily}';
+                                
+                                // Apply font to all elements
+                                document.querySelectorAll('*').forEach(el => {
+                                    if (el.style) {
+                                        el.style.fontFamily = '${fontFamily}';
+                                    }
+                                });
+                                
+                                // Fix any broken images
+                                document.querySelectorAll('img').forEach(img => {
+                                    img.onerror = function() {
+                                        this.onerror = null;
+                                        this.src = 'img/placeholder-profile.png';
+                                    };
+                                });
+                            });
+                        </script>
+                    </head>
+                    <body style="font-family: ${fontFamily} !important;">
+                        ${previewHTML}
+                    </body>
+                    </html>
+                `);
+                iframeDoc.close();
+                
+                // Additional enforcement of font after iframe loads
+                previewIframe.onload = function() {
+                    try {
+                        const doc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+                        doc.body.style.fontFamily = fontFamily;
+                        
+                        // Force font family on all elements
+                        const allElements = doc.querySelectorAll('*');
+                        for (let i = 0; i < allElements.length; i++) {
+                            if (allElements[i].style) {
+                                allElements[i].style.fontFamily = fontFamily;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error setting font after iframe load:', e);
                     }
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        font-family: Arial, sans-serif;
-                        background-color: white;
-                    }
-                    .print-page {
-                        width: 148mm;
-                        height: 210mm;
-                        padding: 10mm;
-                        margin: 0 auto;
-                        border: 1px solid #ddd;
-                        background-color: white;
-                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                        position: relative;
-                    }
-                    .print-prayer-card {
-                        display: flex;
-                        flex-direction: column;
-                        margin-bottom: 5mm;
-                        padding: 3mm;
-                        border-radius: 2mm;
-                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                        background-color: #fff;
-                        border: 1px solid #eee;
-                    }
-                    .print-prayer-card:last-child {
-                        margin-bottom: 0;
-                    }
-                    .print-card-header {
-                        margin-bottom: 3mm;
-                    }
-                    .print-name {
-                        font-size: 14pt;
-                        font-weight: bold;
-                        margin: 0;
-                        color: #483D8B;
-                    }
-                    .print-card-body {
-                        display: flex;
-                    }
-                    .print-image-container {
-                        width: 35mm;
-                        min-height: 30mm;
-                        margin-right: 5mm;
-                        flex-shrink: 0;
-                    }
-                    .print-profile-image {
-                        width: 100%;
-                        min-height: 30mm;
-                        object-fit: contain;
-                        border-radius: 3mm;
-                        border: 1px solid #eee;
-                    }
-                    .print-prayer-points {
-                        flex: 1;
-                        font-size: 10pt;
-                    }
-                    .print-prayer-points p {
-                        margin-bottom: 0.5rem;
-                    }
-                    .print-footer {
-                        position: absolute;
-                        bottom: 5mm;
-                        left: 10mm;
-                        right: 10mm;
-                        text-align: center;
-                        font-size: 8pt;
-                        color: #999;
-                    }
-                    .print-date {
-                        font-style: italic;
-                        color: #666;
-                        font-size: 9pt;
-                        margin-bottom: 1mm;
-                    }
-                </style>
-                <script>
-                    // Fix image loading errors
-                    window.addEventListener('load', function() {
-                        document.querySelectorAll('img').forEach(img => {
-                            img.onerror = function() {
-                                this.onerror = null;
-                                this.src = 'img/placeholder-profile.png';
-                            };
-                        });
-                    });
-                </script>
-            </head>
-            <body>
-                ${previewHTML}
-            </body>
-            </html>
-        `);
-        iframeDoc.close();
+                };
+            } catch (err) {
+                console.error('Error writing to preview iframe:', err);
+            }
+        }, 100);
         
     } catch (error) {
         console.error('Error generating preview:', error);
@@ -255,6 +320,10 @@ async function generatePreview() {
 
 // Generate the PDF
 async function generatePDF() {
+    // Track if print dialog is open
+    window.isGeneratingPDF = true;
+    let printDialogOpened = false;
+    
     try {
         // Show loading notification
         const loadingToastId = showToast('Processing', 'Generating prayer diary PDF...', 'processing');
@@ -266,6 +335,7 @@ async function generatePDF() {
         if (!prayerCards || prayerCards.length === 0) {
             dismissToast(loadingToastId);
             showToast('Error', 'No prayer cards found for the selected date range.', 'error');
+            window.isGeneratingPDF = false;
             return;
         }
         
@@ -273,25 +343,63 @@ async function generatePDF() {
         const cardsPerPage = parseInt(document.getElementById('print-layout').value) || 2;
         const printHTML = generatePrintHTML(prayerCards, cardsPerPage);
         
-        // Create a hidden iframe to prevent conflicts with current page
+        // Get selected font family
+        const fontFamilySelect = document.getElementById('print-font-family');
+        const fontFamily = fontFamilySelect ? fontFamilySelect.value : 'Arial, sans-serif';
+        console.log('Selected font family for PDF:', fontFamily);
+        
+        // Create a hidden iframe with unique ID to avoid conflicts
+        const iframeId = 'print-frame-' + Date.now();
         const iframe = document.createElement('iframe');
+        iframe.id = iframeId;
         iframe.style.position = 'fixed';
         iframe.style.right = '0';
         iframe.style.bottom = '0';
         iframe.style.width = '0';
         iframe.style.height = '0';
         iframe.style.border = '0';
+        iframe.name = iframeId; // Unique name to avoid conflicts
         document.body.appendChild(iframe);
         
         // Base URL for resolving relative paths
         const baseURL = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-        console.log("Base URL for resources:", baseURL);
+        
+        // Create a message listener with a unique scope to avoid conflicts
+        const messageListener = function(event) {
+            if (event.data === 'printContentReady' && !printDialogOpened) {
+                printDialogOpened = true;
+                
+                // Remove the event listener to avoid duplicates
+                window.removeEventListener('message', messageListener);
+                
+                dismissToast(loadingToastId);
+                
+                // Print the iframe with a slight delay
+                setTimeout(() => {
+                    try {
+                        iframe.contentWindow.print();
+                        showToast('Success', 'Prayer diary generated successfully.', 'success');
+                    } catch (printError) {
+                        console.error('Error during print operation:', printError);
+                        showToast('Error', 'Failed to open print dialog. Please try again.', 'error');
+                    }
+                    
+                    // Remove the iframe after a delay
+                    setTimeout(() => {
+                        if (document.body.contains(iframe)) {
+                            document.body.removeChild(iframe);
+                        }
+                        window.isGeneratingPDF = false;
+                    }, 1000);
+                }, 300);
+            }
+        };
+        
+        // Add message listener
+        window.addEventListener('message', messageListener);
         
         // Write the HTML to the iframe
         const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        
-        // Get selected font family
-        const fontFamily = document.getElementById('print-font-family').value || 'Arial, sans-serif';
         
         iframeDoc.open();
         iframeDoc.write(`
@@ -301,70 +409,79 @@ async function generatePDF() {
                 <title>Prayer Diary</title>
                 <base href="${baseURL}">
                 <style>
-                    :root {
-                        --print-font-family: ${fontFamily};
-                    }
                     @page {
                         size: 148mm 210mm; /* A5 size in mm */
-                        margin: 0mm;
+                        margin: 0mm; /* Minimum margins */
                     }
-                    body {
+                    html, body {
                         margin: 0;
                         padding: 0;
-                        font-family: var(--print-font-family, Arial, sans-serif);
+                        font-family: ${fontFamily} !important;
+                        background-color: white;
+                    }
+                    * {
+                        font-family: ${fontFamily} !important;
                     }
                     .print-page {
                         width: 148mm;
                         height: 210mm;
-                        padding: 5mm;
+                        padding: 5mm; /* Reduced padding */
                         margin: 0;
                         page-break-after: always;
                         position: relative;
                         box-sizing: border-box;
+                        font-family: ${fontFamily} !important;
                     }
                     .print-prayer-card {
                         display: flex;
                         flex-direction: column;
                         margin-bottom: 5mm;
-                        padding-bottom: 5mm;
-                        border-bottom: 1px dashed #ccc;
+                        padding: 3mm;
+                        border-radius: 2mm;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                        background-color: #fff;
+                        border: 1px solid #eee;
+                        font-family: ${fontFamily} !important;
                     }
                     .print-prayer-card:last-child {
-                        border-bottom: none;
                         margin-bottom: 0;
                         padding-bottom: 0;
                     }
                     .print-card-header {
                         margin-bottom: 3mm;
+                        font-family: ${fontFamily} !important;
                     }
                     .print-name {
                         font-size: 14pt;
                         font-weight: bold;
                         margin: 0;
                         color: #483D8B;
+                        font-family: ${fontFamily} !important;
                     }
                     .print-card-body {
                         display: flex;
+                        font-family: ${fontFamily} !important;
                     }
                     .print-image-container {
-                        width: 25mm;
-                        height: 25mm;
+                        width: 35mm;
                         margin-right: 5mm;
                         flex-shrink: 0;
                     }
                     .print-profile-image {
                         width: 100%;
-                        max-height: 40mm;
+                        min-height: 50mm;
+                        object-fit: contain;
                         border-radius: 3mm;
                         border: 1px solid #eee;
-                        object-fit: contain;
                     }
                     .print-prayer-points {
                         flex: 1;
                         font-size: 10pt;
+                        font-family: ${fontFamily} !important;
                     }
                     .print-prayer-points p {
                         margin-bottom: 0.5rem;
+                        font-family: ${fontFamily} !important;
                     }
                     .print-footer {
                         position: absolute;
@@ -374,111 +491,136 @@ async function generatePDF() {
                         text-align: center;
                         font-size: 8pt;
                         color: #999;
+                        font-family: ${fontFamily} !important;
                     }
                     .print-date {
                         font-style: italic;
                         color: #666;
                         font-size: 9pt;
                         margin-bottom: 1mm;
+                        font-family: ${fontFamily} !important;
+                    }
+                    h1, h2, h3, h4, h5, h6, p, span, div {
+                        font-family: ${fontFamily} !important;
                     }
                 </style>
                 <script>
+                    // Flag to ensure print is only called once
+                    let printCalled = false;
+                    
                     // Helper function to fix image loading errors
                     function handleImageError(img) {
-                        console.log('Image failed to load:', img.src);
                         img.src = 'img/placeholder-profile.png';
                     }
                     
-                    // Log when content is loaded
+                    // Initialize when content is loaded
                     window.addEventListener('DOMContentLoaded', function() {
-                        console.log('Print content loaded successfully');
+                        console.log('Print content loaded with font family: ${fontFamily}');
+                        
+                        // Force font family on body and all elements
+                        document.body.style.fontFamily = '${fontFamily}';
+                        
+                        // Apply font to all elements
+                        document.querySelectorAll('*').forEach(el => {
+                            if (el.style) {
+                                el.style.fontFamily = '${fontFamily}';
+                            }
+                        });
                         
                         // Fix any broken images
                         document.querySelectorAll('.print-profile-image').forEach(img => {
                             img.onerror = function() { handleImageError(this); };
                         });
                         
-                        // Signal that content is ready
-                        if (window.parent) {
-                            window.parent.postMessage('printContentReady', '*');
+                        // Wait for images to load before printing
+                        const checkImages = () => {
+                            const images = document.querySelectorAll('img');
+                            const totalImages = images.length;
+                            let loadedImages = 0;
+                            
+                            // If no images, proceed to print
+                            if (totalImages === 0) {
+                                initiatePrint();
+                                return;
+                            }
+                            
+                            // Count loaded images
+                            images.forEach(img => {
+                                if (img.complete) {
+                                    loadedImages++;
+                                } else {
+                                    img.onload = function() {
+                                        loadedImages++;
+                                        if (loadedImages === totalImages) {
+                                            initiatePrint();
+                                        }
+                                    };
+                                    img.onerror = function() {
+                                        // Count failed images as loaded
+                                        loadedImages++;
+                                        if (loadedImages === totalImages) {
+                                            initiatePrint();
+                                        }
+                                    };
+                                }
+                            });
+                            
+                            // If all images already loaded
+                            if (loadedImages === totalImages) {
+                                initiatePrint();
+                            }
+                        };
+                        
+                        // Function to safely initiate print
+                        function initiatePrint() {
+                            if (!printCalled) {
+                                printCalled = true;
+                                setTimeout(() => {
+                                    window.parent.postMessage('printContentReady', '*');
+                                }, 300);
+                            }
                         }
+                        
+                        // Start checking images
+                        checkImages();
                     });
                 </script>
             </head>
-            <body>
+            <body style="font-family: ${fontFamily} !important;">
                 ${printHTML}
             </body>
             </html>
         `);
         iframeDoc.close();
         
-        // Message handler for when content is ready
-        // Use a flag to track if print has been initiated
-        let printInitiated = false;
-        
-        window.addEventListener('message', function printHandler(event) {
-            if (event.data === 'printContentReady' && !printInitiated) {
-                // Remove the message handler to avoid duplicates
-                window.removeEventListener('message', printHandler);
+        // Set a timeout in case the message event doesn't fire
+        setTimeout(() => {
+            if (!printDialogOpened) {
+                window.removeEventListener('message', messageListener);
+                dismissToast(loadingToastId);
                 
-                // Set flag to prevent duplicate printing
-                printInitiated = true;
+                try {
+                    iframe.contentWindow.print();
+                    showToast('Success', 'Prayer diary generated successfully.', 'success');
+                } catch (e) {
+                    console.error('Error during fallback print operation:', e);
+                    showToast('Error', 'Failed to open print dialog. Please try again.', 'error');
+                }
                 
-                // Wait a bit more to ensure images are loaded
+                // Remove the iframe
                 setTimeout(() => {
-                    try {
-                        dismissToast(loadingToastId);
-                        // Print the iframe
-                        iframe.contentWindow.print();
-                        
-                        // Show success notification
-                        showToast('Success', 'Prayer diary generated successfully.', 'success');
-                        
-                        // Remove the iframe after printing (or after a timeout if print is cancelled)
-                        setTimeout(() => {
-                            document.body.removeChild(iframe);
-                        }, 1000);
-                    } catch (printError) {
-                        console.error('Error during print operation:', printError);
-                        dismissToast(loadingToastId);
-                        showToast('Error', 'Failed to open print dialog. Please try again.', 'error');
+                    if (document.body.contains(iframe)) {
                         document.body.removeChild(iframe);
                     }
-                }, 500);
+                    window.isGeneratingPDF = false;
+                }, 1000);
             }
-        });
-        
-        // Also set a timeout in case the message event doesn't fire, but don't show duplicate toast
-        // Use a flag to track if print has been initiated
-        let printTimeoutControl = false;
-        
-        setTimeout(() => {
-            if (printTimeoutControl) return; // Skip if already handled by message event
-            
-            try {
-                printTimeoutControl = true;
-                dismissToast(loadingToastId);
-                // Print the iframe
-                iframe.contentWindow.print();
-                // Show success notification
-                showToast('Success', 'Prayer diary generated successfully.', 'success');
-            } catch (e) {
-                console.error('Error during fallback print operation:', e);
-                dismissToast(loadingToastId);
-                showToast('Error', 'Failed to open print dialog. Please try again.', 'error');
-            }
-            
-            // Remove the iframe after a delay
-            setTimeout(() => {
-                if (document.body.contains(iframe)) {
-                    document.body.removeChild(iframe);
-                }
-            }, 1000);
-        }, 3000); // Fallback timeout after 3 seconds
+        }, 3000);
         
     } catch (error) {
         console.error('Error generating PDF:', error);
         showToast('Error', `Error generating PDF: ${error.message}`, 'error');
+        window.isGeneratingPDF = false;
     }
 }
 
@@ -667,7 +809,7 @@ function generatePrintHTML(prayerCards, cardsPerPage) {
                                          onerror="this.onerror=null; this.src='img/placeholder-profile.png';">
                                 </div>
                                 <div class="print-prayer-points">
-                                    ${formattedPrayerPoints}
+                                    ${formattedPrayerPoints || '<p>No prayer points provided.</p>'}
                                 </div>
                             </div>
                         </div>
