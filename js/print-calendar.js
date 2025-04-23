@@ -86,7 +86,9 @@ async function generatePreview() {
         if (!prayerCards || prayerCards.length === 0) {
             previewContainer.innerHTML = `
                 <div class="alert alert-info">
-                    No prayer cards found for the selected date range.
+                    <h5>No prayer cards found</h5>
+                    <p>No prayer cards found for the selected date range.</p>
+                    <p>Try selecting a different date range or check that users have been assigned to days in the Prayer Calendar management.</p>
                 </div>
             `;
             return;
@@ -94,80 +96,49 @@ async function generatePreview() {
         
         // Generate the preview HTML
         const cardsPerPage = parseInt(document.getElementById('print-layout').value) || 2;
-        const previewHTML = generatePrintHTML(prayerCards, cardsPerPage);
+        const previewHTML = generatePrintHTML([prayerCards[0]].concat(prayerCards.length > 1 ? [prayerCards[1]] : []), cardsPerPage);
         
-        // Update the preview container with a scaled-down version of the first page
+        // Base URL for resolving relative paths
+        const baseURL = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+        
+        // Create the preview with only the first page
         previewContainer.innerHTML = `
             <div class="alert alert-info mb-3">
-                <strong>Preview:</strong> Showing first page of ${Math.ceil(prayerCards.length / cardsPerPage)} pages (${prayerCards.length} prayer cards)
+                <strong>Preview:</strong> Showing sample with ${Math.min(prayerCards.length, cardsPerPage)} of ${prayerCards.length} prayer cards. 
+                The complete calendar will have ${Math.ceil(prayerCards.length / cardsPerPage)} pages.
             </div>
-            <div class="d-flex justify-content-center">
-                <div style="transform: scale(0.7); transform-origin: top left; border: 1px solid #ddd;">
-                    ${previewHTML.split('</div><!-- End of print page -->')[0]}</div><!-- End of print page -->
-                </div>
-            </div>
-        `;
-    } catch (error) {
-        previewContainer.innerHTML = `
-            <div class="alert alert-danger">
-                Error generating preview: ${error.message}
+            <div class="border p-3" style="background-color: #f8f9fa;">
+                <iframe id="preview-iframe" style="width: 100%; height: 500px; border: 1px solid #ddd; transform: scale(0.8); transform-origin: top center;" frameborder="0"></iframe>
             </div>
         `;
-        console.error('Error generating preview:', error);
-    }
-}
-
-// Generate the PDF
-async function generatePDF() {
-    try {
-        // Get the prayer cards based on the selected options
-        const prayerCards = await getPrayerCards();
         
-        // If no prayer cards found
-        if (!prayerCards || prayerCards.length === 0) {
-            showNotification('Error', 'No prayer cards found for the selected date range.', 'error');
-            return;
-        }
+        // Get the iframe and write content to it
+        const previewIframe = document.getElementById('preview-iframe');
+        const iframeDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
         
-        // Generate the full HTML for all pages
-        const cardsPerPage = parseInt(document.getElementById('print-layout').value) || 2;
-        const printHTML = generatePrintHTML(prayerCards, cardsPerPage);
-        
-        // Create a hidden iframe to prevent conflicts with current page
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        document.body.appendChild(iframe);
-        
-        // Write the HTML to the iframe
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
         iframeDoc.open();
         iframeDoc.write(`
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Prayer Calendar</title>
+                <title>Prayer Calendar Preview</title>
+                <base href="${baseURL}">
                 <style>
-                    @page {
-                        size: A5 portrait;
-                        margin: 0;
-                    }
                     body {
                         margin: 0;
                         padding: 0;
                         font-family: Arial, sans-serif;
+                        background-color: white;
                     }
                     .print-page {
                         width: 148mm;
                         height: 210mm;
                         padding: 10mm;
-                        margin: 0;
+                        margin: 0 auto;
+                        border: 1px solid #ddd;
+                        background-color: white;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                         position: relative;
-                        page-break-after: always;
                     }
                     .print-prayer-card {
                         display: flex;
@@ -195,10 +166,14 @@ async function generatePDF() {
                     }
                     .print-image-container {
                         width: 25mm;
+                        height: 25mm;
                         margin-right: 5mm;
+                        flex-shrink: 0;
                     }
                     .print-profile-image {
                         width: 100%;
+                        height: 100%;
+                        object-fit: cover;
                         border-radius: 3mm;
                         border: 1px solid #eee;
                     }
@@ -225,6 +200,181 @@ async function generatePDF() {
                         margin-bottom: 1mm;
                     }
                 </style>
+                <script>
+                    // Fix image loading errors
+                    window.addEventListener('load', function() {
+                        document.querySelectorAll('img').forEach(img => {
+                            img.onerror = function() {
+                                this.onerror = null;
+                                this.src = 'img/placeholder-profile.png';
+                            };
+                        });
+                    });
+                </script>
+            </head>
+            <body>
+                ${previewHTML}
+            </body>
+            </html>
+        `);
+        iframeDoc.close();
+        
+    } catch (error) {
+        console.error('Error generating preview:', error);
+        previewContainer.innerHTML = `
+            <div class="alert alert-danger">
+                <h5>Error generating preview</h5>
+                <p>${error.message || 'Unknown error'}</p>
+                <p>Check the console for more details.</p>
+            </div>
+        `;
+    }
+}
+
+// Generate the PDF
+async function generatePDF() {
+    try {
+        // Show loading notification
+        const loadingToastId = showToast('Processing', 'Generating prayer calendar PDF...', 'processing');
+        
+        // Get the prayer cards based on the selected options
+        const prayerCards = await getPrayerCards();
+        
+        // If no prayer cards found
+        if (!prayerCards || prayerCards.length === 0) {
+            dismissToast(loadingToastId);
+            showToast('Error', 'No prayer cards found for the selected date range.', 'error');
+            return;
+        }
+        
+        // Generate the full HTML for all pages
+        const cardsPerPage = parseInt(document.getElementById('print-layout').value) || 2;
+        const printHTML = generatePrintHTML(prayerCards, cardsPerPage);
+        
+        // Create a hidden iframe to prevent conflicts with current page
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+        
+        // Base URL for resolving relative paths
+        const baseURL = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+        console.log("Base URL for resources:", baseURL);
+        
+        // Write the HTML to the iframe
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Prayer Calendar</title>
+                <base href="${baseURL}">
+                <style>
+                    @page {
+                        size: A5;
+                        margin: 0;
+                    }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        font-family: Arial, sans-serif;
+                    }
+                    .print-page {
+                        width: 148mm;
+                        height: 210mm;
+                        padding: 10mm;
+                        margin: 0;
+                        page-break-after: always;
+                        position: relative;
+                        box-sizing: border-box;
+                    }
+                    .print-prayer-card {
+                        display: flex;
+                        flex-direction: column;
+                        margin-bottom: 5mm;
+                        padding-bottom: 5mm;
+                        border-bottom: 1px dashed #ccc;
+                    }
+                    .print-prayer-card:last-child {
+                        border-bottom: none;
+                        margin-bottom: 0;
+                        padding-bottom: 0;
+                    }
+                    .print-card-header {
+                        margin-bottom: 3mm;
+                    }
+                    .print-name {
+                        font-size: 14pt;
+                        font-weight: bold;
+                        margin: 0;
+                        color: #483D8B;
+                    }
+                    .print-card-body {
+                        display: flex;
+                    }
+                    .print-image-container {
+                        width: 25mm;
+                        height: 25mm;
+                        margin-right: 5mm;
+                        flex-shrink: 0;
+                    }
+                    .print-profile-image {
+                        width: 100%;
+                        height: 100%;
+                        border-radius: 3mm;
+                        border: 1px solid #eee;
+                        object-fit: cover;
+                    }
+                    .print-prayer-points {
+                        flex: 1;
+                        font-size: 10pt;
+                    }
+                    .print-prayer-points p {
+                        margin-bottom: 0.5rem;
+                    }
+                    .print-footer {
+                        position: absolute;
+                        bottom: 5mm;
+                        left: 10mm;
+                        right: 10mm;
+                        text-align: center;
+                        font-size: 8pt;
+                        color: #999;
+                    }
+                    .print-date {
+                        font-style: italic;
+                        color: #666;
+                        font-size: 9pt;
+                        margin-bottom: 1mm;
+                    }
+                </style>
+                <script>
+                    // Helper function to fix image loading errors
+                    function handleImageError(img) {
+                        console.log('Image failed to load:', img.src);
+                        img.src = 'img/placeholder-profile.png';
+                    }
+                    
+                    // Log when content is loaded
+                    window.addEventListener('DOMContentLoaded', function() {
+                        console.log('Print content loaded successfully');
+                        
+                        // Fix any broken images
+                        document.querySelectorAll('.print-profile-image').forEach(img => {
+                            img.onerror = function() { handleImageError(this); };
+                        });
+                        
+                        // Signal that content is ready
+                        if (window.parent) {
+                            window.parent.postMessage('printContentReady', '*');
+                        }
+                    });
+                </script>
             </head>
             <body>
                 ${printHTML}
@@ -233,20 +383,61 @@ async function generatePDF() {
         `);
         iframeDoc.close();
         
-        // Wait for images to load
+        // Message handler for when content is ready
+        window.addEventListener('message', function printHandler(event) {
+            if (event.data === 'printContentReady') {
+                // Remove the message handler to avoid duplicates
+                window.removeEventListener('message', printHandler);
+                
+                // Wait a bit more to ensure images are loaded
+                setTimeout(() => {
+                    try {
+                        dismissToast(loadingToastId);
+                        // Print the iframe
+                        iframe.contentWindow.print();
+                        
+                        // Show success notification
+                        showToast('Success', 'Prayer calendar generated successfully.', 'success');
+                        
+                        // Remove the iframe after printing (or after a timeout if print is cancelled)
+                        setTimeout(() => {
+                            document.body.removeChild(iframe);
+                        }, 1000);
+                    } catch (printError) {
+                        console.error('Error during print operation:', printError);
+                        dismissToast(loadingToastId);
+                        showToast('Error', 'Failed to open print dialog. Please try again.', 'error');
+                        document.body.removeChild(iframe);
+                    }
+                }, 500);
+            }
+        });
+        
+        // Also set a timeout in case the message event doesn't fire
         setTimeout(() => {
-            // Print the iframe
-            iframe.contentWindow.print();
+            try {
+                dismissToast(loadingToastId);
+                // Print the iframe
+                iframe.contentWindow.print();
+                // Show success notification
+                showToast('Success', 'Prayer calendar generated successfully.', 'success');
+            } catch (e) {
+                console.error('Error during fallback print operation:', e);
+                dismissToast(loadingToastId);
+                showToast('Error', 'Failed to open print dialog. Please try again.', 'error');
+            }
             
-            // Remove the iframe after printing (or after a timeout if print is cancelled)
+            // Remove the iframe after a delay
             setTimeout(() => {
-                document.body.removeChild(iframe);
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                }
             }, 1000);
-        }, 500);
+        }, 3000); // Fallback timeout after 3 seconds
         
     } catch (error) {
-        showNotification('Error', `Error generating PDF: ${error.message}`, 'error');
         console.error('Error generating PDF:', error);
+        showToast('Error', `Error generating PDF: ${error.message}`, 'error');
     }
 }
 
@@ -275,62 +466,59 @@ async function getPrayerCards() {
     }
     
     try {
-        // Get all profile data
+        console.log("Fetching prayer cards for date range:", 
+            startDate ? startDate.toISOString() : "All", 
+            endDate ? endDate.toISOString() : "All");
+        
+        // Get all approved profiles regardless of day assignment
         const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, full_name, profile_image_url, prayer_points, pray_day')
             .eq('approval_state', 'Approved');
             
-        if (profilesError) throw profilesError;
+        if (profilesError) {
+            console.error("Error fetching profiles:", profilesError);
+            throw profilesError;
+        }
         
-        // Get prayer calendar assignments if date range is specified
+        console.log(`Fetched ${profiles.length} profiles`);
+        
+        // Filter profiles based on date range if specified
         let prayerCards = [];
         
-        if (startDate && endDate) {
-            // Format dates for database query
-            const formattedStartDate = startDate.toISOString().split('T')[0];
-            const formattedEndDate = endDate.toISOString().split('T')[0];
-            
-            // Get calendar assignments for the date range
-            const { data: assignments, error: assignmentsError } = await supabase
-                .from('calendar_assignments')
-                .select('*')
-                .gte('day', 1)
-                .lte('day', 31);
-                
-            if (assignmentsError) throw assignmentsError;
-            
-            // Map assignments to profiles
-            if (assignments && assignments.length > 0) {
-                // Process each assignment
-                for (const assignment of assignments) {
-                    // Only include user assignments
-                    if (assignment.type === 'user' && assignment.user_id) {
-                        // Find the user profile
-                        const profile = profiles.find(p => p.id === assignment.user_id);
-                        if (profile) {
-                            prayerCards.push({
-                                id: profile.id,
-                                name: profile.full_name,
-                                prayerPoints: profile.prayer_points || 'No prayer points provided.',
-                                profileImage: profile.profile_image,
-                                day: assignment.day
-                            });
-                        }
-                    }
-                }
-            }
-        } else {
-            // No date filtering, include all profiles
+        if (dateRange === 'all') {
+            // Include all profiles with prayer points
             prayerCards = profiles.map(profile => ({
                 id: profile.id,
                 name: profile.full_name,
                 prayerPoints: profile.prayer_points || 'No prayer points provided.',
-                profileImage: profile.profile_image,
-                day: null
+                profileImage: profile.profile_image_url,
+                day: profile.pray_day || null
             }));
+        } else {
+            // Filter profiles by day
+            // For date range, we want profiles where pray_day falls within the range
+            const startDay = startDate ? startDate.getDate() : 1;
+            const endDay = endDate ? endDate.getDate() : 31;
+            
+            console.log(`Filtering for days ${startDay} to ${endDay}`);
+            
+            // Get profiles with pray_day in the range
+            prayerCards = profiles
+                .filter(profile => {
+                    const day = profile.pray_day || 0;
+                    return day >= startDay && day <= endDay;
+                })
+                .map(profile => ({
+                    id: profile.id,
+                    name: profile.full_name,
+                    prayerPoints: profile.prayer_points || 'No prayer points provided.',
+                    profileImage: profile.profile_image_url,
+                    day: profile.pray_day
+                }));
         }
         
+        console.log(`Found ${prayerCards.length} prayer cards after filtering`);
         return prayerCards;
     } catch (error) {
         console.error('Error fetching prayer cards:', error);
@@ -376,15 +564,20 @@ function generatePrintHTML(prayerCards, cardsPerPage) {
             // Default image if none provided
             const imageUrl = card.profileImage || 'img/placeholder-profile.png';
             
-            // Format prayer points as paragraphs
+            // Format prayer points - handle different data structures
             let formattedPrayerPoints = '';
             if (card.prayerPoints) {
-                // Split by newlines and create paragraphs
-                formattedPrayerPoints = card.prayerPoints
-                    .split('\n')
-                    .filter(line => line.trim())
-                    .map(line => `<p>${line}</p>`)
-                    .join('');
+                // If content is already HTML, keep it as is
+                if (card.prayerPoints.includes('<')) {
+                    formattedPrayerPoints = card.prayerPoints;
+                } else {
+                    // Otherwise format as paragraphs
+                    formattedPrayerPoints = card.prayerPoints
+                        .split('\n')
+                        .filter(line => line.trim())
+                        .map(line => `<p>${line}</p>`)
+                        .join('');
+                }
             } else {
                 formattedPrayerPoints = '<p>No prayer points provided.</p>';
             }
@@ -404,7 +597,8 @@ function generatePrintHTML(prayerCards, cardsPerPage) {
                     </div>
                     <div class="print-card-body">
                         <div class="print-image-container">
-                            <img src="${imageUrl}" class="print-profile-image" alt="${card.name}">
+                            <img src="${imageUrl}" class="print-profile-image" alt="${card.name}" 
+                                 onerror="this.onerror=null; this.src='img/placeholder-profile.png';">
                         </div>
                         <div class="print-prayer-points">
                             ${formattedPrayerPoints}
