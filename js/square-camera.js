@@ -4,6 +4,7 @@
 // Variables to manage camera state
 let cameraStream = null;
 let videoElement = null;
+let currentFacingMode = "user"; // Start with front camera by default
 
 // Function to initialize the camera module
 function initSquareCamera() {
@@ -35,11 +36,18 @@ function createCameraModal() {
             </div>
             <canvas id="camera-canvas" class="d-none" width="300" height="300"></canvas>
           </div>
-          <div class="modal-footer justify-content-between">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="capture-photo-btn">
-              <i class="bi bi-camera me-1"></i> Capture
-            </button>
+          <div class="modal-footer">
+            <div>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+            <div>
+              <button type="button" class="btn btn-outline-secondary me-2" id="switch-camera-btn">
+                <i class="bi bi-arrow-repeat me-1"></i> Switch Camera
+              </button>
+              <button type="button" class="btn btn-primary" id="capture-photo-btn">
+                <i class="bi bi-camera me-1"></i> Capture
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -119,13 +127,15 @@ function openCameraModal() {
     // Get elements
     videoElement = document.getElementById('camera-video');
     const captureBtn = document.getElementById('capture-photo-btn');
+    const switchCameraBtn = document.getElementById('switch-camera-btn');
     
     // Setup camera when modal opens
     modal.show();
     startCamera();
     
-    // Add event listener for the capture button
+    // Add event listeners
     captureBtn.addEventListener('click', capturePhoto);
+    switchCameraBtn.addEventListener('click', switchCamera);
     
     // Clean up when modal is closed
     document.getElementById('square-camera-modal').addEventListener('hidden.bs.modal', () => {
@@ -136,10 +146,13 @@ function openCameraModal() {
 // Start the camera
 async function startCamera() {
     try {
+        // Stop any existing stream first
+        stopCamera();
+        
         // Request permission to use camera
         const constraints = {
             video: { 
-                facingMode: { ideal: "user" },  // Use front camera by default for profile pics
+                facingMode: { exact: currentFacingMode },  // Use the current camera setting
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
             },
@@ -154,6 +167,31 @@ async function startCamera() {
         }
     } catch (err) {
         console.error("Camera error:", err);
+        
+        // If we get an error with 'exact' constraint, try with 'ideal' which is more forgiving
+        if (err.name === 'OverconstrainedError') {
+            try {
+                const fallbackConstraints = {
+                    video: { 
+                        facingMode: { ideal: currentFacingMode },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                cameraStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                
+                if (videoElement) {
+                    videoElement.srcObject = cameraStream;
+                }
+                
+                return; // Success with fallback
+            } catch (fallbackErr) {
+                console.error("Fallback camera error:", fallbackErr);
+            }
+        }
+        
         showNotification('Error', 'Could not access camera. Please check permissions or try uploading a photo instead.', 'error');
     }
 }
@@ -236,6 +274,18 @@ function capturePhoto() {
             fileInput.dispatchEvent(changeEvent);
         }
     }, 'image/jpeg', 0.9); // 90% quality JPEG
+}
+
+// Switch between front and rear cameras
+function switchCamera() {
+    // Toggle the facing mode
+    currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+    
+    // Show a toast to indicate the change
+    showToast('Camera', 'Switching to ' + (currentFacingMode === "user" ? 'front' : 'rear') + ' camera...', 'info');
+    
+    // Restart the camera with the new facing mode
+    startCamera();
 }
 
 // Initialize camera when the document is loaded
