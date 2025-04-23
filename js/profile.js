@@ -134,8 +134,6 @@ async function loadUserProfile() {
     }
 }
 
-// Add this to profile.js
-
 // Helper function to set up the profile image button and file input
 function setupProfileImageHandlers() {
     const selectButton = document.getElementById('select-profile-image');
@@ -166,6 +164,11 @@ function setupProfileImageHandlers() {
                 fileInput.click();
             });
         }
+    }
+    
+    // Initialize the square camera module
+    if (typeof initSquareCamera === 'function') {
+        initSquareCamera();
     }
 }
 
