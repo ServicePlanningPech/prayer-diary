@@ -51,7 +51,7 @@ async function sendEmailNotifications(type, title) {
             .select(`
                 id,
                 full_name,
-                auth:id (email)
+                email
             `)
             .eq('approval_state', 'Approved')
             .eq(notificationField, 'email');
@@ -64,7 +64,7 @@ async function sendEmailNotifications(type, title) {
         // For each user, send an email notification
         // In a real implementation, we would use a service like SendGrid, AWS SES, etc.
         for (const user of users) {
-            const email = user.auth ? user.auth.email : null;
+            const email = user.email;
             
             if (email) {
                 // Log notification
