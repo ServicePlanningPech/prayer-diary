@@ -305,27 +305,29 @@ function cropImageToSquare(file) {
     // Load the image to get its dimensions
     const img = new Image();
     img.onload = function() {
-        // Create a canvas element for cropping
+        // Create a canvas element for cropping - EXACT SAME SIZE as camera (300x300)
         const canvas = document.createElement('canvas');
-        canvas.width = 300;  // Same size as the square camera photos
-        canvas.height = 300;
+        canvas.width = 300;  // Match camera canvas size exactly
+        canvas.height = 300; // Match camera canvas size exactly
         
         // Get the dimensions for cropping
         const size = Math.min(img.width, img.height);
         const offsetX = (img.width - size) / 2;
         const offsetY = (img.height - size) / 2;
         
-        // Draw the cropped image to the canvas
+        // Draw the cropped image to the canvas with high quality settings
         const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(
             img,
             offsetX, offsetY,     // Start position of the crop in the original image
             size, size,           // Size of the square to crop
             0, 0,                 // Place at 0,0 on canvas
-            300, 300              // Size on canvas (300x300 square)
+            300, 300              // Size on canvas (300x300 square) - match camera output
         );
         
-        // Convert the canvas to a blob
+        // Convert the canvas to a blob with same quality setting as camera (0.9)
         canvas.toBlob(function(blob) {
             // Create new object URLs from the blob
             const croppedUrl = URL.createObjectURL(blob);
@@ -356,7 +358,7 @@ function cropImageToSquare(file) {
             previewImage.onload = function() {
                 setTimeout(() => URL.revokeObjectURL(croppedUrl), 3000);
             };
-        }, 'image/jpeg', 0.9);
+        }, 'image/jpeg', 0.9); // Exactly match camera quality setting (0.9)
     };
     
     img.onerror = function() {
