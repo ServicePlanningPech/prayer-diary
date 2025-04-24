@@ -1,9 +1,9 @@
 // cypress/e2e/enhanced_bulk_registration.cy.js
 
-describe('Enhanced Bulk User Registration', () => {
+describe('Enhanced Bulk User Registration', { retries: 0 }, () => {
   // Configuration - modify these settings as needed
   const config = {
-    userCount: 1,                     // Number of users to create
+    userCount: 200,                     // Number of users to create
     namePrefix: 'Church Member',       // Prefix for user names
     baseEmail: 'AlanReeves@proton.me', // Base email (without the +nnn part)
     startNumber: 1,                    // Starting number for email sequence
@@ -61,13 +61,16 @@ describe('Enhanced Bulk User Registration', () => {
       
       // Visit the app and ensure we're starting from a clean state
       cy.visit('https://serviceplanningpech.github.io/prayer-diary');
+      cy.wait(3000);
       
       // Make sure we're logged out by checking for login button
-      cy.get('#btn-login', { timeout: 5000 }).should('be.visible');
+      //cy.get('#btn-login', { timeout: 5000 }).should('be.visible');
+      cy.get('#auth-modal').should('be.visible');
+      cy.get('#auth-switch').click();
       
       // Click the signup button
-      cy.get('#btn-signup').click();
-	   cy.wait(3000);
+      //cy.get('#btn-signup').click();
+	    //cy.wait(3000);
       
       // Fill in the registration form
       cy.get('#signup-name').type(user.name);

@@ -73,8 +73,7 @@ async function loadUsers() {
             .from('profiles')
             .select('*')
             .not('full_name', 'eq', 'Super Admin') // Exclude Super Admin from the list
-            .order('full_name', { ascending: true })
-            .limit(100); // Removed the second order and headers call that was causing the error
+            .order('full_name', { ascending: true }); // Removed the limit to show all users
         
         if (profilesError) {
             console.error('Error fetching profiles:', profilesError);
