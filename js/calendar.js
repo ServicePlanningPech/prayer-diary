@@ -309,7 +309,7 @@ function createPrayerCard(entry) {
         <div class="card h-100 shadow prayer-card" data-entry-id="${entry.id}" data-entry-type="${entry.type || 'member'}">
             ${typeBadge}
             <div class="card-body">
-                <div style="width: 120px; float: left; margin-right: 15px; margin-bottom: 10px;">
+                <div style="width: 120px; float: left; margin-right: 15px; margin-bottom: 0;">
                     <img src="${imgSrc}" class="img-fluid rounded prayer-profile-img" alt="${entry.name}">
                 </div>
                 <h5 class="card-title prayer-card-title mb-2">${entry.name}</h5>

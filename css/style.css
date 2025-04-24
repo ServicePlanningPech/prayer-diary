@@ -126,16 +126,23 @@ body {
     box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.2) !important;
 }
 
+/* Text wrapping around image */
 .prayer-card-title {
     font-size: 1.25rem;
     font-weight: 600;
     color: var(--primary-color);
     margin-bottom: 0.75rem;
+    overflow: hidden; /* Prevent text from wrapping under the floated image */
+}
+
+.prayer-points-preview {
+    overflow: hidden; /* This creates a new block formatting context */
 }
 
 .prayer-card .card-footer {
     background-color: rgba(0,0,0,0.02);
     border-top: 1px solid rgba(0,0,0,0.08);
+    clear: both; /* Clear the float */
 }
 
 /* Prayer title container styling */
@@ -703,8 +710,10 @@ body {
         font-size: 1.1rem;
     }
     
-    .prayer-card-img-container {
+    /* Adjust floated image for smaller screens */
+    .prayer-card .card-body [style*="float: left"] {
         width: 90px !important;
+        margin-bottom: 5px;
     }
     
     .prayer-card-title {
