@@ -777,13 +777,13 @@ body {
 
 /* Add these styles to the end of your style.css file */
 
-/* Style for selected update in the list */
-.update-list-item, .previous-update-item {
+/* Style for selected update and urgent prayer items in the list */
+.update-list-item, .previous-update-item, .urgent-list-item {
     transition: background-color 0.2s ease;
     cursor: pointer;
 }
 
-.update-list-item.selected, .previous-update-item.selected {
+.update-list-item.selected, .previous-update-item.selected, .urgent-list-item.selected {
     background-color: #f0f4ff; /* Light blue background for selected item */
     border-left: 3px solid #483D8B; /* Left border in primary color */
 }
