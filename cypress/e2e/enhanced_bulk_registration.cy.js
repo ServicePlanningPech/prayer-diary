@@ -3,13 +3,13 @@
 describe('Enhanced Bulk User Registration', () => {
   // Configuration - modify these settings as needed
   const config = {
-    userCount: 5,                     // Number of users to create
+    userCount: 1,                     // Number of users to create
     namePrefix: 'Church Member',       // Prefix for user names
     baseEmail: 'AlanReeves@proton.me', // Base email (without the +nnn part)
     startNumber: 1,                    // Starting number for email sequence
     passwordTemplate: 'Prayer2024!',   // Password template
     timeoutBetweenRegistrations: 1000, // Delay between registrations (ms)
-    maxRetries: 2,                     // Number of retries if registration fails
+    maxRetries: 0,                     // Number of retries if registration fails
     continueOnError: true,             // Continue to next user if one fails
     
     // Optional - CSV file path (relative to fixtures folder)
@@ -49,8 +49,8 @@ describe('Enhanced Bulk User Registration', () => {
   it('prepares for bulk registration', () => {
     cy.log('Starting bulk registration process');
     cy.log(`Will attempt to register ${userList.length} users`);
-    cy.visit('/');
-    cy.contains('Prayer Diary').should('be.visible');
+    cy.visit('https://serviceplanningpech.github.io/prayer-diary');
+    cy.contains('PECH Prayer').should('be.visible');
   });
   
   // Create a test for each user to register
@@ -60,7 +60,7 @@ describe('Enhanced Bulk User Registration', () => {
       cy.log(`Attempting to register ${user.name} (${user.email})`);
       
       // Visit the app and ensure we're starting from a clean state
-      cy.visit('/');
+      cy.visit('https://serviceplanningpech.github.io/prayer-diary');
       
       // Make sure we're logged out by checking for login button
       cy.get('#btn-login', { timeout: 5000 }).should('be.visible');

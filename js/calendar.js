@@ -69,12 +69,13 @@ async function loadPrayerCalendar() {
             }
         }, 100);
         
-        // Get users with pray_day > 0 who should be shown this month
+        // Get users with pray_day > 0 who should be shown this month, filtering out calendar_hide=true
         const { data: userData, error: userError } = await supabase
             .from('profiles')
             .select(`
                 id,
                 full_name,
+                photo_tag,
                 profile_image_url,
                 prayer_points,
                 pray_day,
@@ -82,8 +83,9 @@ async function loadPrayerCalendar() {
             `)
             .eq('approval_state', 'Approved')
             .eq('pray_day', currentDay) // Only get entries for the current day
+            .eq('calendar_hide', false)  // Only include members who aren't hidden
             .or(`pray_months.eq.0,pray_months.eq.${isOddMonth ? 1 : 2}`)
-            .order('full_name', { ascending: true });
+            .order('full_name', { ascending: true});
             
         if (userError) throw userError;
         
@@ -101,7 +103,7 @@ async function loadPrayerCalendar() {
         const membersToDisplay = userData.map(user => ({
             id: user.id,
             day_of_month: user.pray_day,
-            name: user.full_name,
+            name: user.photo_tag || user.full_name,  // Use photo_tag if available, otherwise use full_name
             image_url: user.profile_image_url,
             prayer_points: user.prayer_points,
             is_user: true,
@@ -450,8 +452,9 @@ async function loadAllUsers() {
     try {
         const { data, error } = await supabase
             .from('profiles')
-            .select('id, full_name, profile_image_url, prayer_points, pray_day, pray_months, approval_state')
+            .select('id, full_name, photo_tag, profile_image_url, prayer_points, pray_day, pray_months, approval_state, calendar_hide')
             .eq('approval_state', 'Approved')
+            .eq('calendar_hide', false) // Only include members who aren't hidden from calendar
             .not('full_name', 'eq', 'Super Admin') // Exclude Super Admin from the list
             .order('pray_day', { ascending: true })
             .order('full_name', { ascending: true });

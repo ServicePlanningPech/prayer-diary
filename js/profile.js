@@ -19,6 +19,9 @@ async function loadUserProfile() {
     
     profileLoadInProgress = true;
     
+    // Initialize visibility handlers for calendar hide option
+    setupCalendarHideHandlers();
+    
     try {
         // Refresh user profile from database
         await fetchUserProfile();
@@ -52,6 +55,21 @@ async function loadUserProfile() {
         
         // Force the field to update (sometimes needed for read-only fields)
         nameField.defaultValue = userName;
+        
+        // Set photo tag field - use existing value or default to full name
+        const photoTagField = document.getElementById('profile-photo-tag');
+        if (photoTagField) {
+            photoTagField.value = userProfile.photo_tag || userName;
+        }
+        
+        // Set calendar hide checkbox
+        const calendarHideCheckbox = document.getElementById('profile-calendar-hide');
+        if (calendarHideCheckbox) {
+            calendarHideCheckbox.checked = userProfile.calendar_hide || false;
+            // Update visibility of prayer points and preview based on checkbox
+            updateCalendarHideVisibility();
+        }
+        
         document.getElementById('profile-prayer-points').value = userProfile.prayer_points || '';
         document.getElementById('profile-phone').value = userProfile.phone_number || '';
         document.getElementById('profile-whatsapp').value = userProfile.whatsapp_number || '';
@@ -620,16 +638,47 @@ function updateAllProfileImages(imageUrl) {
     });
 }
 
+// Setup handlers for calendar hide option
+function setupCalendarHideHandlers() {
+    const calendarHideCheckbox = document.getElementById('profile-calendar-hide');
+    if (calendarHideCheckbox) {
+        // Remove existing listeners
+        const newCheckbox = calendarHideCheckbox.cloneNode(true);
+        calendarHideCheckbox.parentNode.replaceChild(newCheckbox, calendarHideCheckbox);
+        
+        // Add event listener for checkbox changes
+        newCheckbox.addEventListener('change', updateCalendarHideVisibility);
+    }
+}
+
+// Update visibility based on calendar hide option
+function updateCalendarHideVisibility() {
+    const calendarHideCheckbox = document.getElementById('profile-calendar-hide');
+    const prayerPointsSection = document.getElementById('profile-prayer-points').closest('.mb-3');
+    const previewCardSection = document.getElementById('preview-name').closest('.card');
+    
+    if (calendarHideCheckbox && calendarHideCheckbox.checked) {
+        // Hide prayer points and preview if checkbox is checked
+        if (prayerPointsSection) prayerPointsSection.classList.add('d-none');
+        if (previewCardSection) previewCardSection.classList.add('d-none');
+    } else {
+        // Show prayer points and preview if checkbox is not checked
+        if (prayerPointsSection) prayerPointsSection.classList.remove('d-none');
+        if (previewCardSection) previewCardSection.classList.remove('d-none');
+    }
+}
+
 // Update the profile preview card
 function updateProfilePreview() {
     const nameInput = document.getElementById('profile-name');
+    const photoTagInput = document.getElementById('profile-photo-tag');
     const prayerPointsInput = document.getElementById('profile-prayer-points');
     
     const previewName = document.getElementById('preview-name');
     const previewPrayerPoints = document.getElementById('preview-prayer-points');
     
-    // Update preview values
-    previewName.textContent = nameInput.value || 'Your Name';
+    // Update preview values - use photo tag if available, otherwise use name
+    previewName.textContent = (photoTagInput && photoTagInput.value) ? photoTagInput.value : (nameInput.value || 'Your Name');
     
     if (prayerPointsInput.value) {
         previewPrayerPoints.innerHTML = `<p>${prayerPointsInput.value.replace(/\n/g, '</p><p>')}</p>`;
@@ -721,6 +770,8 @@ async function saveProfile(e) {
     try {
         // Get name from profile as it's now read-only
         const fullName = userProfile.full_name || currentUser.user_metadata?.full_name || currentUser.email || '';
+        const photoTag = document.getElementById('profile-photo-tag').value.trim();
+        const calendarHide = document.getElementById('profile-calendar-hide').checked;
         const prayerPoints = document.getElementById('profile-prayer-points').value.trim();
         const phoneNumber = document.getElementById('profile-phone').value.trim();
         const whatsappNumber = document.getElementById('profile-whatsapp').value.trim();
@@ -761,6 +812,8 @@ async function saveProfile(e) {
         // Prepare profile data object
         const profileData = {
             fullName,
+            photoTag,
+            calendarHide,
             prayerPoints,
             phoneNumber,
             whatsappNumber,
@@ -825,6 +878,8 @@ async function updateProfileViaEdgeFunction(data) {
         // Prepare profile data for the Edge Function
         const profileDataForUpdate = {
             full_name: data.fullName,
+            photo_tag: data.photoTag,
+            calendar_hide: data.calendarHide,
             prayer_points: data.prayerPoints,
             profile_image_url: oldImageUrl, // Will be updated by Edge Function if a new image is provided
             phone_number: data.phoneNumber,
