@@ -143,6 +143,15 @@ async function loadUserProfile() {
         // Set up profile image handler (we now use the same handler for all devices)
         setupProfileImageHandlers();
         
+        // Add change handler for photoTag to update preview immediately
+        const photoTagField = document.getElementById('profile-photo-tag');
+        if (photoTagField) {
+            photoTagField.addEventListener('input', function() {
+                console.log('Photo tag changed, updating preview');
+                updateProfilePreview();
+            });
+        }
+        
     } catch (error) {
         console.error('Error loading profile:', error);
         showNotification('Error', `Unable to load your profile: ${error.message}`);
@@ -655,7 +664,8 @@ function setupCalendarHideHandlers() {
 function updateCalendarHideVisibility() {
     const calendarHideCheckbox = document.getElementById('profile-calendar-hide');
     const prayerPointsSection = document.getElementById('profile-prayer-points').closest('.mb-3');
-    const previewCardSection = document.getElementById('preview-name').closest('.card');
+    // Find the card with the title "Your Prayer Card"
+    const previewCardSection = document.querySelector('.col-md-8 .card.shadow');
     
     if (calendarHideCheckbox && calendarHideCheckbox.checked) {
         // Hide prayer points and preview if checkbox is checked

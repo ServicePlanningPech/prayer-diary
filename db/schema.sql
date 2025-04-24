@@ -18,6 +18,8 @@ CREATE TABLE profiles (
   whatsapp_number TEXT,
   profile_set BOOLEAN NOT NULL DEFAULT FALSE,
   gdpr_accepted BOOLEAN NOT NULL DEFAULT FALSE,
+  photo_tag TEXT,
+  calendar_hide BOOLEAN NOT NULL DEFAULT FALSE,
   CONSTRAINT user_role_check CHECK (user_role IN ('Administrator', 'User')),
   CONSTRAINT approval_state_check CHECK (approval_state IN ('Pending', 'Approved', 'Rejected'))
 );
