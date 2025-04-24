@@ -143,14 +143,8 @@ async function loadUserProfile() {
         // Set up profile image handler (we now use the same handler for all devices)
         setupProfileImageHandlers();
         
-        // Add change handler for photoTag to update preview immediately
-        const photoTagField = document.getElementById('profile-photo-tag');
-        if (photoTagField) {
-            photoTagField.addEventListener('input', function() {
-                console.log('Photo tag changed, updating preview');
-                updateProfilePreview();
-            });
-        }
+        // Add change handler for photo tag to update preview
+        document.getElementById('profile-photo-tag').addEventListener('input', updateProfilePreview);
         
     } catch (error) {
         console.error('Error loading profile:', error);
