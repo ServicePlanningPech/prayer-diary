@@ -279,7 +279,7 @@ function createPrayerCard(entry) {
         : '';
     
     // Format prayer points: preserve HTML formatting for topics
-    let prayerPointsDisplay = 'No prayer points available.';
+    let prayerPointsDisplay = '';
     
     if (entry.prayer_points) {
         if (entry.type === 'topic') {
@@ -303,21 +303,20 @@ function createPrayerCard(entry) {
         }
     }
     
-    // New layout with photo on left, name and prayer points on right
+    // New layout with photo on left with text wrapping around it
     return `
     <div class="col">
         <div class="card h-100 shadow prayer-card" data-entry-id="${entry.id}" data-entry-type="${entry.type || 'member'}">
             ${typeBadge}
-            <div class="card-body d-flex">
-                <div class="prayer-card-img-container me-3" style="width: 120px; flex-shrink: 0;">
-                    <img src="${imgSrc}" class="img-fluid rounded prayer-profile-img" alt="${entry.name}" style="width: 100%; height: auto;">
+            <div class="card-body">
+                <div style="width: 120px; float: left; margin-right: 15px; margin-bottom: 10px;">
+                    <img src="${imgSrc}" class="img-fluid rounded prayer-profile-img" alt="${entry.name}">
                 </div>
-                <div class="prayer-card-content">
-                    <h5 class="card-title prayer-card-title mb-2">${entry.name}</h5>
-                    <div class="card-text prayer-points-preview">
-                        ${entry.type === 'topic' ? prayerPointsDisplay : `<p>${prayerPointsDisplay}</p>`}
-                    </div>
+                <h5 class="card-title prayer-card-title mb-2">${entry.name}</h5>
+                <div class="card-text prayer-points-preview">
+                    ${entry.type === 'topic' ? prayerPointsDisplay : (prayerPointsDisplay ? `<p>${prayerPointsDisplay}</p>` : '')}
                 </div>
+                <div style="clear: both;"></div>
             </div>
         </div>
     </div>

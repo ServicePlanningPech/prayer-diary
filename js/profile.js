@@ -687,7 +687,7 @@ function updateProfilePreview() {
     if (prayerPointsInput.value) {
         previewPrayerPoints.innerHTML = `<p>${prayerPointsInput.value.replace(/\n/g, '</p><p>')}</p>`;
     } else {
-        previewPrayerPoints.innerHTML = '<p>Your prayer points will appear here.</p>';
+        previewPrayerPoints.innerHTML = '';
     }
 }
 
