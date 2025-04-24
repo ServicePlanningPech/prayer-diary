@@ -149,14 +149,23 @@ function setupProfileImageHandlers() {
         const newSelectButton = selectButton.cloneNode(true);
         selectButton.parentNode.replaceChild(newSelectButton, selectButton);
         
-        // Check if this is an Android device
+        // Update button text from "Change Picture" to "Choose File"
+        newSelectButton.innerHTML = '<i class="bi bi-file-earmark-image me-1"></i> Choose File';
+        
+        // Check device type
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isAndroid = /Android/.test(navigator.userAgent);
         
         if (isAndroid) {
-            // For Android, show options when the button is clicked
-            newSelectButton.addEventListener('click', function(e) {
-                e.preventDefault(); // Prevent default button behavior
-                showPhotoOptions();
+            // For Android, go straight to gallery
+            newSelectButton.addEventListener('click', function() {
+                // For Android, bypass the modal and go straight to gallery
+                triggerGallerySelection();
+            });
+        } else if (isIOS) {
+            // For iOS, we need to handle differently to avoid showing camera option
+            newSelectButton.addEventListener('click', function() {
+                handleIOSFileSelection();
             });
         } else {
             // For other devices, use standard behavior
@@ -169,7 +178,40 @@ function setupProfileImageHandlers() {
     // Initialize the square camera module
     if (typeof initSquareCamera === 'function') {
         initSquareCamera();
+        
+        // Fix the layout of profile image buttons
+        fixProfileButtonsLayout();
     }
+}
+
+// Function to adjust the profile buttons layout to be side by side
+function fixProfileButtonsLayout() {
+    // Get the container of the buttons
+    const buttonContainer = document.getElementById('select-profile-image').parentNode;
+    
+    // Add a class to make it a flex container
+    buttonContainer.classList.add('d-flex', 'flex-wrap', 'gap-2');
+}
+
+// Handle iOS file selection to prevent camera option
+function handleIOSFileSelection() {
+    const fileInput = document.getElementById('profile-image');
+    
+    // Clone the file input to remove any existing attributes
+    const newFileInput = fileInput.cloneNode(false);
+    
+    // Explicitly set accept to only image files
+    // iOS will not show camera option if we use these more specific MIME types
+    newFileInput.setAttribute('accept', 'image/jpeg,image/png,image/gif');
+    
+    // Re-add the change event listener
+    newFileInput.addEventListener('change', handleProfileImageChange);
+    
+    // Replace the original file input
+    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+    
+    // Click the file input to open the gallery
+    newFileInput.click();
 }
 
 // Function to show photo options modal for Android

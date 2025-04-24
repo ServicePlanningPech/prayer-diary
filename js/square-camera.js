@@ -5,6 +5,7 @@
 let cameraStream = null;
 let videoElement = null;
 let currentFacingMode = "user"; // Start with front camera by default
+let timerCountdown = null; // For timer countdown
 
 // Function to initialize the camera module
 function initSquareCamera() {
@@ -37,16 +38,19 @@ function createCameraModal() {
             <canvas id="camera-canvas" class="d-none" width="330" height="300"></canvas>
           </div>
           <div class="modal-footer">
-            <div>
+            <div class="w-100 d-flex justify-content-between">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            </div>
-            <div>
-              <button type="button" class="btn btn-outline-secondary me-2" id="switch-camera-btn">
-                <i class="bi bi-arrow-repeat me-1"></i> Switch Camera
-              </button>
-              <button type="button" class="btn btn-primary" id="capture-photo-btn">
-                <i class="bi bi-camera me-1"></i> Capture
-              </button>
+              <div class="d-flex">
+                <button type="button" class="btn btn-outline-light me-2" id="timer-photo-btn" title="Timer (10 seconds)">
+                  <i class="bi bi-stopwatch"></i>
+                </button>
+                <button type="button" class="btn btn-outline-light me-2" id="switch-camera-btn" title="Switch Camera">
+                  <i class="bi bi-arrow-left-right"></i>
+                </button>
+                <button type="button" class="btn btn-secondary" id="capture-photo-btn">
+                  Capture
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -93,6 +97,25 @@ function createCameraModal() {
         max-width: calc(100% - 1rem);
       }
     }
+    
+    /* Timer display styling */
+    #timer-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0,0,0,0.5);
+      color: white;
+      font-size: 5rem;
+      font-weight: bold;
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
     `;
     document.head.appendChild(style);
 }
@@ -136,10 +159,13 @@ function openCameraModal() {
     // Add event listeners
     captureBtn.addEventListener('click', capturePhoto);
     switchCameraBtn.addEventListener('click', switchCamera);
+    const timerBtn = document.getElementById('timer-photo-btn');
+    timerBtn.addEventListener('click', startTimerCapture);
     
     // Clean up when modal is closed
     document.getElementById('square-camera-modal').addEventListener('hidden.bs.modal', () => {
         stopCamera();
+        cleanupTimer();
     });
 }
 
@@ -286,6 +312,52 @@ function switchCamera() {
     
     // Restart the camera with the new facing mode
     startCamera();
+}
+
+// Start timer for delayed photo capture
+function startTimerCapture() {
+    // Prevent multiple timers
+    if (timerCountdown !== null) {
+        clearInterval(timerCountdown);
+        timerCountdown = null;
+        document.getElementById('timer-display')?.remove();
+        return;
+    }
+    
+    // Create timer display if it doesn't exist
+    let timerDisplay = document.createElement('div');
+    timerDisplay.id = 'timer-display';
+    
+    // Add to container
+    const container = document.getElementById('camera-container');
+    container.appendChild(timerDisplay);
+    
+    // Set countdown
+    let count = 10;
+    timerDisplay.textContent = count;
+    
+    // Update countdown every second
+    timerCountdown = setInterval(() => {
+        count--;
+        timerDisplay.textContent = count;
+        
+        if (count <= 0) {
+            // Time's up - take photo
+            clearInterval(timerCountdown);
+            timerCountdown = null;
+            timerDisplay.remove();
+            capturePhoto();
+        }
+    }, 1000);
+}
+
+// Clean up timer if modal is closed during countdown
+function cleanupTimer() {
+    if (timerCountdown !== null) {
+        clearInterval(timerCountdown);
+        timerCountdown = null;
+        document.getElementById('timer-display')?.remove();
+    }
 }
 
 // Initialize camera when the document is loaded

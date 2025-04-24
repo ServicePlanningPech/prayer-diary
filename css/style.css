@@ -919,3 +919,59 @@ body {
         margin: 0;
     }
 }
+/* Add these styles to the end of your style.css file */
+
+/* Make profile image buttons the same width */
+#select-profile-image,
+#take-profile-photo {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+/* Style for the camera icon buttons */
+#switch-camera-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+#timer-photo-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+/* Make capture button same size as cancel button */
+#capture-photo-btn {
+    min-width: 80px;
+}
+
+/* Make the profile image buttons container flexible */
+.profile-image-buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* On small screens, make buttons stack */
+@media (max-width: 420px) {
+    #select-profile-image,
+    #take-profile-photo {
+        flex: 100%;
+        margin-left: 0 !important;
+        margin-top: 0.5rem;
+    }
+    
+    .profile-image-buttons-container {
+        flex-direction: column;
+    }
+}
