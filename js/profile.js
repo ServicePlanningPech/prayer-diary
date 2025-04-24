@@ -896,6 +896,7 @@ async function updateProfileViaEdgeFunction(data) {
         console.log('📱 Applying universal page refresh after profile update');
         
         // Show a notification about the refresh
+		/*
         setTimeout(() => {
             showNotification('Refreshing', 'Updating app to apply changes...', 'info');
             
@@ -914,6 +915,7 @@ async function updateProfileViaEdgeFunction(data) {
                 window.location.reload();
             }, 1500);
         }, 1000);
+		*/
         
     } catch (error) {
         console.error('❌ Error in updateProfileViaEdgeFunction:', error);
