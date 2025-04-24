@@ -39,7 +39,7 @@ function createCameraModal() {
           </div>
           <div class="modal-footer">
             <div class="w-100 d-flex justify-content-between">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
               <div class="d-flex">
                 <button type="button" class="btn btn-outline-light me-2" id="timer-photo-btn" title="Timer (10 seconds)">
                   <i class="bi bi-stopwatch"></i>
@@ -47,7 +47,7 @@ function createCameraModal() {
                 <button type="button" class="btn btn-outline-light me-2" id="switch-camera-btn" title="Switch Camera">
                   <i class="bi bi-arrow-left-right"></i>
                 </button>
-                <button type="button" class="btn btn-secondary" id="capture-photo-btn">
+                <button type="button" class="btn btn-primary" id="capture-photo-btn">
                   Capture
                 </button>
               </div>
@@ -308,7 +308,7 @@ function switchCamera() {
     currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
     
     // Show a toast to indicate the change
-    showToast('Camera', 'Switching to ' + (currentFacingMode === "user" ? 'front' : 'rear') + ' camera...', 'info');
+    //showToast('Camera', 'Switching to ' + (currentFacingMode === "user" ? 'front' : 'rear') + ' camera...', 'info');
     
     // Restart the camera with the new facing mode
     startCamera();
