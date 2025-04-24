@@ -247,7 +247,7 @@ function setupDatePickerHandlers() {
             loadPrayerCalendar();
             
             // Show confirmation toast
-            showToast('Date Changed', `Showing prayers for ${formatDate(window.selectedPrayerDate)}`, 'info', 3000);
+            //showToast('Date Changed', `Showing prayers for ${formatDate(window.selectedPrayerDate)}`, 'info', 3000);
         }
     });
     
@@ -263,7 +263,7 @@ function setupDatePickerHandlers() {
         loadPrayerCalendar();
         
         // Show confirmation toast
-        showToast('Date Reset', 'Showing prayers for today', 'success', 3000);
+       // showToast('Date Reset', 'Showing prayers for today', 'success', 3000);
     });
 }
 
