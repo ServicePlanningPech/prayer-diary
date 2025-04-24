@@ -35,8 +35,8 @@ function createCameraModal() {
               <video id="camera-video" autoplay playsinline class="w-100"></video>
               <div class="viewfinder position-absolute"></div>
             </div>
-            <!-- Keep original canvas size of 330x300 as required -->
-            <canvas id="camera-canvas" class="d-none" width="330" height="300"></canvas>
+            <!-- Keep original canvas size of 300x300 as required -->
+            <canvas id="camera-canvas" class="d-none" width="300" height="300"></canvas>
           </div>
           <div class="modal-footer">
             <div class="w-100 d-flex justify-content-between">
@@ -70,7 +70,7 @@ function createCameraModal() {
       width: 100%;
       overflow: hidden;
       background-color: #000;
-      aspect-ratio: 330/300; /* Maintain the original aspect ratio */
+      aspect-ratio: 300/300; /* Maintain the original aspect ratio */
     }
     
     #camera-video {
@@ -83,7 +83,7 @@ function createCameraModal() {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 88%; /* Adjusted for 330:300 aspect ratio (330/300 * 80% = 88%) */
+      width: 80%; /* Adjusted for 300:300 aspect ratio (300/300 * 80% = 80%) */
       height: 80%;
       transform: translate(-50%, -50%);
       border: 2px solid rgba(255, 255, 255, 0.8);
@@ -177,7 +177,7 @@ async function startCamera() {
         stopCamera();
         
         // Request permission to use camera
-        // IMPROVED: Request higher resolution video but will still output to 330x300 canvas
+        // IMPROVED: Request higher resolution video but will still output to 300x300 canvas
         const constraints = {
             video: { 
                 facingMode: { exact: currentFacingMode },
@@ -304,7 +304,7 @@ function capturePhoto() {
     ctx.drawImage(
         tempCanvas,
         0, 0, size, size,          // Source: full temp canvas
-        0, 0, canvas.width, canvas.height  // Destination: final 330x300 canvas
+        0, 0, canvas.width, canvas.height  // Destination: final 300x300 canvas
     );
     
     // Convert to blob with max quality
