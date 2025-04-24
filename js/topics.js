@@ -62,6 +62,9 @@ function initTopics() {
     createTopicsCalendarGrid();
 }
 
+// Variable to track the selected day for topics
+let selectedTopicDay = null;
+
 // Create calendar days grid for the Topics tab
 function createTopicsCalendarGrid() {
     const container = document.querySelector('#other-content .calendar-days-grid');
@@ -75,6 +78,11 @@ function createTopicsCalendarGrid() {
         dayElement.textContent = day;
         dayElement.dataset.day = day;
         
+        // If this day is the currently selected day, add the selected class
+        if (day === selectedTopicDay) {
+            dayElement.classList.add('selected');
+        }
+        
         dayElement.addEventListener('click', () => {
             // Remove selected class from all days
             document.querySelectorAll('#other-content .calendar-day').forEach(el => {
@@ -83,6 +91,7 @@ function createTopicsCalendarGrid() {
             
             // Add selected class to clicked day
             dayElement.classList.add('selected');
+            selectedTopicDay = day;
             document.getElementById('topics-selected-day').textContent = day;
         });
         
@@ -590,6 +599,9 @@ async function assignTopicToDay(topicId) {
 	 await window.waitForAuthStability();
     
     try {
+        // Store the selected day so it stays highlighted
+        selectedTopicDay = selectedDay;
+        
         // Directly update the database using Supabase
         const { data, error } = await supabase
             .from('prayer_topics')
@@ -606,6 +618,14 @@ async function assignTopicToDay(topicId) {
         
         // Refresh display
         filterAndDisplayTopics();
+        
+        // Ensure the day remains selected visually
+        document.querySelectorAll('#other-content .calendar-day').forEach(el => {
+            el.classList.remove('selected');
+            if (parseInt(el.dataset.day) === selectedDay) {
+                el.classList.add('selected');
+            }
+        });
         
         showNotification('Success', 'Topic assigned to day ' + selectedDay, 'success');
         

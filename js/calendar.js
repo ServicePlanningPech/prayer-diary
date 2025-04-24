@@ -389,6 +389,12 @@ async function createCalendarDaysGrid() {
     for (let day = 1; day <= 31; day++) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
+        
+        // If this day is the currently selected day, add the selected class
+        if (day === selectedDay) {
+            dayElement.classList.add('selected');
+        }
+        
         dayElement.dataset.day = day;
         
         // Create a span for the day number
