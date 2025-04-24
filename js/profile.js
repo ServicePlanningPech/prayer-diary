@@ -134,7 +134,6 @@ async function loadUserProfile() {
     }
 }
 
-// Helper function to set up the profile image button and file input
 function setupProfileImageHandlers() {
     const selectButton = document.getElementById('select-profile-image');
     const fileInput = document.getElementById('profile-image');
@@ -151,6 +150,9 @@ function setupProfileImageHandlers() {
         
         // Update button text from "Change Picture" to "Choose File"
         newSelectButton.innerHTML = '<i class="bi bi-file-earmark-image me-1"></i> Choose File';
+        
+        // Make the button smaller
+        newSelectButton.classList.add('btn-sm');
         
         // Check device type
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -184,13 +186,28 @@ function setupProfileImageHandlers() {
     }
 }
 
-// Function to adjust the profile buttons layout to be side by side
+// Function to fix the profile buttons layout
 function fixProfileButtonsLayout() {
-    // Get the container of the buttons
-    const buttonContainer = document.getElementById('select-profile-image').parentNode;
+    // Get the container of the buttons (parent of the select button)
+    const selectButton = document.getElementById('select-profile-image');
+    if (!selectButton) return;
     
-    // Add a class to make it a flex container
-    buttonContainer.classList.add('d-flex', 'flex-wrap', 'gap-2');
+    const buttonContainer = selectButton.parentNode;
+    
+    // Add a class to make it a proper container with styling
+    buttonContainer.classList.add('profile-image-buttons-container');
+    
+    // Make sure the buttons have the right classes for size
+    const takePhotoBtn = document.getElementById('take-profile-photo');
+    if (takePhotoBtn) {
+        // Ensure consistent styling between buttons
+        takePhotoBtn.classList.remove('ms-2'); // Remove margin spacing
+        takePhotoBtn.classList.add('btn-sm'); // Add small button class
+    }
+    
+    if (selectButton) {
+        selectButton.classList.add('btn-sm'); // Make it small too
+    }
 }
 
 // Handle iOS file selection to prevent camera option
