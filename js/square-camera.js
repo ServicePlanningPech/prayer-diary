@@ -65,7 +65,7 @@ function createCameraModal() {
       width: 100%;
       overflow: hidden;
       background-color: #000;
-      aspect-ratio: 1;
+      aspect-ratio: 330/300;
     }
     
     #camera-video {
