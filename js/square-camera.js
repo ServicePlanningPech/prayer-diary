@@ -35,11 +35,12 @@ function createCameraModal() {
               <video id="camera-video" autoplay playsinline class="w-100"></video>
               <div class="viewfinder position-absolute"></div>
             </div>
+            <!-- Keep original canvas size of 330x300 as required -->
             <canvas id="camera-canvas" class="d-none" width="330" height="300"></canvas>
           </div>
           <div class="modal-footer">
             <div class="w-100 d-flex justify-content-between">
-              <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
               <div class="d-flex">
                 <button type="button" class="btn btn-outline-light me-2" id="timer-photo-btn" title="Timer (10 seconds)">
                   <i class="bi bi-stopwatch"></i>
@@ -47,7 +48,7 @@ function createCameraModal() {
                 <button type="button" class="btn btn-outline-light me-2" id="switch-camera-btn" title="Switch Camera">
                   <i class="bi bi-arrow-left-right"></i>
                 </button>
-                <button type="button" class="btn btn-primary" id="capture-photo-btn">
+                <button type="button" class="btn btn-secondary" id="capture-photo-btn">
                   Capture
                 </button>
               </div>
@@ -69,7 +70,7 @@ function createCameraModal() {
       width: 100%;
       overflow: hidden;
       background-color: #000;
-      aspect-ratio: 330/300;
+      aspect-ratio: 330/300; /* Maintain the original aspect ratio */
     }
     
     #camera-video {
@@ -176,11 +177,19 @@ async function startCamera() {
         stopCamera();
         
         // Request permission to use camera
+        // IMPROVED: Request higher resolution video but will still output to 330x300 canvas
         const constraints = {
             video: { 
-                facingMode: { exact: currentFacingMode },  // Use the current camera setting
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+                facingMode: { exact: currentFacingMode },
+                width: { ideal: 1920 },   // Increased from 1280 to 1920
+                height: { ideal: 1080 },  // Increased from 720 to 1080
+                frameRate: { ideal: 30 }, // Added frame rate for smoother preview
+                // Add these constraints for Android devices to get higher quality
+                advanced: [
+                    { zoom: 1 }, // Start with no zoom
+                    { exposureMode: "auto" },
+                    { focusMode: "continuous" } // For sharper images
+                ]
             },
             audio: false
         };
@@ -190,6 +199,13 @@ async function startCamera() {
         // Connect camera to video element
         if (videoElement) {
             videoElement.srcObject = cameraStream;
+            
+            // IMPROVED: Wait for video to be ready before allowing capture
+            videoElement.onloadedmetadata = () => {
+                console.log(`Camera resolution: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
+                // Enable capture button after video is loaded
+                document.getElementById('capture-photo-btn').disabled = false;
+            };
         }
     } catch (err) {
         console.error("Camera error:", err);
@@ -200,7 +216,7 @@ async function startCamera() {
                 const fallbackConstraints = {
                     video: { 
                         facingMode: { ideal: currentFacingMode },
-                        width: { ideal: 1280 },
+                        width: { ideal: 1280 },  // Fallback to slightly lower resolution
                         height: { ideal: 720 }
                     },
                     audio: false
@@ -210,6 +226,10 @@ async function startCamera() {
                 
                 if (videoElement) {
                     videoElement.srcObject = cameraStream;
+                    videoElement.onloadedmetadata = () => {
+                        console.log(`Fallback camera resolution: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
+                        document.getElementById('capture-photo-btn').disabled = false;
+                    };
                 }
                 
                 return; // Success with fallback
@@ -244,6 +264,10 @@ function capturePhoto() {
     const canvas = document.getElementById('camera-canvas');
     const ctx = canvas.getContext('2d');
     
+    // IMPROVED: Better canvas rendering settings
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
     // Get the video dimensions
     const videoWidth = videoElement.videoWidth;
     const videoHeight = videoElement.videoHeight;
@@ -251,18 +275,44 @@ function capturePhoto() {
     // Calculate the square size (use the smaller dimension)
     const size = Math.min(videoWidth, videoHeight);
     
-    // Crop center square and draw to canvas
-    ctx.drawImage(
+    // Log dimensions for debugging
+    console.log(`Capturing photo from video (${videoWidth}x${videoHeight}), cropping square of size ${size}`);
+    
+    // Clear the canvas before drawing
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Create a temporary canvas for high-quality processing before downsampling
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = size;
+    tempCanvas.height = size;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.imageSmoothingEnabled = true;
+    tempCtx.imageSmoothingQuality = 'high';
+    
+    // First, draw the cropped image to temp canvas at full resolution
+    tempCtx.drawImage(
         videoElement,
         (videoWidth - size) / 2,  // Start X point for cropping
         (videoHeight - size) / 2, // Start Y point for cropping
         size, size,               // Width and height of the cropped region
         0, 0,                     // Place at 0,0 on canvas
-        330, 300                  // Size on canvas (330x300 rectangle)
+        size, size                // Keep at original size for high quality
     );
     
-    // Convert to blob
+    // Now downsample from the temp canvas to the final canvas
+    // This two-step process results in better quality downsampling
+    ctx.drawImage(
+        tempCanvas,
+        0, 0, size, size,          // Source: full temp canvas
+        0, 0, canvas.width, canvas.height  // Destination: final 330x300 canvas
+    );
+    
+    // Convert to blob with max quality
+    // IMPROVED: Keep 100% quality JPEG even with smaller dimensions
     canvas.toBlob(async (blob) => {
+        // Log the image size for debugging
+        console.log(`Captured image size: ${Math.round(blob.size / 1024)} KB`);
+        
         // Close the modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('square-camera-modal'));
         modal.hide();
@@ -299,7 +349,7 @@ function capturePhoto() {
             const changeEvent = new Event('change', { bubbles: true });
             fileInput.dispatchEvent(changeEvent);
         }
-    }, 'image/jpeg', 0.9); // 90% quality JPEG
+    }, 'image/jpeg', 1.0); // IMPROVED: 100% quality JPEG
 }
 
 // Switch between front and rear cameras
@@ -308,7 +358,7 @@ function switchCamera() {
     currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
     
     // Show a toast to indicate the change
-    //showToast('Camera', 'Switching to ' + (currentFacingMode === "user" ? 'front' : 'rear') + ' camera...', 'info');
+    showToast('Camera', 'Switching to ' + (currentFacingMode === "user" ? 'front' : 'rear') + ' camera...', 'info');
     
     // Restart the camera with the new facing mode
     startCamera();
