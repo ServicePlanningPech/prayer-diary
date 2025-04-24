@@ -975,3 +975,46 @@ body {
         flex-direction: column;
     }
 }
+/* Styles for clickable date */
+.clickable-date {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    padding-right: 20px;
+    position: relative;
+    display: inline-block;
+}
+
+.clickable-date:hover {
+    color: #e0e0e0;
+}
+
+.clickable-date:after {
+    content: "\F4CA";  /* Calendar icon from Bootstrap Icons */
+    font-family: "bootstrap-icons";
+    font-size: 0.8em;
+    margin-left: 5px;
+    position: absolute;
+    top: 2px;
+}
+
+/* Updated modal styles for date picker */
+#date-picker-modal .modal-header {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#date-picker-modal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+#date-picker-modal .modal-footer {
+    justify-content: space-between;
+}
+
+/* Make the date input larger and more visible */
+#test-date {
+    font-size: 1.1rem;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    text-align: center;
+}

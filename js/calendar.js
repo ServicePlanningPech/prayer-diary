@@ -7,25 +7,36 @@ let filteredUsers = [];
 let testDate = null;
 let tapCount = 0;
 
-// Function to format date with full month name
-function formatDate(date) {
+// Update the formatDate function to provide shorter date display format
+// This function will show dates in "DD MMM" format (e.g., "24 Apr")
+function formatDate(date, longFormat = false) {
     const months = [
         "January", "February", "March", "April", "May", "June", 
         "July", "August", "September", "October", "November", "December"
     ];
-    return `${date.getDate()} ${months[date.getMonth()]}`;
+    
+    const shortMonths = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    
+    if (longFormat) {
+        return `${date.getDate()} ${months[date.getMonth()]}`;
+    } else {
+        return `${date.getDate()} ${shortMonths[date.getMonth()]}`;
+    }
 }
 
 // Get the effective date (test date or current date)
 function getEffectiveDate() {
-    return testDate || new Date();
+    return window.selectedPrayerDate || testDate || new Date();
 }
 
 // Load prayer calendar entries
 async function loadPrayerCalendar() {
     if (!isApproved()) return;
 	
-	await window.waitForAuthStability();
+    await window.waitForAuthStability();
     
     const container = document.getElementById('prayer-cards-container');
     const titleElement = document.getElementById('daily-prayer-title');
@@ -39,15 +50,24 @@ async function loadPrayerCalendar() {
         const isOddMonth = currentMonth % 2 === 1;
         
         // Update the date display with stylish container
-        const dateStr = formatDate(effectiveDate);
-        document.getElementById('current-date').textContent = dateStr;
+        const dateStr = formatDate(effectiveDate, true); // Use long format for heading
+        const shortDateStr = formatDate(effectiveDate, false); // Use short format for clickable date
         
-        // Update the title with new torpedoed style and smaller font
+        // Update the title with clickable date
         titleElement.innerHTML = `
             <div class="prayer-title-container mb-4 p-3 bg-primary text-white rounded shadow">
-                <h4 class="mb-0">Daily Prayer for <span id="current-date">${dateStr}</span></h4>
+                <h4 class="mb-0">Daily Prayer for <span id="current-date" class="clickable-date">${shortDateStr}</span></h4>
             </div>
         `;
+        
+        // Add click event listener to the date element
+        setTimeout(() => {
+            const dateElement = document.getElementById('current-date');
+            if (dateElement) {
+                // Add click event listener
+                dateElement.addEventListener('click', showDatePicker);
+            }
+        }, 100);
         
         // Get users with pray_day > 0 who should be shown this month
         const { data: userData, error: userError } = await supabase
@@ -157,6 +177,96 @@ async function loadPrayerCalendar() {
     }
 }
 
+// Function to show the date picker
+function showDatePicker() {
+    // Get the current effective date
+    const currentDate = getEffectiveDate();
+    
+    // Format the date for the input (YYYY-MM-DD)
+    const formattedDate = currentDate.toISOString().split('T')[0];
+    
+    // Set the input value
+    const dateInput = document.getElementById('test-date');
+    if (dateInput) {
+        dateInput.value = formattedDate;
+    }
+    
+    // Show the date picker modal
+    const modal = new bootstrap.Modal(document.getElementById('date-picker-modal'));
+    
+    // Change the modal title to be more user-friendly
+    const modalTitle = document.getElementById('date-picker-title');
+    if (modalTitle) {
+        modalTitle.textContent = 'Select Prayer Date';
+    }
+    
+    // Change the set button text to be more user-friendly
+    const setButton = document.getElementById('set-test-date');
+    if (setButton) {
+        setButton.textContent = 'View Prayers';
+    }
+    
+    // Change the reset button text to be more user-friendly
+    const resetButton = document.getElementById('reset-test-date');
+    if (resetButton) {
+        resetButton.textContent = 'Return to Today';
+    }
+    
+    // Show the modal
+    modal.show();
+    
+    // Make sure event handlers are properly set
+    setupDatePickerHandlers();
+}
+
+// Setup date picker handlers
+function setupDatePickerHandlers() {
+    // Get the buttons
+    const setButton = document.getElementById('set-test-date');
+    const resetButton = document.getElementById('reset-test-date');
+    
+    // Remove existing event listeners to prevent duplication
+    const newSetButton = setButton.cloneNode(true);
+    const newResetButton = resetButton.cloneNode(true);
+    
+    setButton.parentNode.replaceChild(newSetButton, setButton);
+    resetButton.parentNode.replaceChild(newResetButton, resetButton);
+    
+    // Add new event listeners
+    newSetButton.addEventListener('click', () => {
+        const dateInput = document.getElementById('test-date');
+        if (dateInput.value) {
+            // Set the selectedPrayerDate for the app to use
+            window.selectedPrayerDate = new Date(dateInput.value);
+            
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('date-picker-modal'));
+            if (modal) modal.hide();
+            
+            // Reload the prayer calendar
+            loadPrayerCalendar();
+            
+            // Show confirmation toast
+            showToast('Date Changed', `Showing prayers for ${formatDate(window.selectedPrayerDate)}`, 'info', 3000);
+        }
+    });
+    
+    newResetButton.addEventListener('click', () => {
+        // Reset the selected date
+        window.selectedPrayerDate = null;
+        
+        // Close the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('date-picker-modal'));
+        if (modal) modal.hide();
+        
+        // Reload the prayer calendar
+        loadPrayerCalendar();
+        
+        // Show confirmation toast
+        showToast('Date Reset', 'Showing prayers for today', 'success', 3000);
+    });
+}
+
 // Create a prayer card HTML
 function createPrayerCard(entry) {
     const imgSrc = entry.image_url || 'img/placeholder-profile.png';
@@ -213,7 +323,7 @@ function createPrayerCard(entry) {
 
 // View prayer card details
 async function viewPrayerCard(userId) {
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     try {
         // Get user details
         const { data, error } = await supabase
@@ -309,7 +419,7 @@ async function createCalendarDaysGrid() {
 
 // Get member counts by day
 async function getMemberCountsByDay() {
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     try {
         // Get all users with a pray_day assigned
         const { data, error } = await supabase
@@ -336,7 +446,7 @@ async function getMemberCountsByDay() {
 
 // Load all users from the profiles table
 async function loadAllUsers() {
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     try {
         const { data, error } = await supabase
             .from('profiles')
@@ -473,7 +583,7 @@ async function assignUserToDay(userId) {
         showNotification('Warning', 'Please select a day first', 'warning');
         return;
     }
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     
     try {
         const { data, error } = await supabase
@@ -505,7 +615,7 @@ async function assignUserToDay(userId) {
 
 // Update the user's months settings
 async function updateUserMonths(userId, months) {
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     try {
         const { data, error } = await supabase
             .from('profiles')
@@ -552,6 +662,54 @@ function setupEventListeners() {
     });
 }
 
+// Add CSS styles for the clickable date
+function addClickableDateStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .clickable-date {
+            cursor: pointer;
+            text-decoration: underline dotted;
+            padding-right: 20px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .clickable-date:hover {
+            color: #e0e0e0;
+        }
+        
+        .clickable-date:after {
+            content: "\\F4CA";  /* Calendar icon from Bootstrap Icons */
+            font-family: "bootstrap-icons";
+            font-size: 0.8em;
+            margin-left: 5px;
+            position: absolute;
+            top: 2px;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Initialize clickable date feature - call this when the page loads
+function initClickableDate() {
+    // Add styles for the clickable date
+    addClickableDateStyles();
+    
+    // Initialize a global variable to store the selected date
+    window.selectedPrayerDate = null;
+    
+    // Add event listener for navigation to calendar view to initialize date
+    document.getElementById('nav-calendar').addEventListener('click', function() {
+        // Make sure the date functionality is initialized
+        setTimeout(() => {
+            const dateElement = document.getElementById('current-date');
+            if (dateElement) {
+                dateElement.addEventListener('click', showDatePicker);
+            }
+        }, 200);
+    });
+}
+
 // Modified loadCalendarAdmin to initialize the new UI
 async function loadCalendarAdmin() {
     if (!hasPermission('prayer_calendar_editor')) return;
@@ -559,3 +717,6 @@ async function loadCalendarAdmin() {
     // Initialize the new calendar management UI
     await initCalendarManagement();
 }
+
+// Call initialization function when document is loaded
+document.addEventListener('DOMContentLoaded', initClickableDate);

@@ -178,28 +178,27 @@
                 </div>
             </div>
             
-            <!-- Date picker modal for testing -->
-            <div class="modal fade" id="date-picker-modal" tabindex="-1" aria-labelledby="date-picker-title" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="date-picker-title">Set Test Date</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label for="test-date" class="form-label">Select date to test:</label>
-                                <input type="date" class="form-control" id="test-date">
-                            </div>
-                            <p class="text-muted small">This is for testing purposes only. It will allow you to view prayers for any date.</p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" id="reset-test-date">Reset to Today</button>
-                            <button type="button" class="btn btn-primary" id="set-test-date">Set Date</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+			 <div class="modal fade" id="date-picker-modal" tabindex="-1" aria-labelledby="date-picker-title" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="date-picker-title">Select Prayer Date</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						</div>
+						<div class="modal-body">
+							<div class="mb-3">
+								<label for="test-date" class="form-label">Select date to view prayers for:</label>
+								<input type="date" class="form-control" id="test-date">
+							</div>
+							<p class="text-muted small">Select any date to view the prayer content assigned for that day.</p>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" id="reset-test-date">Return to Today</button>
+							<button type="button" class="btn btn-primary" id="set-test-date">View Prayers</button>
+						</div>
+					</div>
+				</div>
+			</div>
 
             <!-- Prayer Updates View -->
             <div id="updates-view" class="view-content d-none">
