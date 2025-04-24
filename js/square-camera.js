@@ -34,7 +34,7 @@ function createCameraModal() {
               <video id="camera-video" autoplay playsinline class="w-100"></video>
               <div class="viewfinder position-absolute"></div>
             </div>
-            <canvas id="camera-canvas" class="d-none" width="300" height="300"></canvas>
+            <canvas id="camera-canvas" class="d-none" width="330" height="300"></canvas>
           </div>
           <div class="modal-footer">
             <div>
@@ -78,7 +78,7 @@ function createCameraModal() {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 80%;
+      width: 88%; /* Adjusted for 330:300 aspect ratio (330/300 * 80% = 88%) */
       height: 80%;
       transform: translate(-50%, -50%);
       border: 2px solid rgba(255, 255, 255, 0.8);
@@ -232,7 +232,7 @@ function capturePhoto() {
         (videoHeight - size) / 2, // Start Y point for cropping
         size, size,               // Width and height of the cropped region
         0, 0,                     // Place at 0,0 on canvas
-        300, 300                  // Size on canvas (300x300 square)
+        330, 300                  // Size on canvas (330x300 rectangle)
     );
     
     // Convert to blob

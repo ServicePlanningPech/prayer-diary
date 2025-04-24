@@ -305,10 +305,10 @@ function cropImageToSquare(file) {
     // Load the image to get its dimensions
     const img = new Image();
     img.onload = function() {
-        // Create a canvas element for cropping - EXACT SAME SIZE as camera (300x300)
+        // Create a canvas element for cropping - EXACT SAME SIZE as camera (330x300)
         const canvas = document.createElement('canvas');
-        canvas.width = 300;  // Match camera canvas size exactly
-        canvas.height = 300; // Match camera canvas size exactly
+        canvas.width = 330;  // Match camera canvas width
+        canvas.height = 300; // Match camera canvas height
         
         // Get the dimensions for cropping
         const size = Math.min(img.width, img.height);
@@ -324,7 +324,7 @@ function cropImageToSquare(file) {
             offsetX, offsetY,     // Start position of the crop in the original image
             size, size,           // Size of the square to crop
             0, 0,                 // Place at 0,0 on canvas
-            300, 300              // Size on canvas (300x300 square) - match camera output
+            330, 300              // Size on canvas (330x300 rectangle) - match camera output
         );
         
         // Convert the canvas to a blob with same quality setting as camera (0.9)
