@@ -303,17 +303,20 @@ function createPrayerCard(entry) {
         }
     }
     
+    // New layout with photo on left, name and prayer points on right
     return `
     <div class="col">
         <div class="card h-100 shadow prayer-card" data-entry-id="${entry.id}" data-entry-type="${entry.type || 'member'}">
             ${typeBadge}
-            <div class="image-container">
-                <img src="${imgSrc}" class="prayer-profile-img" alt="${entry.name}">
-            </div>
-            <div class="card-body">
-                <h5 class="card-title prayer-card-title">${entry.name}</h5>
-                <div class="card-text prayer-points-preview">
-                    ${entry.type === 'topic' ? prayerPointsDisplay : `<p>${prayerPointsDisplay}</p>`}
+            <div class="card-body d-flex">
+                <div class="prayer-card-img-container me-3" style="width: 90px; flex-shrink: 0;">
+                    <img src="${imgSrc}" class="img-fluid rounded prayer-profile-img" alt="${entry.name}" style="width: 100%; height: auto;">
+                </div>
+                <div class="prayer-card-content">
+                    <h5 class="card-title prayer-card-title mb-2">${entry.name}</h5>
+                    <div class="card-text prayer-points-preview">
+                        ${entry.type === 'topic' ? prayerPointsDisplay : `<p>${prayerPointsDisplay}</p>`}
+                    </div>
                 </div>
             </div>
         </div>
