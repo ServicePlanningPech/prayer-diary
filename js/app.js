@@ -1,7 +1,7 @@
 // Main Application JavaScript
 
 // Version information - this should match the version in service-worker.js
-const APP_VERSION = '1.0.002';
+const APP_VERSION = '1.0.003';
 const APP_VERSION_TIMESTAMP = Date.now();
 console.log(`Prayer Diary initializing, version ${APP_VERSION}, build ${APP_VERSION_TIMESTAMP}`);
 

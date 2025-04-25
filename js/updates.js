@@ -26,10 +26,10 @@ function initUpdateEditor() {
             modules: {
                 toolbar: [
                     [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
+                    ['bold', 'italic', 'underline'],
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                     [{ 'align': [] }],
-                    ['link'],
+                    ['link', 'image'],
                     ['clean']
                 ]
             },
