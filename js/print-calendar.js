@@ -218,17 +218,18 @@ async function generatePreview() {
                                 font-family: ${fontFamily} !important;
                             }
                             .print-image-container {
-                                width: 35mm;
-                                margin-right: 5mm;
-                                flex-shrink: 0;
+                            margin-right: 5mm;
+                            flex-shrink: 0;
+                            display: flex;
+                                align-items: flex-start;
                             }
                             .print-profile-image {
-                                width: 100%;
-                                min-height: 50mm;
-                                object-fit: contain;
-                                border-radius: 3mm;
+                            max-width: 35mm;
+                            max-height: 50mm;
+                            object-fit: contain;
+                            border-radius: 3mm;
                                 border: 1px solid #eee;
-                            }
+                    }
                             .print-prayer-points {
                                 flex: 1;
                                 font-size: 10pt;
@@ -467,13 +468,14 @@ async function generatePDF() {
                         font-family: ${fontFamily} !important;
                     }
                     .print-image-container {
-                        width: 35mm;
                         margin-right: 5mm;
                         flex-shrink: 0;
+                        display: flex;
+                        align-items: flex-start;
                     }
                     .print-profile-image {
-                        width: 100%;
-                        min-height: 50mm;
+                        max-width: 35mm;
+                        max-height: 50mm;
                         object-fit: contain;
                         border-radius: 3mm;
                         border: 1px solid #eee;
@@ -657,31 +659,32 @@ async function getPrayerCards() {
             startDate ? startDate.toISOString() : "All", 
             endDate ? endDate.toISOString() : "All");
         
-        // Get all approved profiles regardless of day assignment
+        // Get all approved profiles that are assigned to a day
         const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
             .select('id, full_name, profile_image_url, prayer_points, pray_day')
             .eq('approval_state', 'Approved')
-            .neq('full_name', 'Super Admin'); // Exclude Super Admin
+            .neq('full_name', 'Super Admin') // Exclude Super Admin
+            .gt('pray_day', 0); // Only include profiles assigned to a day
             
         if (profilesError) {
             console.error("Error fetching profiles:", profilesError);
             throw profilesError;
         }
         
-        console.log(`Fetched ${profiles.length} profiles`);
+        console.log(`Fetched ${profiles.length} profiles assigned to days`);
         
         // Filter profiles based on date range if specified
         let prayerCards = [];
         
         if (dateRange === 'all') {
-            // Include all profiles with prayer points
+            // Include all profiles with prayer points that are assigned to a day
             prayerCards = profiles.map(profile => ({
                 id: profile.id,
                 name: profile.full_name,
                 prayerPoints: profile.prayer_points || 'No prayer points provided.',
                 profileImage: profile.profile_image_url,
-                day: profile.pray_day || null
+                day: profile.pray_day
             }));
         } else {
             // Filter profiles by day
@@ -734,23 +737,21 @@ function generatePrintHTML(prayerCards) {
         day: 'numeric' 
     });
     
-    // Group cards by day
+    // Group cards by day (exclude unassigned cards)
     const cardsByDay = {};
     prayerCards.forEach(card => {
-        const day = card.day || 'unassigned';
-        if (!cardsByDay[day]) {
-            cardsByDay[day] = [];
+        if (card.day) { // Only include cards with an assigned day
+            const day = card.day;
+            if (!cardsByDay[day]) {
+                cardsByDay[day] = [];
+            }
+            cardsByDay[day].push(card);
         }
-        cardsByDay[day].push(card);
     });
     
-    // Process each day group
+    // Process each day group (sorted numerically)
     Object.keys(cardsByDay)
-        .sort((a, b) => {
-            if (a === 'unassigned') return 1;
-            if (b === 'unassigned') return -1;
-            return parseInt(a) - parseInt(b);
-        })
+        .sort((a, b) => parseInt(a) - parseInt(b))
         .forEach(day => {
             const cardsForDay = cardsByDay[day];
             
@@ -818,7 +819,7 @@ function generatePrintHTML(prayerCards) {
                 // Add simple day number in the footer
                 html += `
                     <div class="print-footer">
-                        ${day !== 'unassigned' ? 'Day ' + day : ''}
+                        Day ${day}
                     </div>
                 </div><!-- End of print page -->
                 `;
