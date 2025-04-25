@@ -343,6 +343,10 @@ async function sendEmail(options) {
         
         console.log("Sending email with body:", JSON.stringify(requestBody).substring(0, 100) + '...');
         
+        // Add a 3-second delay to prevent SMTP rate limiting issues
+        console.log(`Adding 3-second delay before sending email to ${to} to prevent SMTP rate limiting...`);
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3-second delay
+        
         // Call the Supabase Edge Function with the properly structured request
         const { data, error } = await supabase.functions.invoke('send-email', {
             body: requestBody
