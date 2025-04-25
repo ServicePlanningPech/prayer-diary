@@ -1,7 +1,10 @@
-// Service Worker for Prayer Diary PWA - Updated with improved error handling
+// Service Worker for Prayer Diary PWA - Updated with improved error handling and update notification
 
-// Use timestamp for more aggressive cache busting
-const CACHE_NAME = 'prayer-diary-v2-' + Date.now();
+// Define a version for the app that changes with each significant update
+const APP_VERSION = '1.0.0'; // Change this version when deploying a new version
+
+// Use APP_VERSION and timestamp for cache busting
+const CACHE_NAME = `prayer-diary-${APP_VERSION}-${Date.now()}`;
 const urlsToCache = [
   '/',
   '/index.html',
@@ -195,4 +198,32 @@ self.addEventListener('notificationclick', event => {
   event.waitUntil(
     clients.openWindow(event.notification.data.url)
   );
+});
+
+// Handle messages from the client
+self.addEventListener('message', event => {
+  console.log('Service Worker received message:', event.data);
+  
+  if (event.data && event.data.action === 'CHECK_FOR_UPDATES') {
+    // Store the version that was last used by the client
+    const clientVersion = event.data.version;
+    
+    // If the current service worker version is different from the client's version
+    if (clientVersion && clientVersion !== APP_VERSION) {
+      console.log(`Update available: Client is on ${clientVersion}, Service Worker is on ${APP_VERSION}`);
+      
+      // Notify the client about the update
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'UPDATE_AVAILABLE',
+            currentVersion: APP_VERSION,
+            clientVersion: clientVersion
+          });
+        });
+      });
+    } else {
+      console.log('No update available or versions match');
+    }
+  }
 });

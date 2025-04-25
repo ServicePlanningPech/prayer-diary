@@ -1,15 +1,20 @@
 // Main Application JavaScript
 
-// Version timestamp for cache busting - visible in console
+// Version information - this should match the version in service-worker.js
+const APP_VERSION = '1.0.0';
 const APP_VERSION_TIMESTAMP = Date.now();
-console.log(`Prayer Diary initializing, build ${APP_VERSION_TIMESTAMP}`);
+console.log(`Prayer Diary initializing, version ${APP_VERSION}, build ${APP_VERSION_TIMESTAMP}`);
 
-// Add some debugging info to help track versions
+// Add debugging info to help track versions
 window.PRAYER_DIARY = {
-    version: APP_VERSION_TIMESTAMP,
+    version: APP_VERSION,
+    buildTimestamp: APP_VERSION_TIMESTAMP,
     buildTime: new Date().toISOString(),
     devMode: window.PRAYER_DIARY_DEV_MODE || false
 };
+
+// Flag to track if update notification is already shown
+let updateNotificationShown = false;
 
 // Global variable for test date (used to show prayer cards for a different date)
 window.testDate = null;
@@ -27,6 +32,9 @@ function initializeApp() {
     
     // Set up tab close detection for logout
     setupTabCloseLogout();
+    
+    // Set up service worker and check for updates
+    registerServiceWorkerAndCheckForUpdates();
     
     // Set up delete user confirmation modal functionality
     const deleteUserModal = document.getElementById('delete-user-modal');
@@ -193,4 +201,123 @@ async function checkForSuperAdmin() {
     } catch (error) {
         console.error('Error checking for super admin:', error);
     }
+}
+
+// Register service worker and check for updates
+function registerServiceWorkerAndCheckForUpdates() {
+    if ('serviceWorker' in navigator) {
+        // Register the service worker
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+                console.log('Service Worker registered with scope:', registration.scope);
+                
+                // Check for update after a delay to ensure everything is loaded
+                setTimeout(() => {
+                    checkForAppUpdate(registration);
+                }, 5000);
+                
+                // Check for updates periodically (every 30 minutes)
+                setInterval(() => {
+                    checkForAppUpdate(registration);
+                }, 30 * 60 * 1000);
+                
+                // Setup update event listener
+                navigator.serviceWorker.addEventListener('message', event => {
+                    if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+                        console.log('Update available notification received from Service Worker');
+                        // Show update notification if not already shown
+                        if (!updateNotificationShown) {
+                            showUpdateNotification(event.data.currentVersion);
+                            updateNotificationShown = true;
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
+    }
+}
+
+// Check for app updates by comparing versions
+function checkForAppUpdate(registration) {
+    console.log('Checking for app updates...');
+    
+    // Send message to service worker to check for updates
+    if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+            action: 'CHECK_FOR_UPDATES',
+            version: APP_VERSION
+        });
+    }
+}
+
+// Show update notification to user
+function showUpdateNotification(newVersion) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.querySelector('.toast-container.position-fixed.top-0.end-0.p-3');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create the update notification toast
+    const updateNotification = document.createElement('div');
+    updateNotification.className = 'toast toast-update';
+    updateNotification.setAttribute('role', 'alert');
+    updateNotification.setAttribute('aria-live', 'assertive');
+    updateNotification.setAttribute('aria-atomic', 'true');
+    updateNotification.innerHTML = `
+        <div class="toast-header bg-primary text-white">
+            <strong class="me-auto">Update Available</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            <p>A new version of Prayer Diary (v${newVersion}) is available!</p>
+            <div class="mt-2 pt-2 border-top d-flex justify-content-end">
+                <button type="button" class="btn btn-primary btn-sm" id="update-app-btn">Update Now</button>
+            </div>
+        </div>
+    `;
+    
+    // Add to the container
+    toastContainer.appendChild(updateNotification);
+    
+    // Initialize the toast
+    const toast = new bootstrap.Toast(updateNotification, { autohide: false });
+    toast.show();
+    
+    // Add event listener for the update button
+    document.getElementById('update-app-btn').addEventListener('click', function() {
+        // Show a loading message
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
+        this.disabled = true;
+        
+        // Force update by unregistering the service worker and reloading
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                // Unregister all service workers
+                return Promise.all(registrations.map(registration => registration.unregister()));
+            }).then(() => {
+                // Clear caches
+                return caches.keys().then(cacheNames => {
+                    return Promise.all(
+                        cacheNames.map(cacheName => {
+                            return caches.delete(cacheName);
+                        })
+                    );
+                });
+            }).then(() => {
+                // Reload the page
+                window.location.reload(true);
+            }).catch(error => {
+                console.error('Error during update:', error);
+                alert('Update failed. Please try refreshing the page.');
+            });
+        } else {
+            // Fallback for browsers without service worker support
+            window.location.reload(true);
+        }
+    });
 }
