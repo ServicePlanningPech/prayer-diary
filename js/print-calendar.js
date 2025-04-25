@@ -81,7 +81,13 @@ async function initPrintCalendarView() {
         endDateInput.valueAsDate = endOfMonth;
     }
     
-    // Generate a preview based on current month
+    // Set default date range to "All Prayer Cards"
+    const dateRangeSelect = document.getElementById('print-date-range');
+    if (dateRangeSelect) {
+        dateRangeSelect.value = 'all';
+    }
+    
+    // Generate a preview
     generatePreview();
 }
 
@@ -117,8 +123,7 @@ async function generatePreview() {
         }
         
         // Generate the preview HTML - show all cards in preview
-        const cardsPerPage = parseInt(document.getElementById('print-layout').value) || 2;
-        const previewHTML = generatePrintHTML(prayerCards, cardsPerPage);
+        const previewHTML = generatePrintHTML(prayerCards);
         
         // Base URL for resolving relative paths
         const baseURL = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
@@ -126,8 +131,8 @@ async function generatePreview() {
         // Create the preview with only the first page
         previewContainer.innerHTML = `
             <div class="alert alert-info mb-3">
-                <strong>Preview:</strong> Showing sample with ${Math.min(prayerCards.length, cardsPerPage)} of ${prayerCards.length} prayer cards. 
-                The complete calendar will have ${Math.ceil(prayerCards.length / cardsPerPage)} pages.
+                <strong>Preview:</strong> Showing sample of ${prayerCards.length} prayer cards. 
+                The complete calendar will group cards by day number.
             </div>
             <div class="border p-3" style="background-color: #f8f9fa;">
                 <iframe id="preview-iframe" style="width: 100%; height: 500px; border: 1px solid #ddd; transform: scale(0.8); transform-origin: top center;" frameborder="0"></iframe>
@@ -340,8 +345,7 @@ async function generatePDF() {
         }
         
         // Generate the full HTML for all pages
-        const cardsPerPage = parseInt(document.getElementById('print-layout').value) || 2;
-        const printHTML = generatePrintHTML(prayerCards, cardsPerPage);
+        const printHTML = generatePrintHTML(prayerCards);
         
         // Get selected font family
         const fontFamilySelect = document.getElementById('print-font-family');
@@ -711,7 +715,7 @@ async function getPrayerCards() {
 }
 
 // Generate the HTML for the printable pages
-function generatePrintHTML(prayerCards, cardsPerPage) {
+function generatePrintHTML(prayerCards) {
     // Sort cards by day if available
     prayerCards.sort((a, b) => {
         if (a.day === null && b.day === null) return 0;
@@ -740,14 +744,6 @@ function generatePrintHTML(prayerCards, cardsPerPage) {
         cardsByDay[day].push(card);
     });
     
-    // Calculate total pages based on groups and cards per page
-    let pageCount = 0;
-    Object.keys(cardsByDay).forEach(day => {
-        pageCount += Math.ceil(cardsByDay[day].length / cardsPerPage);
-    });
-    
-    let currentPage = 1;
-    
     // Process each day group
     Object.keys(cardsByDay)
         .sort((a, b) => {
@@ -757,17 +753,19 @@ function generatePrintHTML(prayerCards, cardsPerPage) {
         })
         .forEach(day => {
             const cardsForDay = cardsByDay[day];
+            
+            // Calculate how many cards can fit on a page
+            // We'll try to fit as many as we can while keeping cards for the same day on the same page
+            // Assuming approximately 3 cards per page as a default, but we could adjust based on card size
+            let cardsPerPage = 3;
+            
+            // Calculate how many pages we need for this day's cards
             const dayPageCount = Math.ceil(cardsForDay.length / cardsPerPage);
             
             // Create pages for this day
             for (let i = 0; i < dayPageCount; i++) {
-                // Start a new page with day header
+                // Start a new page
                 html += `<div class="print-page">`;
-                
-                // Add day header if it's a numbered day
-                if (day !== 'unassigned') {
-                    html += `<h2 style="text-align: center; margin-bottom: 5mm; color: #483D8B;">Day ${day}</h2>`;
-                }
                 
                 // Add cards to this page
                 for (let j = 0; j < cardsPerPage; j++) {
@@ -777,6 +775,9 @@ function generatePrintHTML(prayerCards, cardsPerPage) {
                     if (cardIndex >= cardsForDay.length) break;
                     
                     const card = cardsForDay[cardIndex];
+                    
+                    // Skip if card doesn't have a name or photo tag
+                    if (!card.name) continue;
                     
                     // Default image if none provided
                     const imageUrl = card.profileImage || 'img/placeholder-profile.png';
@@ -797,34 +798,30 @@ function generatePrintHTML(prayerCards, cardsPerPage) {
                         }
                     }
                     
-                    // Add the card
+                    // Add the card - revised layout per requirements
                     html += `
                         <div class="print-prayer-card">
-                            <div class="print-card-header">
-                                <h3 class="print-name">${card.name}</h3>
-                            </div>
                             <div class="print-card-body">
                                 <div class="print-image-container">
                                     <img src="${imageUrl}" class="print-profile-image" alt="${card.name}" 
                                          onerror="this.onerror=null; this.src='img/placeholder-profile.png';">
                                 </div>
                                 <div class="print-prayer-points">
-                                    ${formattedPrayerPoints || '<p>No prayer points provided.</p>'}
+                                    <h3 class="print-name">${card.name}</h3>
+                                    ${formattedPrayerPoints || ''}
                                 </div>
                             </div>
                         </div>
                     `;
                 }
                 
-                // Add page footer
+                // Add simple day number in the footer
                 html += `
                     <div class="print-footer">
-                        Prayer Diary - Generated on ${dateStr} - Page ${currentPage} of ${pageCount}
+                        ${day !== 'unassigned' ? 'Day ' + day : ''}
                     </div>
                 </div><!-- End of print page -->
                 `;
-                
-                currentPage++;
             }
         });
     
