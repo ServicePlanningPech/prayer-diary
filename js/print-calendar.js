@@ -757,8 +757,8 @@ function generatePrintHTML(prayerCards) {
             
             // Calculate how many cards can fit on a page
             // We'll try to fit as many as we can while keeping cards for the same day on the same page
-            // Assuming approximately 3 cards per page as a default, but we could adjust based on card size
-            let cardsPerPage = 3;
+            // Increased from 3 to 4 cards per page to maximize space efficiency
+            let cardsPerPage = 4;
             
             // Calculate how many pages we need for this day's cards
             const dayPageCount = Math.ceil(cardsForDay.length / cardsPerPage);
