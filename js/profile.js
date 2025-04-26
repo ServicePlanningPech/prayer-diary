@@ -768,8 +768,7 @@ async function saveProfile(e) {
         const photoTag = document.getElementById('profile-photo-tag').value.trim();
         const calendarHide = document.getElementById('profile-calendar-hide').checked;
         const prayerPoints = document.getElementById('profile-prayer-points').value.trim();
-        const phoneNumber = document.getElementById('profile-phone').value.trim();
-        const whatsappNumber = document.getElementById('profile-whatsapp').value.trim();
+        const mobileNumber = document.getElementById('profile-mobile').value.trim();
         
         // Get the content delivery preference
         const contentDelivery = document.querySelector('input[name="content-delivery"]:checked').value;
