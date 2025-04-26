@@ -16,4 +16,5 @@ const PUSH_NOTIFICATION_ENABLED = false; // Set to true once configured
 
 // App constants
 const APP_NAME = 'Prayer Diary';
-const APP_VERSION = '1.0.0';
+// This is the canonical app version used across the app
+const APP_VERSION = '1.0.004';

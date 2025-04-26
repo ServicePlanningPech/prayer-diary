@@ -1,6 +1,7 @@
 // Service Worker for Prayer Diary PWA - Updated with improved error handling and update notification
 
 // Define a version for the app that changes with each significant update
+// Note: This should match the version in config.js
 const APP_VERSION = '1.0.004'; // Change this version when deploying a new version
 
 // Use APP_VERSION and timestamp for cache busting
