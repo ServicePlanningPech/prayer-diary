@@ -658,9 +658,9 @@ async function createUrgentPrayer(action, submitBtn) {
         
         // Send notifications if that button was clicked
         if (action === 'saveAndSend' ) {
-            // Call the batch email function for urgent prayers
+            // Call the batch email function for urgent prayers (fire and forget)
             console.log('DEBUG: createUrgentPrayer - Action is saveAndSend, calling batch email function');
-            await sendUrgentNotifications(title, content, dateInput);
+            sendUrgentNotifications(title, content, dateInput);
             showNotification('Success', `Urgent prayer request ${isEditing ? 'updated' : 'saved'} and notification emails queued.`);
         } else {
             console.log('DEBUG: createUrgentPrayer - Action is saveOnly, not sending notifications');
@@ -836,41 +836,38 @@ function formatDate(dateString) {
     });
 }
 
-// Send notifications for urgent prayers using batch-email
-async function sendUrgentNotifications(title, content, dateInput) {
+// Send notifications for urgent prayers using batch-email with fire-and-forget approach
+function sendUrgentNotifications(title, content, dateInput) {
     console.log('DEBUG: sendUrgentNotifications - Starting batch email for title:', title);
     
-    try {
-        // Format the date for display
-        const date = dateInput ? new Date(dateInput) : new Date();
-        const formattedDate = date.toLocaleDateString(undefined, { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-        });
-        
-        // Call the batch-email Edge function
-        console.log('DEBUG: sendUrgentNotifications - Calling batch-email Edge function');
-        
-        const { data, error } = await supabase.functions.invoke('batch-email', {
-            body: {
-                title: title,
-                date: formattedDate,
-                content: content,
-                type: 'urgent'
-            }
-        });
-        
+    // Format the date for display
+    const date = dateInput ? new Date(dateInput) : new Date();
+    const formattedDate = date.toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+    
+    // Call the batch-email Edge function without waiting for response (fire and forget)
+    console.log('DEBUG: sendUrgentNotifications - Calling batch-email Edge function (fire and forget)');
+    
+    supabase.functions.invoke('batch-email', {
+        body: {
+            title: title,
+            date: formattedDate,
+            content: content,
+            type: 'urgent'
+        }
+    }).then(({ data, error }) => {
         if (error) {
             console.error('DEBUG: sendUrgentNotifications - Error calling batch-email:', error);
-            throw error;
+        } else {
+            console.log('DEBUG: sendUrgentNotifications - Batch email function successfully invoked');
         }
-        
-        console.log('DEBUG: sendUrgentNotifications - Batch email function successfully invoked:', data);
-        return true;
-    } catch (error) {
-        console.error('DEBUG: sendUrgentNotifications - Error sending urgent notifications:', error);
-        showNotification('Warning', `Urgent prayer request saved but email sending failed: ${error.message}`, 'warning');
-        return false;
-    }
+    }).catch(error => {
+        console.error('DEBUG: sendUrgentNotifications - Exception calling batch-email:', error);
+    });
+    
+    // Return immediately without waiting
+    return true;
 }

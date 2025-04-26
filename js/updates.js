@@ -1051,41 +1051,38 @@ function createUpdateCard(update) {
     return cardHtml;
 }
 
-// Send notifications for a new prayer update - UPDATED to use batch-email
-async function sendUpdateNotifications(title, content, dateInput) {
+// Send notifications for a new prayer update - UPDATED to use batch-email with fire-and-forget approach
+function sendUpdateNotifications(title, content, dateInput) {
     console.log('DEBUG: sendUpdateNotifications - Starting batch email for title:', title);
     
-    try {
-        // Format the date for display
-        const date = dateInput ? new Date(dateInput) : new Date();
-        const formattedDate = date.toLocaleDateString(undefined, { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-        });
-        
-        // Call the batch-email Edge function
-        console.log('DEBUG: sendUpdateNotifications - Calling batch-email Edge function');
-        
-        const { data, error } = await supabase.functions.invoke('batch-email', {
-            body: {
-                title: title,
-                date: formattedDate,
-                content: content,
-                type: 'update'
-            }
-        });
-        
+    // Format the date for display
+    const date = dateInput ? new Date(dateInput) : new Date();
+    const formattedDate = date.toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+    
+    // Call the batch-email Edge function without waiting for response (fire and forget)
+    console.log('DEBUG: sendUpdateNotifications - Calling batch-email Edge function (fire and forget)');
+    
+    supabase.functions.invoke('batch-email', {
+        body: {
+            title: title,
+            date: formattedDate,
+            content: content,
+            type: 'update'
+        }
+    }).then(({ data, error }) => {
         if (error) {
             console.error('DEBUG: sendUpdateNotifications - Error calling batch-email:', error);
-            throw error;
+        } else {
+            console.log('DEBUG: sendUpdateNotifications - Batch email function successfully invoked');
         }
-        
-        console.log('DEBUG: sendUpdateNotifications - Batch email function successfully invoked:', data);
-        return true;
-    } catch (error) {
-        console.error('DEBUG: sendUpdateNotifications - Error sending update notifications:', error);
-        showNotification('Warning', `Prayer update saved but email sending failed: ${error.message}`, 'warning');
-        return false;
-    }
+    }).catch(error => {
+        console.error('DEBUG: sendUpdateNotifications - Exception calling batch-email:', error);
+    });
+    
+    // Return immediately without waiting
+    return true;
 }
