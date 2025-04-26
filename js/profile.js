@@ -904,8 +904,8 @@ async function updateProfileViaEdgeFunction(data) {
             profile_image_url: oldImageUrl, // Will be updated by Edge Function if a new image is provided
             phone_number: formattedPhoneNumber,
             whatsapp_number: formattedPhoneNumber, // Same number is used for both SMS and WhatsApp
-            prayer_update_notification_method: prayerUpdateNotification,
-            urgent_prayer_notification_method: urgentPrayerNotification,
+            prayer_update_notification_method: data.prayerUpdateNotification,
+            urgent_prayer_notification_method: data.urgentPrayerNotification,
             notification_push: data.notifyPush,
             profile_set: true, // Mark profile as completed
             gdpr_accepted: gdprAccepted, // Set GDPR acceptance status
