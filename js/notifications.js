@@ -108,15 +108,33 @@ async function sendSmsNotifications(type, title, content, date) {
         // Log the number of recipients
         console.log(`Sending SMS notifications to ${users.length} recipients`);
         
-        // For each user, send an SMS notification
-        // In a real implementation, we would use Twilio's API
-        for (const user of users) {
-            if (user.phone_number) {
-                // Log notification
-                await logNotification(user.id, 'sms', type, 'sent');
+        if (users.length > 0) {
+            // Prepare the message - keep it short for SMS
+            const messageType = type === 'prayer_update' ? 'Prayer Update' : 'Urgent Prayer';
+            const message = `PECH Prayer: New ${messageType} - ${title}. Please check the app for details.`;
+            
+            // Collect all phone numbers
+            const phoneNumbers = users.map(user => user.phone_number).filter(Boolean);
+            
+            if (phoneNumbers.length > 0) {
+                // Call the ClickSend Edge Function to send SMS notifications
+                const result = await sendClickSendSMS(phoneNumbers, message);
                 
-                // In a real implementation, we would call Twilio's API here
-                console.log(`[SMS] To: ${user.phone_number}, Message: Prayer Diary - ${title}`);
+                if (result.success) {
+                    console.log(`Successfully sent SMS notifications via ClickSend to ${phoneNumbers.length} recipients`);
+                    
+                    // Log notifications for each user
+                    for (const user of users) {
+                        if (user.phone_number) {
+                            await logNotification(user.id, 'sms', type, 'sent');
+                        }
+                    }
+                    
+                    return true;
+                } else {
+                    console.error('Error from ClickSend SMS service:', result.error);
+                    return false;
+                }
             }
         }
         
@@ -367,15 +385,55 @@ async function sendEmail(options) {
     }
 }
 
-// Actual implementation of SMS sending via Twilio (to be implemented)
-// This would typically be implemented as a serverless function or endpoint
-// For now, we'll just log it
-async function sendSms(to, message) {
-    // This is a placeholder for the actual SMS sending implementation
-    console.log(`Sending SMS to ${to}`);
-    console.log(`Message: ${message}`);
+// Implementation of SMS sending via ClickSend API through Supabase Edge Function
+async function sendClickSendSMS(phoneNumbers, message) {
+    await window.waitForAuthStability();
     
-    return true;
+    // Validate inputs
+    if (!phoneNumbers || phoneNumbers.length === 0 || !message) {
+        console.error('Missing required SMS parameters');
+        return { success: false, error: 'Missing required SMS parameters' };
+    }
+
+    // Check if SMS is enabled in config
+    if (!TWILIO_ENABLED) {
+        console.log(`SMS disabled. Would have sent SMS to ${phoneNumbers.length} recipients`);
+        return { success: false, error: 'SMS notification is not enabled' };
+    }
+    
+    try {
+        console.log("Preparing to send SMS notifications via ClickSend...");
+        
+        // Prepare the request body for the Edge Function
+        const requestBody = {
+            recipients: phoneNumbers,
+            message: message
+        };
+        
+        // Call the Supabase Edge Function
+        const { data, error } = await supabase.functions.invoke('send-sms', {
+            body: requestBody
+        });
+        
+        if (error) {
+            console.error('Edge function error details:', error);
+            throw error;
+        }
+        
+        // Log successful SMS delivery
+        console.log('SMS sent successfully to:', phoneNumbers.length, 'recipients');
+        
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error sending SMS via ClickSend:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Legacy SMS function - now deprecated
+async function sendSms(to, message) {
+    console.log('Using deprecated sendSms function - please update to use sendClickSendSMS instead');
+    return await sendClickSendSMS([to], message);
 }
 
 // Actual implementation of WhatsApp sending via Twilio (to be implemented)

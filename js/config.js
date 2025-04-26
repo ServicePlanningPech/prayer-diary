@@ -5,8 +5,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Initialize Supabase client without development cache control headers
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Twilio configuration (for SMS and WhatsApp notifications)
-const TWILIO_ENABLED = false; // Set to true once configured
+// ClickSend configuration (for SMS notifications)
+const TWILIO_ENABLED = true; // Enabled for ClickSend SMS integration
 
 // Email configuration
 const EMAIL_ENABLED = true; // Set to true once configured
