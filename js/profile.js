@@ -71,16 +71,27 @@ async function loadUserProfile() {
         }
         
         document.getElementById('profile-prayer-points').value = userProfile.prayer_points || '';
-        document.getElementById('profile-phone').value = userProfile.phone_number || '';
-        document.getElementById('profile-whatsapp').value = userProfile.whatsapp_number || '';
+        // Format phone number for display (convert from +44 to 0)
+        let displayPhoneNumber = '';
+        if (userProfile.phone_number && userProfile.phone_number.startsWith('+44')) {
+            displayPhoneNumber = '0' + userProfile.phone_number.substring(3);
+        } else {
+            displayPhoneNumber = userProfile.phone_number || '';
+        }
+        document.getElementById('profile-mobile').value = displayPhoneNumber;
         
-        // Set prayer update notification radio button
-        const prayerUpdateMethod = userProfile.prayer_update_notification_method || 'email';
-        document.querySelector(`input[name="prayer-update-notification"][value="${prayerUpdateMethod}"]`).checked = true;
+        // Set content delivery radio button based on preferences
+        const useEmail = userProfile.prayer_update_notification_method === 'email' || userProfile.urgent_prayer_notification_method === 'email';
+        document.querySelector(`input[name="content-delivery"][value="${useEmail ? 'app-email' : 'app-only'}"]`).checked = true;
         
-        // Set urgent prayer notification radio button
-        const urgentPrayerMethod = userProfile.urgent_prayer_notification_method || 'email';
-        document.querySelector(`input[name="urgent-prayer-notification"][value="${urgentPrayerMethod}"]`).checked = true;
+        // Set notification method radio button
+        let notificationMethod = 'none';
+        if (userProfile.prayer_update_notification_method === 'sms' || userProfile.urgent_prayer_notification_method === 'sms') {
+            notificationMethod = 'sms';
+        } else if (userProfile.prayer_update_notification_method === 'whatsapp' || userProfile.urgent_prayer_notification_method === 'whatsapp') {
+            notificationMethod = 'whatsapp';
+        }
+        document.querySelector(`input[name="notification-method"][value="${notificationMethod}"]`).checked = true;
         
         // Set up notification method change handlers
         setupNotificationMethodHandlers();
@@ -473,45 +484,17 @@ function setupNotificationMethodHandlers() {
         });
     };
     
-    // Apply to both sets of radio buttons
-    replaceRadioListeners('prayer-update-notification');
-    replaceRadioListeners('urgent-prayer-notification');
+    // Apply to new sets of radio buttons
+    replaceRadioListeners('content-delivery');
+    replaceRadioListeners('notification-method');
     
-    // Setup real-time validation for phone number fields
-    const phoneInput = document.getElementById('profile-phone');
-    const whatsappInput = document.getElementById('profile-whatsapp');
+    // Setup real-time validation for the single mobile number field
+    const mobileInput = document.getElementById('profile-mobile');
     
-    if (phoneInput) {
-        const newPhoneInput = phoneInput.cloneNode(true);
-        phoneInput.parentNode.replaceChild(newPhoneInput, phoneInput);
-        newPhoneInput.addEventListener('input', function() {
-            // Check if field is required but empty
-            if (this.hasAttribute('required') && this.value.trim() === '') {
-                this.classList.add('is-invalid');
-                return;
-            }
-            
-            // If field has a value, validate it's 11 digits and starts with 0
-            if (this.value.trim() !== '') {
-                const phoneNumber = this.value.trim().replace(/\s+/g, '');
-                const isValid = /^0\d{10}$/.test(phoneNumber);
-                
-                if (!isValid) {
-                    this.classList.add('is-invalid');
-                    this.nextElementSibling.nextElementSibling.innerHTML = 'Please enter a valid 11-digit UK mobile number starting with 0';
-                } else {
-                    this.classList.remove('is-invalid');
-                }
-            } else {
-                this.classList.remove('is-invalid');
-            }
-        });
-    }
-    
-    if (whatsappInput) {
-        const newWhatsappInput = whatsappInput.cloneNode(true);
-        whatsappInput.parentNode.replaceChild(newWhatsappInput, whatsappInput);
-        newWhatsappInput.addEventListener('input', function() {
+    if (mobileInput) {
+        const newMobileInput = mobileInput.cloneNode(true);
+        mobileInput.parentNode.replaceChild(newMobileInput, mobileInput);
+        newMobileInput.addEventListener('input', function() {
             // Check if field is required but empty
             if (this.hasAttribute('required') && this.value.trim() === '') {
                 this.classList.add('is-invalid');
@@ -571,80 +554,58 @@ function disableHiddenRequiredFields() {
 
 // Update phone fields visibility based on notification method selections
 function updatePhoneFieldsVisibility() {
-    // Get selected notification methods (with null checks)
-    const prayerUpdateRadio = document.querySelector('input[name="prayer-update-notification"]:checked');
-    const urgentPrayerRadio = document.querySelector('input[name="urgent-prayer-notification"]:checked');
+    // Get selected notification method (with null check)
+    const notificationMethodRadio = document.querySelector('input[name="notification-method"]:checked');
     
-    if (!prayerUpdateRadio || !urgentPrayerRadio) {
-        console.warn('Radio buttons for notification preferences not found');
+    if (!notificationMethodRadio) {
+        console.warn('Radio buttons for notification method not found');
         return; // Exit if elements don't exist
     }
     
-    const prayerUpdateMethod = prayerUpdateRadio.value;
-    const urgentPrayerMethod = urgentPrayerRadio.value;
+    const notificationMethod = notificationMethodRadio.value;
     
     // Get container elements (with null checks)
-    const phoneNumbersSection = document.getElementById('phone-numbers-section');
-    const smsContainer = document.getElementById('sms-phone-container');
-    const whatsappContainer = document.getElementById('whatsapp-phone-container');
+    const phoneNumberSection = document.getElementById('phone-number-section');
+    const mobileNumberContainer = document.getElementById('mobile-number-container');
     const noPhoneMessage = document.getElementById('no-phone-needed-message');
     
     // Exit if any required container is missing
-    if (!phoneNumbersSection) {
-        console.warn('phone-numbers-section element not found');
+    if (!phoneNumberSection) {
+        console.warn('phone-number-section element not found');
         return;
     }
     
-    // Check if SMS is selected for either notification type
-    const smsNeeded = (prayerUpdateMethod === 'sms' || urgentPrayerMethod === 'sms');
+    // Check if mobile number is needed (SMS or WhatsApp selected)
+    const mobileNeeded = (notificationMethod === 'sms' || notificationMethod === 'whatsapp');
     
-    // Check if WhatsApp is selected for either notification type
-    const whatsappNeeded = (prayerUpdateMethod === 'whatsapp' || urgentPrayerMethod === 'whatsapp');
-    
-    // Hide the entire phone numbers section if neither SMS nor WhatsApp is needed
-    if (!smsNeeded && !whatsappNeeded) {
-        phoneNumbersSection.classList.add('d-none');
-        // Make sure to remove required from fields when hiding the section
-        const phoneInput = document.getElementById('profile-phone');
-        const whatsappInput = document.getElementById('profile-whatsapp');
-        if (phoneInput) phoneInput.removeAttribute('required');
-        if (whatsappInput) whatsappInput.removeAttribute('required');
+    // Show/hide the entire phone number section as needed
+    if (!mobileNeeded) {
+        phoneNumberSection.classList.add('d-none');
+        // Make sure to remove required from field when hiding the section
+        const mobileInput = document.getElementById('profile-mobile');
+        if (mobileInput) mobileInput.removeAttribute('required');
         return; // Exit early since the whole section is hidden
     } else {
-        phoneNumbersSection.classList.remove('d-none');
+        phoneNumberSection.classList.remove('d-none');
     }
     
-    // Update visibility of SMS container
-    const phoneInput = document.getElementById('profile-phone');
-    if (smsNeeded && smsContainer) {
-        smsContainer.classList.remove('d-none');
-        if (phoneInput) phoneInput.setAttribute('required', '');
-    } else if (smsContainer) {
-        smsContainer.classList.add('d-none');
-        if (phoneInput) {
-            phoneInput.removeAttribute('required');
+    // Update visibility of mobile number container
+    const mobileInput = document.getElementById('profile-mobile');
+    if (mobileNeeded && mobileNumberContainer) {
+        mobileNumberContainer.classList.remove('d-none');
+        if (mobileInput) mobileInput.setAttribute('required', '');
+    } else if (mobileNumberContainer) {
+        mobileNumberContainer.classList.add('d-none');
+        if (mobileInput) {
+            mobileInput.removeAttribute('required');
             // Clear validation state when hiding
-            phoneInput.classList.remove('is-invalid');
-        }
-    }
-    
-    // Update visibility of WhatsApp container
-    const whatsappInput = document.getElementById('profile-whatsapp');
-    if (whatsappNeeded && whatsappContainer) {
-        whatsappContainer.classList.remove('d-none');
-        if (whatsappInput) whatsappInput.setAttribute('required', '');
-    } else if (whatsappContainer) {
-        whatsappContainer.classList.add('d-none');
-        if (whatsappInput) {
-            whatsappInput.removeAttribute('required');
-            // Clear validation state when hiding
-            whatsappInput.classList.remove('is-invalid');
+            mobileInput.classList.remove('is-invalid');
         }
     }
     
     // Show/hide the "no phone needed" message
     if (noPhoneMessage) {
-        if (smsNeeded || whatsappNeeded) {
+        if (mobileNeeded) {
             noPhoneMessage.classList.add('d-none');
         } else {
             noPhoneMessage.classList.remove('d-none');
@@ -810,34 +771,44 @@ async function saveProfile(e) {
         const phoneNumber = document.getElementById('profile-phone').value.trim();
         const whatsappNumber = document.getElementById('profile-whatsapp').value.trim();
         
-        // Get notification preferences
-        const prayerUpdateNotification = document.querySelector('input[name="prayer-update-notification"]:checked').value;
-        const urgentPrayerNotification = document.querySelector('input[name="urgent-prayer-notification"]:checked').value;
+        // Get the content delivery preference
+        const contentDelivery = document.querySelector('input[name="content-delivery"]:checked').value;
+        // Determine if email should be used or app only
+        const useEmail = contentDelivery === 'app-email';
+        
+        // Get the notification method
+        const notificationMethod = document.querySelector('input[name="notification-method"]:checked').value;
         
         // Keep push notification setting (hidden in UI)
         const notifyPush = document.getElementById('notify-push').checked;
         
-        // Check if phone numbers are required but missing
-        const phoneInput = document.getElementById('profile-phone');
-        const whatsappInput = document.getElementById('profile-whatsapp');
+        // Map the new preferences to the old database structure
+        // Both prayer update and urgent prayer will use the same notification method
+        let prayerUpdateNotification = 'none';
+        let urgentPrayerNotification = 'none';
         
-        // Clear previous validation states
-        phoneInput.classList.remove('is-invalid');
-        whatsappInput.classList.remove('is-invalid');
-        
-        // Check SMS requirements
-        const smsNeeded = (prayerUpdateNotification === 'sms' || urgentPrayerNotification === 'sms');
-        if (smsNeeded && !phoneNumber) {
-            phoneInput.classList.add('is-invalid');
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
-            return; // Stop form submission
+        if (useEmail) {
+            prayerUpdateNotification = 'email';
+            urgentPrayerNotification = 'email';
         }
         
-        // Check WhatsApp requirements
-        const whatsappNeeded = (prayerUpdateNotification === 'whatsapp' || urgentPrayerNotification === 'whatsapp');
-        if (whatsappNeeded && !whatsappNumber) {
-            whatsappInput.classList.add('is-invalid');
+        // If notification method is selected, override the delivery method
+        if (notificationMethod !== 'none') {
+            prayerUpdateNotification = notificationMethod;
+            urgentPrayerNotification = notificationMethod;
+        }
+        
+        // Check if phone number is required but missing
+        const mobileInput = document.getElementById('profile-mobile');
+        
+        // Clear previous validation state
+        if (mobileInput) mobileInput.classList.remove('is-invalid');
+        
+        // Check mobile number requirement
+        const mobileNeeded = (notificationMethod === 'sms' || notificationMethod === 'whatsapp');
+        const mobileNumber = document.getElementById('profile-mobile').value.trim();
+        if (mobileNeeded && !mobileNumber) {
+            mobileInput.classList.add('is-invalid');
             submitBtn.textContent = originalText;
             submitBtn.disabled = false;
             return; // Stop form submission
@@ -909,35 +880,21 @@ async function updateProfileViaEdgeFunction(data) {
         // Determine if GDPR was accepted in this save
         const gdprAccepted = data.gdprAccepted === true ? true : userProfile.gdpr_accepted || false;
         
-        // Process phone numbers (drop the leading 0 and add +44)
-        let formattedPhoneNumber = data.phoneNumber;
-        let formattedWhatsappNumber = data.whatsappNumber || data.phoneNumber;
+        // Process mobile number (drop the leading 0 and add +44)
+        let formattedPhoneNumber = '';
         
-        // Process SMS phone number if provided
-        if (data.phoneNumber) {
+        // Process mobile number if provided
+        if (mobileNumber) {
             // Remove any spaces
-            const cleanNumber = data.phoneNumber.trim().replace(/\s+/g, '');
+            const cleanNumber = mobileNumber.trim().replace(/\s+/g, '');
             // Check if it's a valid UK number (starts with 0 and has 11 digits)
             if (/^0\d{10}$/.test(cleanNumber)) {
                 // Remove the 0 and add +44
                 formattedPhoneNumber = "+44" + cleanNumber.substring(1);
-                console.log('Formatted SMS phone number:', formattedPhoneNumber);
+                console.log('Formatted mobile number:', formattedPhoneNumber);
             } else {
-                console.warn('SMS number not in correct format, not converting to international format');
-            }
-        }
-        
-        // Process WhatsApp number if provided
-        if (data.whatsappNumber) {
-            // Remove any spaces
-            const cleanNumber = data.whatsappNumber.trim().replace(/\s+/g, '');
-            // Check if it's a valid UK number (starts with 0 and has 11 digits)
-            if (/^0\d{10}$/.test(cleanNumber)) {
-                // Remove the 0 and add +44
-                formattedWhatsappNumber = "+44" + cleanNumber.substring(1);
-                console.log('Formatted WhatsApp number:', formattedWhatsappNumber);
-            } else {
-                console.warn('WhatsApp number not in correct format, not converting to international format');
+                console.warn('Mobile number not in correct format, not converting to international format');
+                formattedPhoneNumber = cleanNumber;
             }
         }
 
@@ -949,9 +906,9 @@ async function updateProfileViaEdgeFunction(data) {
             prayer_points: data.prayerPoints,
             profile_image_url: oldImageUrl, // Will be updated by Edge Function if a new image is provided
             phone_number: formattedPhoneNumber,
-            whatsapp_number: formattedWhatsappNumber, 
-            prayer_update_notification_method: data.prayerUpdateNotification,
-            urgent_prayer_notification_method: data.urgentPrayerNotification,
+            whatsapp_number: formattedPhoneNumber, // Same number is used for both SMS and WhatsApp
+            prayer_update_notification_method: prayerUpdateNotification,
+            urgent_prayer_notification_method: urgentPrayerNotification,
             notification_push: data.notifyPush,
             profile_set: true, // Mark profile as completed
             gdpr_accepted: gdprAccepted, // Set GDPR acceptance status
