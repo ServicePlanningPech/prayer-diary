@@ -8,6 +8,9 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ClickSend configuration (for SMS notifications)
 const TWILIO_ENABLED = true; // Enabled for ClickSend SMS integration
 
+// WhatsApp configuration (using Meta Business Platform)
+const WHATSAPP_ENABLED = true; // Enabled for WhatsApp notification integration
+
 // Email configuration
 const EMAIL_ENABLED = true; // Set to true once configured
 

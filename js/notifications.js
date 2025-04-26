@@ -1,8 +1,15 @@
 // Notifications Module
 
 // Send a notification of the specified type to eligible users
+// Valid types are 'prayer_update' and 'urgent_prayer'
 async function sendNotification(type, title, content, date, notificationMethods = []) {
     try {
+        // Validate type parameter
+        if (type !== 'prayer_update' && type !== 'urgent_prayer') {
+            console.error(`Invalid notification type: ${type}. Must be 'prayer_update' or 'urgent_prayer'`);
+            return false;
+        }
+        
         // Log the notification
         console.log(`Sending ${type} notification: ${title}`);
         console.log('Notification methods:', notificationMethods);
@@ -15,14 +22,14 @@ async function sendNotification(type, title, content, date, notificationMethods 
             await sendEmailNotifications(type, title, content, date);
         }
         
-        if (TWILIO_ENABLED) {
-            if (useAllMethods || notificationMethods.includes('sms')) {
-                await sendSmsNotifications(type, title, content, date);
-            }
+        // SMS notifications
+        if (TWILIO_ENABLED && (useAllMethods || notificationMethods.includes('sms'))) {
+            await sendSmsNotifications(type, title, content, date);
+        }
             
-            if (useAllMethods || notificationMethods.includes('whatsapp')) {
-                await sendWhatsAppNotifications(type, title, content, date);
-            }
+        // WhatsApp notifications - uses separate config flag
+        if (WHATSAPP_ENABLED && (useAllMethods || notificationMethods.includes('whatsapp'))) {
+            await sendWhatsAppNotifications(type, title, content, date);
         }
         
         if (PUSH_NOTIFICATION_ENABLED && (useAllMethods || notificationMethods.includes('push'))) {
@@ -171,15 +178,59 @@ async function sendWhatsAppNotifications(type, title, content, date) {
         // Log the number of recipients
         console.log(`Sending WhatsApp notifications to ${users.length} recipients`);
         
-        // For each user, send a WhatsApp notification
-        // In a real implementation, we would use Twilio's WhatsApp API
+        // Choose the correct template based on notification type
+        const templateName = type === 'prayer_update' ? 'prayer_update_notify' : 'urgent_prayer_notify';
+        console.log(`[WhatsApp] Using template: ${templateName} for notification type: ${type}`);
+        
+        // Process each user with a valid WhatsApp number
         for (const user of users) {
             if (user.whatsapp_number) {
-                // Log notification
-                await logNotification(user.id, 'whatsapp', type, 'sent');
-                
-                // In a real implementation, we would call Twilio's WhatsApp API here
-                console.log(`[WhatsApp] To: ${user.whatsapp_number}, Message: Prayer Diary - ${title}`);
+                try {
+                    // Format phone number if needed - ensure it includes country code
+                    let phoneNumber = user.whatsapp_number;
+                    
+                    // Ensure phone number has the right format for WhatsApp (starts with country code without +)
+                    if (phoneNumber.startsWith('+')) {
+                        phoneNumber = phoneNumber.substring(1); // Remove + if present
+                    } else if (phoneNumber.startsWith('0')) {
+                        // If UK number starting with 0, replace with 44
+                        phoneNumber = '44' + phoneNumber.substring(1);
+                    }
+                    
+                    console.log(`[WhatsApp] Sending to ${user.full_name} at ${phoneNumber} using template: ${templateName}`);
+                    
+                    // Call the send-whatsapp Edge Function to send template message
+                    const response = await supabase.functions.invoke('send-whatsapp', {
+                        body: {
+                            phoneNumber: phoneNumber,
+                            templateName: templateName,
+                            templateParams: [
+                                {
+                                    type: "body",
+                                    parameters: [
+                                        {
+                                            type: "text",
+                                            text: title
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    });
+                    
+                    // Log success or errors from the response
+                    if (response.error) {
+                        console.error(`[WhatsApp] Edge function error:`, response.error);
+                        await logNotification(user.id, 'whatsapp', type, 'failed', response.error.message || 'Edge function error');
+                    } else {
+                        // Log notification success
+                        await logNotification(user.id, 'whatsapp', type, 'sent');
+                        console.log(`[WhatsApp] Template ${templateName} sent successfully to: ${phoneNumber}`);
+                    }
+                } catch (whatsappError) {
+                    console.error(`[WhatsApp] Error sending to ${user.whatsapp_number}:`, whatsappError);
+                    await logNotification(user.id, 'whatsapp', type, 'failed', whatsappError.message);
+                }
             }
         }
         
@@ -436,13 +487,57 @@ async function sendSms(to, message) {
     return await sendClickSendSMS([to], message);
 }
 
-// Actual implementation of WhatsApp sending via Twilio (to be implemented)
-// This would typically be implemented as a serverless function or endpoint
-// For now, we'll just log it
-async function sendWhatsApp(to, message) {
-    // This is a placeholder for the actual WhatsApp sending implementation
-    console.log(`Sending WhatsApp message to ${to}`);
-    console.log(`Message: ${message}`);
-    
-    return true;
+// Implementation of WhatsApp sending via Meta Business WhatsApp API
+async function sendWhatsApp(to, templateName, titleParam = '') {
+    try {
+        // Validate input
+        if (!to || !templateName) {
+            console.error('Missing required WhatsApp parameters');
+            return { success: false, error: 'Missing required WhatsApp parameters' };
+        }
+
+        // Format phone number
+        let phoneNumber = to;
+        if (phoneNumber.startsWith('+')) {
+            phoneNumber = phoneNumber.substring(1); // Remove + if present
+        } else if (phoneNumber.startsWith('0')) {
+            // If UK number starting with 0, replace with 44
+            phoneNumber = '44' + phoneNumber.substring(1);
+        }
+        
+        console.log(`[WhatsApp] Sending template ${templateName} to ${phoneNumber}`);
+        
+        // Create template parameters structure
+        const templateParams = [
+            {
+                type: "body",
+                parameters: [
+                    {
+                        type: "text",
+                        text: titleParam || 'Prayer Diary Notification'
+                    }
+                ]
+            }
+        ];
+        
+        // Call the send-whatsapp Edge Function
+        const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+            body: {
+                phoneNumber: phoneNumber,
+                templateName: templateName,
+                templateParams: templateParams
+            }
+        });
+        
+        if (error) {
+            console.error('[WhatsApp] Error calling WhatsApp edge function:', error);
+            return { success: false, error: error.message };
+        }
+        
+        console.log('[WhatsApp] Message sent successfully');
+        return { success: true, data };
+    } catch (error) {
+        console.error('[WhatsApp] Error sending WhatsApp message:', error);
+        return { success: false, error: error.message };
+    }
 }

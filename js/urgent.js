@@ -836,9 +836,9 @@ function formatDate(dateString) {
     });
 }
 
-// Send notifications for urgent prayers using batch-email with fire-and-forget approach
-function sendUrgentNotifications(title, content, dateInput) {
-    console.log('DEBUG: sendUrgentNotifications - Starting batch email for title:', title);
+// Send notifications for urgent prayers
+async function sendUrgentNotifications(title, content, dateInput) {
+    console.log('DEBUG: sendUrgentNotifications - Starting notifications for title:', title);
     
     // Format the date for display
     const date = dateInput ? new Date(dateInput) : new Date();
@@ -848,7 +848,19 @@ function sendUrgentNotifications(title, content, dateInput) {
         day: 'numeric' 
     });
     
-    // Call the batch-email Edge function without waiting for response (fire and forget)
+    // Use both individual notifications and batch email for different delivery methods
+    
+    // 1. Call the central notification function which will handle all notification types
+    // This will handle WhatsApp, SMS and other notification types
+    try {
+        await sendNotification('urgent_prayer', title, content, dateInput);
+        console.log('DEBUG: sendUrgentNotifications - General notifications triggered successfully');
+    } catch (notifyError) {
+        console.error('DEBUG: sendUrgentNotifications - Error sending notifications:', notifyError);
+    }
+    
+    // 2. Also call the batch-email Edge function without waiting for response (fire and forget)
+    // This handles bulk email sending more efficiently
     console.log('DEBUG: sendUrgentNotifications - Calling batch-email Edge function (fire and forget)');
     
     supabase.functions.invoke('batch-email', {
@@ -868,6 +880,5 @@ function sendUrgentNotifications(title, content, dateInput) {
         console.error('DEBUG: sendUrgentNotifications - Exception calling batch-email:', error);
     });
     
-    // Return immediately without waiting
     return true;
 }
