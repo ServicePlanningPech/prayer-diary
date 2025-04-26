@@ -658,18 +658,12 @@ async function createUrgentPrayer(action, submitBtn) {
         
         // Send notifications if that button was clicked
         if (action === 'saveAndSend' ) {
-            // Only send notifications for new urgent prayers with saveAndSend action
-            console.log('DEBUG: createUrgentPrayer - Action is saveAndSend, attempting to send notifications');
-            if (typeof sendNotification === 'function') {
-                await sendNotification('urgent_prayer', title, content, dateInput);
-                console.log('DEBUG: createUrgentPrayer - Notifications sent successfully');
-                showNotification('Success', `Urgent prayer request ${isEditing ? 'updated' : 'saved'} and sent successfully.`);
-            } else {
-                console.error('DEBUG: createUrgentPrayer - sendNotification function not found');
-                showNotification('Warning', `Urgent prayer request ${isEditing ? 'updated' : 'saved'} but not sent - notification function not available.`);
-            }
+            // Call the batch email function for urgent prayers
+            console.log('DEBUG: createUrgentPrayer - Action is saveAndSend, calling batch email function');
+            await sendUrgentNotifications(title, content, dateInput);
+            showNotification('Success', `Urgent prayer request ${isEditing ? 'updated' : 'saved'} and notification emails queued.`);
         } else {
-            console.log('DEBUG: createUrgentPrayer - Action is not saveAndSend or is an edit, not sending notifications');
+            console.log('DEBUG: createUrgentPrayer - Action is saveOnly, not sending notifications');
             showNotification('Success', `Urgent prayer request ${isEditing ? 'updated' : 'saved'} successfully.`);
         }
         
@@ -840,4 +834,43 @@ function formatDate(dateString) {
         month: 'short', 
         day: 'numeric' 
     });
+}
+
+// Send notifications for urgent prayers using batch-email
+async function sendUrgentNotifications(title, content, dateInput) {
+    console.log('DEBUG: sendUrgentNotifications - Starting batch email for title:', title);
+    
+    try {
+        // Format the date for display
+        const date = dateInput ? new Date(dateInput) : new Date();
+        const formattedDate = date.toLocaleDateString(undefined, { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        // Call the batch-email Edge function
+        console.log('DEBUG: sendUrgentNotifications - Calling batch-email Edge function');
+        
+        const { data, error } = await supabase.functions.invoke('batch-email', {
+            body: {
+                title: title,
+                date: formattedDate,
+                content: content,
+                type: 'urgent'
+            }
+        });
+        
+        if (error) {
+            console.error('DEBUG: sendUrgentNotifications - Error calling batch-email:', error);
+            throw error;
+        }
+        
+        console.log('DEBUG: sendUrgentNotifications - Batch email function successfully invoked:', data);
+        return true;
+    } catch (error) {
+        console.error('DEBUG: sendUrgentNotifications - Error sending urgent notifications:', error);
+        showNotification('Warning', `Urgent prayer request saved but email sending failed: ${error.message}`, 'warning');
+        return false;
+    }
 }

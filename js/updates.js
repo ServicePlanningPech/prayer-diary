@@ -886,17 +886,10 @@ async function createPrayerUpdate(action, submitBtn) {
         
         // Send notifications if that button was clicked
         if (action === 'saveAndSend') {
-            // Call the distribution function
-            console.log('DEBUG: createPrayerUpdate - Action is saveAndSend, attempting to send notifications');
-            if (typeof sendPrayerUpdates === 'function') {
-                console.log('DEBUG: createPrayerUpdate - sendPrayerUpdates function exists, calling it');
-                await sendUpdateNotifications(title, content, dateInput);
-                console.log('DEBUG: createPrayerUpdate - sendPrayerUpdates completed');
-                showNotification('Success', `Prayer update ${isEditing ? 'updated' : 'saved'} and sent successfully.`);
-            } else {
-                console.error('DEBUG: createPrayerUpdate - sendPrayerUpdates function not found');
-                showNotification('Warning', `Prayer update ${isEditing ? 'updated' : 'saved'} but not sent - distribution module not loaded.`);
-            }
+            // Call the new batch email function
+            console.log('DEBUG: createPrayerUpdate - Action is saveAndSend, calling batch email function');
+            await sendUpdateNotifications(title, content, dateInput);
+            showNotification('Success', `Prayer update ${isEditing ? 'updated' : 'saved'} and notification emails queued.`);
         } else {
             console.log('DEBUG: createPrayerUpdate - Action is saveOnly, not sending notifications');
             showNotification('Success', `Prayer update ${isEditing ? 'updated' : 'saved'} successfully.`);
@@ -1036,7 +1029,7 @@ function createUpdateCard(update) {
     console.log('DEBUG: createUpdateCard - Creating card for update ID:', update.id);
     // Format the date - include the update_date if available, otherwise use created_at
     const date = update.update_date ? new Date(update.update_date) : new Date(update.created_at);
-    const formattedDate = date.toLocaleDateString(undefined, { 
+    const formattedDate = date.toLocaleDateString(undefined, {
         year: 'numeric', 
         month: 'short', 
         day: 'numeric' 
@@ -1058,16 +1051,41 @@ function createUpdateCard(update) {
     return cardHtml;
 }
 
-// Send notifications for a new prayer update
-async function sendUpdateNotifications(title, content,dateInput) {
-    console.log('DEBUG: sendUpdateNotifications - Starting for title:', title);
+// Send notifications for a new prayer update - UPDATED to use batch-email
+async function sendUpdateNotifications(title, content, dateInput) {
+    console.log('DEBUG: sendUpdateNotifications - Starting batch email for title:', title);
+    
     try {
-        // This will be implemented in notifications.js
-        console.log('DEBUG: sendUpdateNotifications - Calling sendNotification function');
-        await sendNotification('prayer_update', title, content, dateInput, 'All users who opt in for notifications');
-        console.log('DEBUG: sendUpdateNotifications - Notifications sent successfully');
+        // Format the date for display
+        const date = dateInput ? new Date(dateInput) : new Date();
+        const formattedDate = date.toLocaleDateString(undefined, { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        // Call the batch-email Edge function
+        console.log('DEBUG: sendUpdateNotifications - Calling batch-email Edge function');
+        
+        const { data, error } = await supabase.functions.invoke('batch-email', {
+            body: {
+                title: title,
+                date: formattedDate,
+                content: content,
+                type: 'update'
+            }
+        });
+        
+        if (error) {
+            console.error('DEBUG: sendUpdateNotifications - Error calling batch-email:', error);
+            throw error;
+        }
+        
+        console.log('DEBUG: sendUpdateNotifications - Batch email function successfully invoked:', data);
+        return true;
     } catch (error) {
         console.error('DEBUG: sendUpdateNotifications - Error sending update notifications:', error);
+        showNotification('Warning', `Prayer update saved but email sending failed: ${error.message}`, 'warning');
+        return false;
     }
-    console.log('DEBUG: sendUpdateNotifications - Function complete');
 }
