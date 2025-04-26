@@ -881,9 +881,9 @@ async function updateProfileViaEdgeFunction(data) {
         let formattedPhoneNumber = '';
         
         // Process mobile number if provided
-        if (mobileNumber) {
+        if (data.mobileNumber) {
             // Remove any spaces
-            const cleanNumber = mobileNumber.trim().replace(/\s+/g, '');
+            const cleanNumber = data.mobileNumber.trim().replace(/\s+/g, '');
             // Check if it's a valid UK number (starts with 0 and has 11 digits)
             if (/^0\d{10}$/.test(cleanNumber)) {
                 // Remove the 0 and add +44
