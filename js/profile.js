@@ -485,8 +485,23 @@ function setupNotificationMethodHandlers() {
         const newPhoneInput = phoneInput.cloneNode(true);
         phoneInput.parentNode.replaceChild(newPhoneInput, phoneInput);
         newPhoneInput.addEventListener('input', function() {
+            // Check if field is required but empty
             if (this.hasAttribute('required') && this.value.trim() === '') {
                 this.classList.add('is-invalid');
+                return;
+            }
+            
+            // If field has a value, validate it's 11 digits and starts with 0
+            if (this.value.trim() !== '') {
+                const phoneNumber = this.value.trim().replace(/\s+/g, '');
+                const isValid = /^0\d{10}$/.test(phoneNumber);
+                
+                if (!isValid) {
+                    this.classList.add('is-invalid');
+                    this.nextElementSibling.nextElementSibling.innerHTML = 'Please enter a valid 11-digit UK mobile number starting with 0';
+                } else {
+                    this.classList.remove('is-invalid');
+                }
             } else {
                 this.classList.remove('is-invalid');
             }
@@ -497,8 +512,23 @@ function setupNotificationMethodHandlers() {
         const newWhatsappInput = whatsappInput.cloneNode(true);
         whatsappInput.parentNode.replaceChild(newWhatsappInput, whatsappInput);
         newWhatsappInput.addEventListener('input', function() {
+            // Check if field is required but empty
             if (this.hasAttribute('required') && this.value.trim() === '') {
                 this.classList.add('is-invalid');
+                return;
+            }
+            
+            // If field has a value, validate it's 11 digits and starts with 0
+            if (this.value.trim() !== '') {
+                const phoneNumber = this.value.trim().replace(/\s+/g, '');
+                const isValid = /^0\d{10}$/.test(phoneNumber);
+                
+                if (!isValid) {
+                    this.classList.add('is-invalid');
+                    this.nextElementSibling.nextElementSibling.innerHTML = 'Please enter a valid 11-digit UK mobile number starting with 0';
+                } else {
+                    this.classList.remove('is-invalid');
+                }
             } else {
                 this.classList.remove('is-invalid');
             }
@@ -879,6 +909,38 @@ async function updateProfileViaEdgeFunction(data) {
         // Determine if GDPR was accepted in this save
         const gdprAccepted = data.gdprAccepted === true ? true : userProfile.gdpr_accepted || false;
         
+        // Process phone numbers (drop the leading 0 and add +44)
+        let formattedPhoneNumber = data.phoneNumber;
+        let formattedWhatsappNumber = data.whatsappNumber || data.phoneNumber;
+        
+        // Process SMS phone number if provided
+        if (data.phoneNumber) {
+            // Remove any spaces
+            const cleanNumber = data.phoneNumber.trim().replace(/\s+/g, '');
+            // Check if it's a valid UK number (starts with 0 and has 11 digits)
+            if (/^0\d{10}$/.test(cleanNumber)) {
+                // Remove the 0 and add +44
+                formattedPhoneNumber = "+44" + cleanNumber.substring(1);
+                console.log('Formatted SMS phone number:', formattedPhoneNumber);
+            } else {
+                console.warn('SMS number not in correct format, not converting to international format');
+            }
+        }
+        
+        // Process WhatsApp number if provided
+        if (data.whatsappNumber) {
+            // Remove any spaces
+            const cleanNumber = data.whatsappNumber.trim().replace(/\s+/g, '');
+            // Check if it's a valid UK number (starts with 0 and has 11 digits)
+            if (/^0\d{10}$/.test(cleanNumber)) {
+                // Remove the 0 and add +44
+                formattedWhatsappNumber = "+44" + cleanNumber.substring(1);
+                console.log('Formatted WhatsApp number:', formattedWhatsappNumber);
+            } else {
+                console.warn('WhatsApp number not in correct format, not converting to international format');
+            }
+        }
+
         // Prepare profile data for the Edge Function
         const profileDataForUpdate = {
             full_name: data.fullName,
@@ -886,8 +948,8 @@ async function updateProfileViaEdgeFunction(data) {
             calendar_hide: data.calendarHide,
             prayer_points: data.prayerPoints,
             profile_image_url: oldImageUrl, // Will be updated by Edge Function if a new image is provided
-            phone_number: data.phoneNumber,
-            whatsapp_number: data.whatsappNumber || data.phoneNumber, 
+            phone_number: formattedPhoneNumber,
+            whatsapp_number: formattedWhatsappNumber, 
             prayer_update_notification_method: data.prayerUpdateNotification,
             urgent_prayer_notification_method: data.urgentPrayerNotification,
             notification_push: data.notifyPush,
