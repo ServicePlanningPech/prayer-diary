@@ -805,7 +805,6 @@ async function saveProfile(e) {
         
         // Check mobile number requirement
         const mobileNeeded = (notificationMethod === 'sms' || notificationMethod === 'whatsapp');
-        const mobileNumber = document.getElementById('profile-mobile').value.trim();
         if (mobileNeeded && !mobileNumber) {
             mobileInput.classList.add('is-invalid');
             submitBtn.textContent = originalText;
