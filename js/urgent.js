@@ -657,7 +657,7 @@ async function createUrgentPrayer(action, submitBtn) {
         loadUrgentAdmin();
         
         // Send notifications if that button was clicked
-        if (action === 'saveAndSend' && !isEditing) {
+        if (action === 'saveAndSend' ) {
             // Only send notifications for new urgent prayers with saveAndSend action
             console.log('DEBUG: createUrgentPrayer - Action is saveAndSend, attempting to send notifications');
             if (typeof sendNotification === 'function') {

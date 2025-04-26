@@ -20,19 +20,20 @@ interface SmsMessage {
 const CLICKSEND_USERNAME = Deno.env.get("CLICKSEND_USERNAME") || "";
 const CLICKSEND_API_KEY = Deno.env.get("CLICKSEND_API_KEY") || "";
 const SMS_SOURCE = Deno.env.get("SMS_SOURCE") || "PECH Prayer"; // This should be a valid source/sender name or number
-
-// Main handler function
-serve(async (req) => {
-  // Set CORS headers for preflight requests
+ 
+  // Serve handles HTTP requests
+Deno.serve(async (req) => {
+  // Enable CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }
     });
   }
+    
 
   // Only allow POST method
   if (req.method !== 'POST') {
