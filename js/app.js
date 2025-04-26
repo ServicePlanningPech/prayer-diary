@@ -206,8 +206,10 @@ async function checkForSuperAdmin() {
 // Register service worker and check for updates
 function registerServiceWorkerAndCheckForUpdates() {
     if ('serviceWorker' in navigator) {
-        // Register the service worker
-        navigator.serviceWorker.register('/service-worker.js')
+        // Register the service worker with the correct path
+        const swPath = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/service-worker.js' : '/service-worker.js';
+        console.log('Registering service worker at:', swPath);
+        navigator.serviceWorker.register(swPath)
             .then(registration => {
                 console.log('Service Worker registered with scope:', registration.scope);
                 

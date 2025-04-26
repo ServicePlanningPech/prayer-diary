@@ -2,7 +2,7 @@
   "name": "Prayer Diary",
   "short_name": "Prayer Diary",
   "description": "A prayer calendar and updates app for church members",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#483D8B",
   "theme_color": "#483D8B",
