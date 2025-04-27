@@ -303,7 +303,7 @@ function createPrayerCard(entry) {
         }
     }
     
-    // New layout with photo on left with text wrapping around it
+    // Layout with photo - CSS will handle small vs large based on body.small-photo class
     return `
     <div class="col">
         <div class="card h-100 shadow prayer-card" data-entry-id="${entry.id}" data-entry-type="${entry.type || 'member'}">

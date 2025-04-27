@@ -154,6 +154,11 @@
                                     </a>
                                 </li>
                                 <li>
+                                    <a class="dropdown-item" id="nav-preferences" href="#">
+                                        <i class="bi bi-sliders"></i> My Preferences
+                                    </a>
+                                </li>
+                                <li>
                                     <a class="dropdown-item" id="nav-change-password" href="#">
                                         <i class="bi bi-key"></i> Change my Password
                                     </a>
@@ -1287,7 +1292,61 @@
         </div>
     </div>
 
-    <!-- Change Password Modal -->
+    <!-- User Preferences View -->
+            <div id="preferences-view" class="view-content d-none">
+                <h1 class="display-6 mb-4">My Preferences</h1>
+                <div class="row">
+                    <div class="col-md-8 mx-auto">
+                        <div class="card shadow">
+                            <div class="card-body">
+                                <form id="preferences-form">
+                                    <div class="mb-4">
+                                        <h5 class="card-title fw-bold mb-3">Display Mode</h5>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="display-mode" id="light-mode" value="light" checked>
+                                            <label class="form-check-label" for="light-mode">
+                                                <i class="bi bi-brightness-high me-2"></i>Light Mode
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="display-mode" id="dark-mode" value="dark">
+                                            <label class="form-check-label" for="dark-mode">
+                                                <i class="bi bi-moon-fill me-2"></i>Dark Mode
+                                            </label>
+                                        </div>
+                                        <div class="form-text text-muted">Choose your preferred display theme for the application.</div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <h5 class="card-title fw-bold mb-3">Prayer Card Photo Size</h5>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="photo-size" id="large-photo" value="large" checked>
+                                            <label class="form-check-label" for="large-photo">
+                                                <i class="bi bi-image me-2"></i>Large Photo
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="photo-size" id="small-photo" value="small">
+                                            <label class="form-check-label" for="small-photo">
+                                                <i class="bi bi-image-alt me-2"></i>Small Photo (side-by-side with text)
+                                            </label>
+                                        </div>
+                                        <div class="form-text text-muted">Choose how photos are displayed on prayer cards.</div>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button class="btn btn-primary" type="submit">
+                                            Save Preferences
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Change Password Modal -->
     <div class="modal fade" id="change-password-modal" tabindex="-1" aria-labelledby="change-password-title" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -1688,6 +1747,7 @@
       //  loadScript("js/notification-processor.js");
         loadScript("js/email-test.js");
         loadScript("js/password-change.js");
+        loadScript("js/preferences.js");
         loadScript("js/drawer-navigation.js");
 		loadScript("js/refresh.js");
         loadScript("js/print-calendar.js");

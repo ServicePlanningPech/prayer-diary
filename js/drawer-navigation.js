@@ -114,6 +114,7 @@ function setupDrawerLinks(drawerMenu, closeDrawer) {
         '#nav-test-email',
         // User menu links
         '#nav-profile',
+        '#nav-preferences',
         '#nav-change-password',
         '#btn-logout'
     ];
@@ -161,6 +162,10 @@ function setupDrawerLinks(drawerMenu, closeDrawer) {
                     else if (id === 'nav-profile') {
                         window.showView('profile-view');
                         if (typeof loadUserProfile === 'function') setTimeout(loadUserProfile, 50);
+                    }
+                    else if (id === 'nav-preferences') {
+                        window.showView('preferences-view');
+                        if (typeof loadUserPreferences === 'function') setTimeout(loadUserPreferences, 50);
                     } 
                     else if (id === 'nav-manage-users') {
                         window.showView('manage-users-view');

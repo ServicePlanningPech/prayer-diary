@@ -993,6 +993,11 @@ function showLoggedInState() {
     document.querySelectorAll('.logged-out').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.logged-in').forEach(el => el.classList.remove('hidden'));
     
+    // Apply user preferences if available
+    if (window.applyUserPreferences) {
+        window.applyUserPreferences();
+    }
+    
     // Show/hide admin links based on user role
     if (userProfile.user_role === 'Administrator') {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));

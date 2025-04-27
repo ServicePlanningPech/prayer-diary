@@ -68,6 +68,12 @@ function setupNavigation() {
             // Load profile with a slight delay to ensure DOM is ready
             setTimeout(loadUserProfile, 50);
         }));
+        
+    document.getElementById('nav-preferences').addEventListener('click', 
+        createNavHandler('preferences-view', () => {
+            // Load preferences with a slight delay to ensure DOM is ready
+            setTimeout(loadUserPreferences, 50);
+        }));
     
     // Admin navigation
     document.getElementById('nav-manage-users').addEventListener('click', 
@@ -97,6 +103,7 @@ function setupNavigation() {
         updates: createNavHandler('updates-view', loadPrayerUpdates),
         urgent: createNavHandler('urgent-view', loadUrgentPrayers),
         profile: createNavHandler('profile-view', () => setTimeout(loadUserProfile, 50)),
+        preferences: createNavHandler('preferences-view', () => setTimeout(loadUserPreferences, 50)),
         manageUsers: createNavHandler('manage-users-view', loadUsers),
         manageCalendar: createNavHandler('manage-calendar-view', loadCalendarAdmin),
         manageUpdates: createNavHandler('manage-updates-view', () => {
