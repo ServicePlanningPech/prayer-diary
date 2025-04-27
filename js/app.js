@@ -36,6 +36,12 @@ function initializeApp() {
     // Set up service worker and check for updates
     registerServiceWorkerAndCheckForUpdates();
     
+    // Force refresh of the drawer navigation after a short delay
+    // This ensures any dynamically added menu items are included
+    setTimeout(function() {
+        document.dispatchEvent(new CustomEvent('navigation-updated'));
+    }, 1500);
+    
     // Set up delete user confirmation modal functionality
     const deleteUserModal = document.getElementById('delete-user-modal');
     if (deleteUserModal) {

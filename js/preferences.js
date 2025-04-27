@@ -164,3 +164,6 @@ window.applyUserPreferences = function() {
         applyPreferences();
     }
 };
+
+// Dispatch a navigation-updated event when this script loads to ensure the drawer gets updated
+document.dispatchEvent(new CustomEvent('navigation-updated'));

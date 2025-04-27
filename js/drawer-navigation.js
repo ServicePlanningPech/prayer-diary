@@ -3,6 +3,12 @@
 // Initialize drawer navigation when the DOM is loaded
 document.addEventListener('DOMContentLoaded', initDrawerNavigation);
 
+// Also re-initialize when any dropdown contents might have changed
+document.addEventListener('navigation-updated', function() {
+    console.log("Navigation content updated, reinitializing drawer");
+    setTimeout(initDrawerNavigation, 100);
+});
+
 function initDrawerNavigation() {
     console.log("Initializing drawer navigation...");
     const drawerToggle = document.querySelector('.navbar-drawer-toggle');
@@ -10,6 +16,15 @@ function initDrawerNavigation() {
     const overlay = document.querySelector('.nav-overlay');
     const closeBtn = document.querySelector('.drawer-close');
     const drawerMenu = document.querySelector('.drawer-menu');
+    
+    // Check if we should actually initialize based on viewport
+    const isMobile = window.innerWidth < 992;
+    console.log("Current viewport width: " + window.innerWidth + ", is mobile view: " + isMobile);
+    
+    // Always force redrawing the menu for mobile views
+    if (isMobile) {
+        console.log("Mobile view detected, forcing menu rebuild");
+    }
     
     // Early exit if any required elements are missing
     if (!drawerToggle || !drawer || !overlay || !closeBtn || !drawerMenu) {
@@ -32,6 +47,53 @@ function initDrawerNavigation() {
         
         drawerMenu.appendChild(clonedItem);
     });
+    
+    // Manual check to ensure 'My Preferences' item exists in the drawer
+    // This handles the case where it might not be properly cloned from the navbar
+    setTimeout(() => {
+        const myDetailsDropdowns = drawerMenu.querySelectorAll('#myDetailsDropdown');
+        myDetailsDropdowns.forEach(dropdown => {
+            // Check for the dropdown menu containing preferences
+            const dropdownMenu = dropdown.nextElementSibling;
+            if (dropdownMenu && dropdownMenu.classList.contains('dropdown-menu')) {
+                // Check if preferences option exists
+                const hasPreferencesItem = Array.from(dropdownMenu.querySelectorAll('.dropdown-item'))
+                    .some(item => item.id === 'nav-preferences');
+                    
+                if (!hasPreferencesItem) {
+                    console.log('Adding missing preferences item to drawer menu');
+                    // Create preferences item if missing
+                    const profileItem = dropdownMenu.querySelector('#nav-profile');
+                    if (profileItem) {
+                        const preferencesItem = document.createElement('li');
+                        preferencesItem.innerHTML = `
+                            <a class="dropdown-item" id="nav-preferences" href="#">
+                                <i class="bi bi-sliders"></i> My Preferences
+                            </a>
+                        `;
+                        
+                        // Insert after profile item
+                        profileItem.parentNode.insertBefore(preferencesItem, profileItem.nextSibling);
+                        
+                        // Add click handler
+                        const preferencesLink = preferencesItem.querySelector('#nav-preferences');
+                        if (preferencesLink) {
+                            preferencesLink.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                window.closeDrawer ? window.closeDrawer() : console.error('closeDrawer not available');
+                                setTimeout(() => {
+                                    window.showView('preferences-view');
+                                    if (typeof loadUserPreferences === 'function') {
+                                        loadUserPreferences();
+                                    }
+                                }, 300);
+                            });
+                        }
+                    }
+                }
+            }
+        });
+    }, 200);
     
     // Also clone the auth container with My Details menu
     const authContainer = document.querySelector('#auth-container');
@@ -84,16 +146,80 @@ function initDrawerNavigation() {
         document.body.style.overflow = ''; // Restore scrolling
     }
     
+    // Make closeDrawer accessible in other functions
+    window.closeDrawer = closeDrawer;
+    
     closeBtn.addEventListener('click', closeDrawer);
     overlay.addEventListener('click', closeDrawer);
     
     // Handle all possible action links in the drawer
     setupDrawerLinks(drawerMenu, closeDrawer);
     
+    // Make sure the preferences item exists in the drawer
+    setTimeout(() => {
+        ensurePreferencesItemExists();
+    }, 300);
+    
     console.log("Drawer navigation initialized successfully");
 }
 
 // Setup link handlers for both regular nav links and dropdown items
+// Ensure that preferences nav item exists in the drawer after it's initialized
+function ensurePreferencesItemExists() {
+    const drawerMenu = document.querySelector('.drawer-menu');
+    if (!drawerMenu) return;
+    
+    // First check if we can find it directly
+    const existingItem = drawerMenu.querySelector('#nav-preferences');
+    if (existingItem) return; // Already exists, we're good
+    
+    console.log('Preferences item not found in drawer, adding it manually');
+    
+    // Find My Details dropdown menu
+    const detailsDropdowns = drawerMenu.querySelectorAll('.dropdown-menu');
+    detailsDropdowns.forEach(menu => {
+        // Look for profile item as a reference point
+        const profileItem = menu.querySelector('#nav-profile');
+        if (profileItem && profileItem.closest('li')) {
+            // Create preferences item
+            const prefItem = document.createElement('li');
+            prefItem.innerHTML = `
+                <a class="dropdown-item" id="nav-preferences" href="#">
+                    <i class="bi bi-sliders"></i> My Preferences
+                </a>
+            `;
+            
+            // Insert after profile item
+            profileItem.closest('li').after(prefItem);
+            
+            // Add click handler
+            const prefLink = prefItem.querySelector('a');
+            if (prefLink) {
+                prefLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Close the drawer if open
+                    const drawer = document.querySelector('.nav-drawer');
+                    const overlay = document.querySelector('.nav-overlay');
+                    if (drawer && drawer.classList.contains('open')) {
+                        drawer.classList.remove('open');
+                        if (overlay) overlay.classList.remove('open');
+                        document.body.style.overflow = '';
+                    }
+                    
+                    // Navigate to preferences view
+                    setTimeout(() => {
+                        window.showView('preferences-view');
+                        if (typeof window.loadUserPreferences === 'function') {
+                            window.loadUserPreferences();
+                        }
+                    }, 300);
+                });
+            }
+        }
+    });
+}
+
 function setupDrawerLinks(drawerMenu, closeDrawer) {
     // Keep track of navigation actions that might be in progress
     if (!window.navigationInProgress) {
@@ -164,8 +290,14 @@ function setupDrawerLinks(drawerMenu, closeDrawer) {
                         if (typeof loadUserProfile === 'function') setTimeout(loadUserProfile, 50);
                     }
                     else if (id === 'nav-preferences') {
+                        console.log('Navigating to preferences view from drawer');
                         window.showView('preferences-view');
-                        if (typeof loadUserPreferences === 'function') setTimeout(loadUserPreferences, 50);
+                        if (typeof loadUserPreferences === 'function') {
+                            console.log('Loading user preferences...');
+                            setTimeout(loadUserPreferences, 50);
+                        } else {
+                            console.warn('loadUserPreferences function not found');
+                        }
                     } 
                     else if (id === 'nav-manage-users') {
                         window.showView('manage-users-view');
