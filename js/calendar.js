@@ -679,7 +679,6 @@ function addClickableDateStyles() {
     style.textContent = `
         .clickable-date {
             cursor: pointer;
-            text-decoration: underline dotted;
             padding-right: 20px;
             position: relative;
             display: inline-block;
