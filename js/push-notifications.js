@@ -174,31 +174,77 @@ async function saveSubscriptionToDatabase(subscription) {
             return false;
         }
         
+        // Convert subscription to JSON
+        let subscriptionJSON;
+        try {
+            subscriptionJSON = subscription.toJSON();
+            console.log('Subscription JSON:', subscriptionJSON);
+        } catch (jsonError) {
+            console.error('Error converting subscription to JSON:', jsonError);
+            // Fallback to manually extracting the required properties
+            subscriptionJSON = {
+                endpoint: subscription.endpoint,
+                expirationTime: subscription.expirationTime,
+                keys: {
+                    p256dh: subscription.keys?.p256dh,
+                    auth: subscription.keys?.auth
+                }
+            };
+            console.log('Manually created subscription JSON:', subscriptionJSON);
+        }
+        
         // Prepare subscription data
         const subscriptionData = {
             user_id: userId,
-            subscription_object: subscription.toJSON(),
+            subscription_object: subscriptionJSON,
             user_agent: navigator.userAgent,
             active: true
         };
         
-        // Insert or update the subscription in the database using upsert
-        const { error } = await supabase
+        // First try simple insert
+        console.log('Attempting to insert subscription to database...');
+        const { error: insertError } = await supabase
             .from('push_subscriptions')
-            .upsert(subscriptionData, {
-                onConflict: 'subscription_object->endpoint',
-                returning: 'minimal'
-            });
-        
-        if (error) {
-            console.error('Error saving push subscription to database:', error);
-            return false;
+            .insert(subscriptionData);
+            
+        if (!insertError) {
+            console.log('Push subscription successfully inserted');
+            return true;
         }
         
-        console.log('Push subscription saved to database');
-        return true;
+        // If there's a unique constraint violation, try an update
+        if (insertError && insertError.code === '23505') { // Unique violation code
+            console.log('Subscription already exists, trying update...');
+            
+            // Update the existing subscription
+            const { error: updateError } = await supabase
+                .from('push_subscriptions')
+                .update({
+                    subscription_object: subscriptionJSON,
+                    user_agent: navigator.userAgent,
+                    active: true
+                })
+                .eq('user_id', userId)
+                .filter('subscription_object->>\'endpoint\'', 'eq', subscription.endpoint);
+                
+            if (updateError) {
+                console.error('Error updating push subscription:', updateError);
+                console.error('Full error details:', JSON.stringify(updateError));
+                return false;
+            }
+            
+            console.log('Push subscription successfully updated');
+            return true;
+        }
+        
+        // Log detailed error information
+        console.error('Error inserting push subscription:', insertError);
+        console.error('Full error details:', JSON.stringify(insertError));
+        console.error('Subscription data:', JSON.stringify(subscriptionData));
+        return false;
     } catch (error) {
         console.error('Error in saveSubscriptionToDatabase:', error);
+        console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         return false;
     }
 }

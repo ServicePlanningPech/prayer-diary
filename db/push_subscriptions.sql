@@ -6,9 +6,7 @@ CREATE TABLE push_subscriptions (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   subscription_object JSONB NOT NULL,
   user_agent TEXT,
-  active BOOLEAN DEFAULT TRUE,
-  
-  CONSTRAINT unique_subscription_endpoint UNIQUE ((subscription_object->>'endpoint'))
+  active BOOLEAN DEFAULT TRUE
 );
 
 -- Setup RLS policies for the push_subscriptions table
@@ -43,6 +41,9 @@ CREATE POLICY "Users can delete their own push subscriptions"
   FOR DELETE
   TO authenticated
   USING (auth.uid() = user_id);
+
+-- Create unique index on the endpoint within the JSONB
+CREATE UNIQUE INDEX idx_unique_subscription_endpoint ON push_subscriptions ((subscription_object->>'endpoint'));
 
 -- Create index on user_id for faster lookups
 CREATE INDEX idx_push_subscriptions_user_id ON push_subscriptions(user_id);
