@@ -80,17 +80,12 @@ async function loadUserProfile() {
         }
         document.getElementById('profile-mobile').value = displayPhoneNumber;
         
-        // Set content delivery radio button based on preferences
-        const useEmail = userProfile.prayer_update_notification_method === 'email' || userProfile.urgent_prayer_notification_method === 'email';
-        document.querySelector(`input[name="content-delivery"][value="${useEmail ? 'app-email' : 'app-only'}"]`).checked = true;
+        // Set content delivery radio button based on the new content_delivery_email field
+        const contentDeliveryEmail = userProfile.content_delivery_email !== false; // Default to true if undefined
+        document.querySelector(`input[name="content-delivery"][value="${contentDeliveryEmail ? 'app-email' : 'app-only'}"]`).checked = true;
         
-        // Set notification method radio button
-        let notificationMethod = 'none';
-        if (userProfile.prayer_update_notification_method === 'sms' || userProfile.urgent_prayer_notification_method === 'sms') {
-            notificationMethod = 'sms';
-        } else if (userProfile.prayer_update_notification_method === 'whatsapp' || userProfile.urgent_prayer_notification_method === 'whatsapp') {
-            notificationMethod = 'whatsapp';
-        }
+        // Set notification method radio button based on the new notification_method field
+        let notificationMethod = userProfile.notification_method || 'none';
         document.querySelector(`input[name="notification-method"][value="${notificationMethod}"]`).checked = true;
         
         // Set up notification method change handlers
@@ -772,30 +767,14 @@ async function saveProfile(e) {
         
         // Get the content delivery preference
         const contentDelivery = document.querySelector('input[name="content-delivery"]:checked').value;
-        // Determine if email should be used or app only
-        const useEmail = contentDelivery === 'app-email';
+        // Determine if email should be used based on the selection
+        const contentDeliveryEmail = contentDelivery === 'app-email';
         
         // Get the notification method
         const notificationMethod = document.querySelector('input[name="notification-method"]:checked').value;
         
         // Keep push notification setting (hidden in UI)
         const notifyPush = document.getElementById('notify-push').checked;
-        
-        // Map the new preferences to the old database structure
-        // Both prayer update and urgent prayer will use the same notification method
-        let prayerUpdateNotification = 'none';
-        let urgentPrayerNotification = 'none';
-        
-        if (useEmail) {
-            prayerUpdateNotification = 'email';
-            urgentPrayerNotification = 'email';
-        }
-        
-        // If notification method is selected, override the delivery method
-        if (notificationMethod !== 'none') {
-            prayerUpdateNotification = notificationMethod;
-            urgentPrayerNotification = notificationMethod;
-        }
         
         // Check if phone number is required but missing
         const mobileInput = document.getElementById('profile-mobile');
@@ -819,8 +798,8 @@ async function saveProfile(e) {
             calendarHide,
             prayerPoints,
             mobileNumber,
-            prayerUpdateNotification,
-            urgentPrayerNotification,
+            contentDeliveryEmail,
+            notificationMethod,
             notifyPush,
             submitBtn,
             originalText
@@ -895,7 +874,7 @@ async function updateProfileViaEdgeFunction(data) {
             }
         }
 
-        // Prepare profile data for the Edge Function
+        // Prepare profile data for the Edge Function - now using the new fields
         const profileDataForUpdate = {
             full_name: data.fullName,
             photo_tag: data.photoTag,
@@ -904,8 +883,8 @@ async function updateProfileViaEdgeFunction(data) {
             profile_image_url: oldImageUrl, // Will be updated by Edge Function if a new image is provided
             phone_number: formattedPhoneNumber,
             whatsapp_number: formattedPhoneNumber, // Same number is used for both SMS and WhatsApp
-            prayer_update_notification_method: data.prayerUpdateNotification,
-            urgent_prayer_notification_method: data.urgentPrayerNotification,
+            content_delivery_email: data.contentDeliveryEmail, // NEW FIELD
+            notification_method: data.notificationMethod, // NEW FIELD
             notification_push: data.notifyPush,
             profile_set: true, // Mark profile as completed
             gdpr_accepted: gdprAccepted, // Set GDPR acceptance status

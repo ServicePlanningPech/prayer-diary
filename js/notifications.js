@@ -32,9 +32,6 @@ async function sendNotification(type, title, content, date, notificationMethods 
             await sendWhatsAppNotifications(type, title, content, date);
         }
         
-        if (PUSH_NOTIFICATION_ENABLED && (useAllMethods || notificationMethods.includes('push'))) {
-            await sendPushNotifications(type, title, content, date);
-        }
         
         return true;
     } catch (error) {
@@ -45,14 +42,10 @@ async function sendNotification(type, title, content, date, notificationMethods 
 
 // Send email notifications for the specified type
 async function sendEmailNotifications(type, title, content, date) {
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     try {
-        // Get appropriate notification field based on type
-        const notificationField = type === 'prayer_update' 
-            ? 'prayer_update_notification_method' 
-            : 'urgent_prayer_notification_method';
-        
-        // Get users who have opted in for email notifications for this type
+        // Get users who have opted in for email notifications 
+        // Now using the new content_delivery_email field
         const { data: users, error } = await supabase
             .from('profiles')
             .select(`
@@ -61,7 +54,7 @@ async function sendEmailNotifications(type, title, content, date) {
                 email
             `)
             .eq('approval_state', 'Approved')
-            .eq(notificationField, 'email');
+            .eq('content_delivery_email', true);
             
         if (error) throw error;
         
@@ -91,14 +84,9 @@ async function sendEmailNotifications(type, title, content, date) {
 
 // Send SMS notifications for the specified type
 async function sendSmsNotifications(type, title, content, date) {
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     try {
-        // Get appropriate notification field based on type
-        const notificationField = type === 'prayer_update' 
-            ? 'prayer_update_notification_method' 
-            : 'urgent_prayer_notification_method';
-            
-        // Get users who have opted in for SMS notifications for this type
+        // Get users who have opted in for SMS notifications using the new notification_method field
         const { data: users, error } = await supabase
             .from('profiles')
             .select(`
@@ -107,7 +95,7 @@ async function sendSmsNotifications(type, title, content, date) {
                 phone_number
             `)
             .eq('approval_state', 'Approved')
-            .eq(notificationField, 'sms')
+            .eq('notification_method', 'sms')
             .not('phone_number', 'is', null);
             
         if (error) throw error;
@@ -154,14 +142,9 @@ async function sendSmsNotifications(type, title, content, date) {
 
 // Send WhatsApp notifications for the specified type
 async function sendWhatsAppNotifications(type, title, content, date) {
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     try {
-        // Get appropriate notification field based on type
-        const notificationField = type === 'prayer_update' 
-            ? 'prayer_update_notification_method' 
-            : 'urgent_prayer_notification_method';
-            
-        // Get users who have opted in for WhatsApp notifications for this type
+        // Get users who have opted in for WhatsApp notifications using the new notification_method field
         const { data: users, error } = await supabase
             .from('profiles')
             .select(`
@@ -170,7 +153,7 @@ async function sendWhatsAppNotifications(type, title, content, date) {
                 whatsapp_number
             `)
             .eq('approval_state', 'Approved')
-            .eq(notificationField, 'whatsapp')
+            .eq('notification_method', 'whatsapp')
             .not('whatsapp_number', 'is', null);
             
         if (error) throw error;
@@ -241,27 +224,7 @@ async function sendWhatsAppNotifications(type, title, content, date) {
     }
 }
 
-// Send push notifications for the specified type
-async function sendPushNotifications(type, title, content, date) {
-    try {
-        // In a real implementation, we would use a push notification service
-        // like Firebase Cloud Messaging (FCM) or OneSignal
-        
-        console.log(`[Push] Sending push notification: ${title}`);
-        
-        // For demonstration purposes only
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-            console.log('Push notifications are supported by this browser');
-        } else {
-            console.log('Push notifications are NOT supported by this browser');
-        }
-        
-        return true;
-    } catch (error) {
-        console.error('Error sending push notifications:', error);
-        return false;
-    }
-}
+
 
 // Send a welcome email to a newly approved user
 async function sendWelcomeEmail(email, name, userId = null) {
@@ -309,68 +272,10 @@ async function logNotification(userId, notificationType, contentType, status, er
     return true;
 }
 
-// Request permission for push notifications
-async function requestPushNotificationPermission() {
-    try {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            console.log('Push notifications are not supported by this browser');
-            return false;
-        }
-        
-        // Request permission
-        const permission = await Notification.requestPermission();
-        
-        if (permission === 'granted') {
-            console.log('Notification permission granted');
-            
-            // Register the service worker for push notifications
-            const registration = await navigator.serviceWorker.ready;
-            
-            // Subscribe to push notifications
-            const subscribeOptions = {
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array('YOUR_VAPID_PUBLIC_KEY') // Replace with your VAPID key
-            };
-            
-            const pushSubscription = await registration.pushManager.subscribe(subscribeOptions);
-            
-            // Send the subscription details to the server
-            // In a real implementation, we would send this to our backend
-            console.log('Push subscription:', JSON.stringify(pushSubscription));
-            
-            return true;
-        } else {
-            console.log('Notification permission denied');
-            return false;
-        }
-    } catch (error) {
-        console.error('Error requesting push notification permission:', error);
-        return false;
-    }
-}
-
-// Helper function to convert base64 string to Uint8Array
-// (required for push notification subscription)
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-        
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    
-    return outputArray;
-}
-
 // Implementation of email sending via Supabase Edge Function with Google SMTP
 // This is a general purpose function that can be used throughout the app
 async function sendEmail(options) {
-	 await window.waitForAuthStability();
+    await window.waitForAuthStability();
     // Set default values if not provided
     const {
         to,                    // Recipient email (required)
@@ -481,11 +386,6 @@ async function sendClickSendSMS(phoneNumbers, message) {
     }
 }
 
-// Legacy SMS function - now deprecated
-async function sendSms(to, message) {
-    console.log('Using deprecated sendSms function - please update to use sendClickSendSMS instead');
-    return await sendClickSendSMS([to], message);
-}
 
 // Implementation of WhatsApp sending via Meta Business WhatsApp API
 async function sendWhatsApp(to, templateName, titleParam = '') {

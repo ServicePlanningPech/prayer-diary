@@ -173,9 +173,6 @@ function setupAllModals() {
             Notification.requestPermission().then(permission => {
                 if (permission === 'granted') {
                     console.log('Notification permission granted.');
-                    if ('serviceWorker' in navigator && 'PushManager' in window) {
-                        requestPushNotificationPermission();
-                    }
                 }
             });
         }, 5000);

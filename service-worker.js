@@ -24,7 +24,6 @@ const urlsToCache = [
   BASE_PATH + '/js/profile.js',
   BASE_PATH + '/js/admin.js',
   BASE_PATH + '/js/notifications.js',
-  BASE_PATH + '/js/notification-processor.js',
   BASE_PATH + '/js/email-test.js',
   BASE_PATH + '/js/config.js',
   BASE_PATH + '/img/placeholder-profile.png',
