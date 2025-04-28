@@ -771,9 +771,6 @@ async function saveProfile(e) {
         // Get the notification method
         const notificationMethod = document.querySelector('input[name="notification-method"]:checked').value;
         
-        // Keep push notification setting (hidden in UI)
-        const notifyPush = document.getElementById('notify-push').checked;
-        
         // Check if phone number is required but missing
         const mobileInput = document.getElementById('profile-mobile');
         
@@ -798,7 +795,6 @@ async function saveProfile(e) {
             mobileNumber,
             contentDeliveryEmail,
             notificationMethod,
-            notifyPush,
             submitBtn,
             originalText
         };
@@ -883,7 +879,6 @@ async function updateProfileViaEdgeFunction(data) {
             whatsapp_number: formattedPhoneNumber, // Same number is used for both SMS and WhatsApp
             content_delivery_email: data.contentDeliveryEmail, // NEW FIELD
             notification_method: data.notificationMethod, // NEW FIELD
-            notification_push: data.notifyPush,
             profile_set: true, // Mark profile as completed
             gdpr_accepted: gdprAccepted, // Set GDPR acceptance status
             updated_at: new Date().toISOString()
