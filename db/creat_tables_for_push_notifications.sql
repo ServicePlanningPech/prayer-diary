@@ -4,6 +4,7 @@ create table push_subscriptions (
      endpoint text not null,
      auth text not null,
      p256dh text not null,
+	 active BOOLEAN DEFAULT TRUE,
      created_at timestamp with time zone default now()
    );
 create table device_tokens (

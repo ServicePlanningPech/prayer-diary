@@ -4,7 +4,7 @@
 import { serve } from 'https://deno.land/std@0.170.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-import webpush from 'https://esm.sh/web-push@3.6.1'
+import webpush from 'npm:web-push@3.5.0'
 // CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,11 +61,11 @@ serve(async (req) => {
     )
 
     // Fetch push subscriptions for the specified users
+    // Note: We're not filtering by active here in case the column doesn't exist yet
     const { data: subscriptions, error: fetchError } = await supabaseAdmin
       .from('push_subscriptions')
       .select('*')
       .in('user_id', userIds)
-      .eq('active', true)
 
     if (fetchError) {
       throw new Error(`Error fetching subscriptions: ${fetchError.message}`)
@@ -111,7 +111,15 @@ serve(async (req) => {
     let successCount = 0
     let failureCount = 0
 
-    for (const subscription of subscriptions) {
+    // Filter subscriptions manually to handle missing active column
+    const activeSubscriptions = subscriptions.filter(sub => 
+      // Consider subscription active if active property is undefined or true
+      sub.active === undefined || sub.active === true
+    );
+    
+    console.log(`Found ${activeSubscriptions.length} active subscriptions after filtering`);
+    
+    for (const subscription of activeSubscriptions) {
       try {
         // Skip if subscription has no endpoint
         if (!subscription.subscription_object || !subscription.subscription_object.endpoint) {
@@ -159,11 +167,16 @@ serve(async (req) => {
           // Subscription has expired or is no longer valid
           console.log(`Subscription ${subscription.id} is no longer valid, marking as inactive`)
           
-          // Mark subscription as inactive
-          await supabaseAdmin
-            .from('push_subscriptions')
-            .update({ active: false })
-            .eq('id', subscription.id)
+          try {
+            // Mark subscription as inactive
+            await supabaseAdmin
+              .from('push_subscriptions')
+              .update({ active: false })
+              .eq('id', subscription.id)
+          } catch (updateError) {
+            // Handle case where active column doesn't exist yet
+            console.log(`Could not mark subscription as inactive: ${updateError.message}`)
+          }
         }
 
         // Log the failure in the database
