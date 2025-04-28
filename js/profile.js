@@ -94,8 +94,6 @@ async function loadUserProfile() {
         // Initial check for which phone fields to show
         updatePhoneFieldsVisibility();
         
-        // Keep push notification setting in the background
-        document.getElementById('notify-push').checked = userProfile.notification_push || false;
         
         // Reset GDPR consent checkbox and button
         if (document.getElementById('gdpr-consent-check')) {
