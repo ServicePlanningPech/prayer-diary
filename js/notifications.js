@@ -32,6 +32,10 @@ async function sendNotification(type, title, content, date, notificationMethods 
             await sendWhatsAppNotifications(type, title, content, date);
         }
         
+        // Push notifications
+        if (PUSH_NOTIFICATION_ENABLED && (useAllMethods || notificationMethods.includes('push'))) {
+            await sendPushNotifications(type, title, content, date);
+        }
         
         return true;
     } catch (error) {
@@ -439,5 +443,70 @@ async function sendWhatsApp(to, templateName, titleParam = '') {
     } catch (error) {
         console.error('[WhatsApp] Error sending WhatsApp message:', error);
         return { success: false, error: error.message };
+    }
+}
+
+// Send Push notifications for the specified type
+async function sendPushNotifications(type, title, content, date) {
+    await window.waitForAuthStability();
+    try {
+        // Get users who have opted in for Push notifications using the notification_method field
+        const { data: users, error } = await supabase
+            .from('profiles')
+            .select(`
+                id,
+                full_name
+            `)
+            .eq('approval_state', 'Approved')
+            .eq('notification_method', 'push');
+            
+        if (error) throw error;
+        
+        // Log the number of recipients
+        console.log(`Sending Push notifications to ${users.length} recipients`);
+        
+        if (users.length > 0) {
+            // Prepare the message for push notification
+            const messageType = type === 'prayer_update' ? 'Prayer Update' : 'Urgent Prayer';
+            const message = `${messageType} - ${title}`;
+            
+            // Collect all user IDs
+            const userIds = users.map(user => user.id).filter(Boolean);
+            
+            if (userIds.length > 0) {
+                // Call the Push Notification Edge Function
+                const result = await supabase.functions.invoke('send-push-notifications', {
+                    body: {
+                        userIds: userIds,
+                        title: messageType,
+                        message: message,
+                        contentType: type,
+                        contentId: null, // This would be the ID of the prayer update or urgent prayer
+                        data: {
+                            url: type === 'prayer_update' ? '/updates-view' : '/urgent-view'
+                        }
+                    }
+                });
+                
+                if (result.error) {
+                    console.error('Error from Push Notification service:', result.error);
+                    return false;
+                }
+                
+                console.log(`Successfully sent Push notifications to ${userIds.length} recipients`);
+                
+                // Log notifications for each user
+                for (const user of users) {
+                    await logNotification(user.id, 'push', type, 'sent');
+                }
+                
+                return true;
+            }
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error sending Push notifications:', error);
+        return false;
     }
 }

@@ -15,7 +15,7 @@ const WHATSAPP_ENABLED = true; // Enabled for WhatsApp notification integration
 const EMAIL_ENABLED = true; // Set to true once configured
 
 // Push notification configuration
-const PUSH_NOTIFICATION_ENABLED = false; // Set to true once configured
+const PUSH_NOTIFICATION_ENABLED = true; // Enabled for push notification integration
 
 // App constants
 const APP_NAME = 'Prayer Diary';
