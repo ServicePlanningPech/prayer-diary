@@ -113,17 +113,14 @@ serve(async (req) => {
       });
     }
     
-    // Get appropriate notification field based on type
-    const notificationField = requestData.type === 'update' 
-      ? 'prayer_update_notification_method' 
-      : 'urgent_prayer_notification_method';
+ 
       
     // Get users who have opted in for email notifications
     const { data: users, error } = await supabaseClient
       .from('profiles')
       .select('id, full_name, email')
       .eq('approval_state', 'Approved')
-      .eq(notificationField, 'email');
+      .eq('content_delivery_email', true);
       
     if (error) {
       console.error('Database query error:', error.message);

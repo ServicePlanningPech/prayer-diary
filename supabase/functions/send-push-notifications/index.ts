@@ -91,20 +91,23 @@ serve(async (req) => {
       )
     }
 
-    // Prepare notification payload
-    const notificationPayload = JSON.stringify({
-      title: title,
-      body: message,
-      icon: '/img/icons/android/android-launchericon-96-96.png',
-      badge: '/img/icons/android/android-launchericon-72-72.png',
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: 1,
-        url: data?.url || '/',
-        contentType,
-        contentId
-      }
-    })
+    // Get the base URL from environment variable or use the GitHub Pages URL as default
+const BASE_URL = Deno.env.get('APP_URL') || 'https://serviceplanningpech.github.io/prayer-diary';
+
+// Prepare notification payload with absolute URLs for icons
+const notificationPayload = JSON.stringify({
+    title: title,
+    body: message,
+    icon: `${BASE_URL}/img/icons/android/android-launchericon-96-96.png`,
+    badge: `${BASE_URL}/img/icons/android/android-launchericon-72-72.png`,
+    data: {
+    dateOfArrival: Date.now(),
+    primaryKey: 1,
+      url: data?.url || '/',
+    contentType,
+    contentId
+  }
+})
 
     // Send push notifications and track results
     const results = []

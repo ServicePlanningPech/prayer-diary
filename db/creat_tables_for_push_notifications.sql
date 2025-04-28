@@ -1,12 +1,13 @@
-create table push_subscriptions (
-     id uuid primary key default uuid_generate_v4(),
-     user_id uuid references auth.users not null,
-     endpoint text not null,
-     auth text not null,
-     p256dh text not null,
-	 active BOOLEAN DEFAULT TRUE,
-     created_at timestamp with time zone default now()
-   );
+CREATE TABLE push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  subscription_object JSONB NOT NULL,
+  user_agent TEXT,
+  active BOOLEAN DEFAULT TRUE,
+  
+  CONSTRAINT unique_subscription_endpoint UNIQUE ((subscription_object->>'endpoint'))
+);
 create table device_tokens (
      id uuid primary key default uuid_generate_v4(),
      user_id uuid references auth.users not null,

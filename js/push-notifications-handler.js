@@ -3,7 +3,14 @@
 // Set up the permission prompt only after the user has logged in
 document.addEventListener('login-state-changed', function(event) {
     if (event.detail && event.detail.loggedIn) {
-        setupPushPermissionPrompt();
+        // Check if on Android before setting up the prompt
+        const isAndroid = /Android/.test(navigator.userAgent);
+        if (isAndroid) {
+            // Only proceed on Android devices
+            setupPushPermissionPrompt();
+        } else {
+            console.log('Push notification prompt is only shown on Android devices');
+        }
     }
 });
 
@@ -16,6 +23,19 @@ function setupPushPermissionPrompt() {
     // Check if push notifications are supported
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         console.log('Push notifications are not supported in this browser');
+        return;
+    }
+    
+    // Only show prompt on Android devices
+    const isAndroid = /Android/.test(navigator.userAgent);
+    if (!isAndroid) {
+        console.log('Push notification prompt is only shown on Android devices');
+        return;
+    }
+    
+    // Check if the user's notification_method is set to "push"
+    if (userProfile && userProfile.notification_method !== 'push') {
+        console.log('User has not set notification_method to push, not showing prompt');
         return;
     }
     

@@ -479,7 +479,46 @@ function setupNotificationMethodHandlers() {
     
     // Apply to new sets of radio buttons
     replaceRadioListeners('content-delivery');
-    replaceRadioListeners('notification-method');
+    
+    // For notification method, we need special handling for push notifications
+    const notificationRadios = document.querySelectorAll('input[name="notification-method"]');
+    notificationRadios.forEach(radio => {
+        const newRadio = radio.cloneNode(true);
+        radio.parentNode.replaceChild(newRadio, radio);
+        
+        // Add change event listener
+        newRadio.addEventListener('change', function() {
+            // First update the phone fields visibility
+            updatePhoneFieldsVisibility();
+            
+            // Then handle push notification permissions if push is selected
+            if (this.value === 'push') {
+                // Check if running on Android
+                const isAndroid = /Android/.test(navigator.userAgent);
+                if (isAndroid) {
+                    // On Android, request push permissions
+                    requestPushNotificationPermission().then(result => {
+                        if (!result.success) {
+                            // If permission failed, revert to 'none'
+                            document.getElementById('notification-none').checked = true;
+                            updatePhoneFieldsVisibility();
+                            showNotification('Permission Required', result.error || 'Push notification permission was denied.', 'error');
+                        } else {
+                            // Update user profile with push notification method
+                            updateUserNotificationMethodToPush();
+                        }
+                    }).catch(error => {
+                        console.error('Error requesting push permission:', error);
+                        document.getElementById('notification-none').checked = true;
+                        updatePhoneFieldsVisibility();
+                    });
+                } else {
+                    // On non-Android devices, show a message explaining why push isn't offered
+                    showNotification('Push Notifications', 'Push notifications are only available on Android devices. Your preference has been saved for when you use an Android device.', 'info');
+                }
+            }
+        });
+    });
     
     // Setup real-time validation for the single mobile number field
     const mobileInput = document.getElementById('profile-mobile');
