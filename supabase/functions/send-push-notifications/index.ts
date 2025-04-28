@@ -1,0 +1,218 @@
+// Supabase Edge Function: send-push-notifications
+// Sends push notifications to users who have subscribed
+
+import { serve } from 'https://deno.land/std@0.170.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+import webpush from 'https://esm.sh/web-push@3.6.1'
+// CORS headers for all responses
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
+  'Access-Control-Max-Age': '86400'
+};
+
+// Setup web-push with VAPID keys
+// IMPORTANT: In production, store these in secure environment variables
+const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY') || 'YOUR_VAPID_PUBLIC_KEY_HERE';
+const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') || 'YOUR_VAPID_PRIVATE_KEY_HERE';
+const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:your-email@example.com';
+
+webpush.setVapidDetails(
+  VAPID_SUBJECT,
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+);
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    // Only allow POST requests
+    if (req.method !== 'POST') {
+      throw new Error('Method not allowed')
+    }
+
+    // Get request body
+    const { userIds, title, message, contentType, contentId, data } = await req.json()
+
+    // Verify required parameters
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      throw new Error('Missing or invalid userIds parameter')
+    }
+    if (!title || !message) {
+      throw new Error('Missing required parameters: title and message are required')
+    }
+
+    // Initialize Supabase client with admin privileges
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    )
+
+    // Fetch push subscriptions for the specified users
+    const { data: subscriptions, error: fetchError } = await supabaseAdmin
+      .from('push_subscriptions')
+      .select('*')
+      .in('user_id', userIds)
+      .eq('active', true)
+
+    if (fetchError) {
+      throw new Error(`Error fetching subscriptions: ${fetchError.message}`)
+    }
+
+    console.log(`Found ${subscriptions?.length || 0} active push subscriptions for ${userIds.length} users`)
+
+    // If no subscriptions found, return early
+    if (!subscriptions || subscriptions.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'No active push subscriptions found for the specified users',
+          sent: 0
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        }
+      )
+    }
+
+    // Prepare notification payload
+    const notificationPayload = JSON.stringify({
+      title: title,
+      body: message,
+      icon: '/img/icons/android/android-launchericon-96-96.png',
+      badge: '/img/icons/android/android-launchericon-72-72.png',
+      data: {
+        dateOfArrival: Date.now(),
+        primaryKey: 1,
+        url: data?.url || '/',
+        contentType,
+        contentId
+      }
+    })
+
+    // Send push notifications and track results
+    const results = []
+    let successCount = 0
+    let failureCount = 0
+
+    for (const subscription of subscriptions) {
+      try {
+        // Skip if subscription has no endpoint
+        if (!subscription.subscription_object || !subscription.subscription_object.endpoint) {
+          console.log(`Skipping invalid subscription for user ${subscription.user_id}`)
+          continue
+        }
+
+        // Send the notification
+        await webpush.sendNotification(
+          subscription.subscription_object,
+          notificationPayload
+        )
+
+        // Record successful delivery
+        successCount++
+        results.push({
+          user_id: subscription.user_id,
+          success: true
+        })
+
+        // Log the notification in the database
+        await supabaseAdmin
+          .from('notification_logs')
+          .insert({
+            user_id: subscription.user_id,
+            notification_type: 'push',
+            content_type: contentType,
+            content_id: contentId,
+            status: 'sent'
+          })
+
+      } catch (error) {
+        // This could be due to an expired subscription
+        failureCount++
+        console.error(`Error sending notification to subscription ${subscription.id}:`, error)
+        
+        results.push({
+          user_id: subscription.user_id,
+          success: false,
+          error: error.message
+        })
+
+        // Handle specific webpush errors
+        if (error.statusCode === 404 || error.statusCode === 410) {
+          // Subscription has expired or is no longer valid
+          console.log(`Subscription ${subscription.id} is no longer valid, marking as inactive`)
+          
+          // Mark subscription as inactive
+          await supabaseAdmin
+            .from('push_subscriptions')
+            .update({ active: false })
+            .eq('id', subscription.id)
+        }
+
+        // Log the failure in the database
+        await supabaseAdmin
+          .from('notification_logs')
+          .insert({
+            user_id: subscription.user_id,
+            notification_type: 'push',
+            content_type: contentType,
+            content_id: contentId,
+            status: 'failed',
+            error_message: error.message
+          })
+      }
+    }
+
+    // Return the results
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: `Push notifications sent to ${successCount} subscriptions (${failureCount} failures)`,
+        sent: successCount,
+        failed: failureCount,
+        results
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
+    )
+  } catch (error) {
+    // Handle and return any errors
+    console.error('Error in send-push-notifications function:', error)
+    
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message
+      }),
+      {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
+    )
+  }
+})

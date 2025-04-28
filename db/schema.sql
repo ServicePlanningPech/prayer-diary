@@ -11,8 +11,6 @@ CREATE TABLE profiles (
   prayer_calendar_editor BOOLEAN NOT NULL DEFAULT FALSE,
   prayer_update_editor BOOLEAN NOT NULL DEFAULT FALSE,
   urgent_prayer_editor BOOLEAN NOT NULL DEFAULT FALSE,
-  prayer_update_notification_method TEXT NOT NULL DEFAULT 'email',
-  urgent_prayer_notification_method TEXT NOT NULL DEFAULT 'email',
   notification_push BOOLEAN NOT NULL DEFAULT FALSE, -- Keeping for future use
   phone_number TEXT,
   whatsapp_number TEXT,
@@ -20,6 +18,8 @@ CREATE TABLE profiles (
   gdpr_accepted BOOLEAN NOT NULL DEFAULT FALSE,
   photo_tag TEXT,
   calendar_hide BOOLEAN NOT NULL DEFAULT FALSE,
+  content_delivery_email BOOLEAN NOT NULL DEFAULT FALSE,
+  notification_method TEXT NOT NULL DEFAULT 'none',
   CONSTRAINT user_role_check CHECK (user_role IN ('Administrator', 'User')),
   CONSTRAINT approval_state_check CHECK (approval_state IN ('Pending', 'Approved', 'Rejected'))
 );

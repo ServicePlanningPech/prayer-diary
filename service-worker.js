@@ -179,27 +179,84 @@ self.addEventListener('fetch', event => {
 
 // Push notification event
 self.addEventListener('push', event => {
-  const data = event.data.json();
-  const options = {
-    body: data.body,
-    icon: 'img/icons/icon-192x192.png',
-    badge: 'img/icons/icon-72x72.png',
-    data: {
-      url: data.url || '/'
+  console.log('Push notification received:', event);
+  
+  let notificationData = {};
+  
+  // Try to extract the notification data from the push event
+  try {
+    if (event.data) {
+      notificationData = event.data.json();
     }
+  } catch (error) {
+    console.error('Error parsing push notification data:', error);
+    // If parsing fails, use a default notification
+    notificationData = {
+      title: 'New Notification',
+      body: 'You have a new notification from Prayer Diary',
+      data: { url: '/' }
+    };
+  }
+  
+  // Set up notification options
+  const options = {
+    body: notificationData.body || notificationData.message || 'New prayer update or request',
+    icon: 'img/icons/android/android-launchericon-192-192.png',
+    badge: 'img/icons/android/android-launchericon-72-72.png',
+    data: notificationData.data || { url: '/' },
+    tag: notificationData.tag || 'prayer-diary-notification',
+    // Allow vibrations on mobile devices
+    vibrate: [100, 50, 100],
+    // Auto-close after 30 seconds
+    requireInteraction: false,
+    silent: false
   };
   
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    self.registration.showNotification(notificationData.title || 'Prayer Diary', options)
   );
 });
 
 // Notification click event
 self.addEventListener('notificationclick', event => {
+  console.log('Notification clicked:', event);
+  
+  // Close the notification
   event.notification.close();
   
+  // Extract the URL to navigate to
+  let url = '/';
+  if (event.notification.data && event.notification.data.url) {
+    url = event.notification.data.url;
+  }
+  
+  // Add the base path if not already included
+  if (!url.startsWith('http') && !url.startsWith('/')) {
+    url = `${BASE_PATH}/${url}`;
+  } else if (!url.startsWith('http') && !url.startsWith(BASE_PATH)) {
+    url = `${BASE_PATH}${url}`;
+  }
+  
+  // Handle the click event by opening or focusing on the relevant page
   event.waitUntil(
-    clients.openWindow(event.notification.data.url)
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then(windowClients => {
+      // Check if there is already a window/tab open with the target URL
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        // If so, just focus it
+        if (client.url.includes(url) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      
+      // If not, open a new window/tab
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
   );
 });
 

@@ -43,6 +43,41 @@
  	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" />
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css?v=dev">
+
+    <!-- Web Push Notifications Permission Prompt Styles -->
+    <style>
+        .notification-permission-prompt {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1050;
+            width: 350px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 16px;
+            transition: all 0.3s ease;
+            transform: translateY(100px);
+            opacity: 0;
+            border-left: 4px solid #483D8B;
+        }
+        .notification-permission-prompt.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .notification-permission-prompt h5 {
+            margin-top: 0;
+            color: #483D8B;
+        }
+        .notification-permission-prompt .actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+        .notification-permission-prompt .actions button {
+            margin-left: 8px;
+        }
+    </style>
 </head>
 <body>
     <!-- Navbar -->
@@ -1537,6 +1572,16 @@
         </div>
     </div>
 
+    <!-- Push Notification Permission Prompt -->
+    <div class="notification-permission-prompt" id="push-permission-prompt">
+        <h5><i class="bi bi-bell me-2"></i>Enable Notifications</h5>
+        <p>Get instant updates when new prayer requests are added. Never miss an urgent prayer need.</p>
+        <div class="actions">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="notification-later">Later</button>
+            <button type="button" class="btn btn-primary btn-sm" id="notification-allow">Enable</button>
+        </div>
+    </div>
+
     <!-- Password Reset Request Modal (to request a reset link) -->
     <div class="modal fade" id="password-reset-modal" tabindex="-1" aria-labelledby="password-reset-title" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -1745,7 +1790,7 @@
         loadScript("js/urgent.js");
         loadScript("js/profile.js");
         loadScript("js/notifications.js");
-      //  loadScript("js/notification-processor.js");
+        loadScript("js/push-notifications.js");
         loadScript("js/email-test.js");
         loadScript("js/password-change.js");
         loadScript("js/preferences.js");
