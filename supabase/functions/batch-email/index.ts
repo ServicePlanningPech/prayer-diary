@@ -116,10 +116,11 @@ serve(async (req) => {
  
       
     // Get users who have opted in for email notifications
+    // Include both approved users and email-only users
     const { data: users, error } = await supabaseClient
       .from('profiles')
       .select('id, full_name, email')
-      .eq('approval_state', 'Approved')
+      .or('approval_state.eq.Approved,approval_state.eq.emailonly') // Include both approved and email-only users
       .eq('content_delivery_email', true);
       
     if (error) {

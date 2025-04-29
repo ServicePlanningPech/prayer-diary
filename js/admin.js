@@ -956,6 +956,244 @@ document.addEventListener('DOMContentLoaded', function() {
 // Add a timestamp to track when loadUsers starts
 let lastLoadUsersStartTime = null;
 
+// Email-only user registration functionality
+async function registerEmailOnlyUser() {
+    try {
+        // Get form values
+        const fullName = document.getElementById('email-user-name').value.trim();
+        const email = document.getElementById('email-user-email').value.trim();
+        
+        // Validate inputs
+        if (!fullName || !email) {
+            showToast('Error', 'Please provide both name and email address', 'error');
+            return;
+        }
+        
+        // Show loading state on the button
+        const registerBtn = document.getElementById('register-email-user-btn');
+        const originalText = registerBtn.textContent;
+        registerBtn.textContent = 'Registering...';
+        registerBtn.disabled = true;
+        
+        // Generate a unique ID for the user
+        const userId = crypto.randomUUID();
+        
+        // Create the profile record
+        const { data, error } = await supabase
+            .from('profiles')
+            .insert({
+                id: userId,
+                full_name: fullName,
+                email: email,
+                approval_state: 'emailonly',  // Special state for email-only users
+                content_delivery_email: true, // They want to receive emails
+                calendar_hide: true,         // Hide from calendar
+                user_role: 'User',
+                profile_set: true            // No need to set up profile
+            });
+            
+        if (error) throw error;
+        
+        // Close the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('email-user-modal'));
+        modal.hide();
+        
+        // Clear the form
+        document.getElementById('email-user-form').reset();
+        
+        // Show success message
+        showToast('Success', `Email-only user '${fullName}' registered successfully`, 'success');
+        
+        // Reload email users list
+        loadEmailOnlyUsers();
+        
+    } catch (error) {
+        console.error('Error registering email-only user:', error);
+        showToast('Error', `Failed to register email-only user: ${error.message}`, 'error');
+    } finally {
+        // Reset button state
+        const registerBtn = document.getElementById('register-email-user-btn');
+        if (registerBtn) {
+            registerBtn.textContent = 'Register User';
+            registerBtn.disabled = false;
+        }
+    }
+}
+
+// Load email-only users
+async function loadEmailOnlyUsers() {
+    if (!isAdmin()) return;
+    
+    const container = document.getElementById('email-users-container');
+    if (!container) return;
+    
+    // Show loading spinner
+    container.innerHTML = createLoadingSpinner();
+    
+    try {
+        // Fetch email-only users from profiles
+        const { data: users, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('approval_state', 'emailonly')
+            .order('full_name', { ascending: true });
+            
+        if (error) throw error;
+        
+        // Display users
+        if (!users || users.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    No email-only users found.
+                </div>
+            `;
+            return;
+        }
+        
+        // Generate HTML for user list
+        let html = `
+            <div class="alert alert-primary mb-3">
+                <strong>${users.length}</strong> email-only user${users.length !== 1 ? 's' : ''} registered
+            </div>
+            <div class="list-group">
+        `;
+        
+        users.forEach(user => {
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0">${user.full_name}</h6>
+                        <small class="text-muted">${user.email}</small>
+                    </div>
+                    <button class="btn btn-sm btn-danger delete-email-user" data-id="${user.id}" data-name="${user.full_name}">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+        // Add event listeners for delete buttons
+        document.querySelectorAll('.delete-email-user').forEach(button => {
+            button.addEventListener('click', () => {
+                const userId = button.getAttribute('data-id');
+                const userName = button.getAttribute('data-name');
+                showDeleteEmailUserConfirmation(userId, userName);
+            });
+        });
+        
+    } catch (error) {
+        console.error('Error loading email-only users:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                Error loading email-only users: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// Show delete confirmation for email-only user
+function showDeleteEmailUserConfirmation(userId, userName) {
+    // Reuse the existing delete user modal
+    document.getElementById('delete-user-id').value = userId;
+    document.getElementById('delete-user-name').textContent = userName + ' (Email-only User)';
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('delete-user-modal'));
+    modal.show();
+    
+    // Set up the confirm delete button handler
+    document.getElementById('confirm-delete-user').onclick = async () => {
+        await deleteEmailOnlyUser(userId);
+        modal.hide();
+    };
+}
+
+// Delete an email-only user
+async function deleteEmailOnlyUser(userId) {
+    try {
+        const deleteBtn = document.getElementById('confirm-delete-user');
+        const originalText = deleteBtn.textContent;
+        deleteBtn.textContent = 'Deleting...';
+        deleteBtn.disabled = true;
+        
+        // Delete the user profile from the profiles table
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', userId);
+            
+        if (profileError) {
+            console.error('Error deleting email-only user profile:', profileError);
+            throw new Error(`Failed to delete user profile: ${profileError.message}`);
+        }
+        
+        // Show success notification
+        showToast('Success', 'Email-only user has been deleted successfully.', 'success');
+        
+        // Reload email users list
+        loadEmailOnlyUsers();
+        
+    } catch (error) {
+        console.error('Error deleting email-only user:', error);
+        showToast('Error', `Failed to delete user: ${error.message}`, 'error');
+    } finally {
+        // Reset the delete button if it exists (modal might be closed)
+        const deleteBtn = document.getElementById('confirm-delete-user');
+        if (deleteBtn) {
+            deleteBtn.textContent = 'Delete User';
+            deleteBtn.disabled = false;
+        }
+    }
+}
+
+// Initialize event listeners for email-only user functionality
+function initEmailOnlyUserFunctionality() {
+    // Register button in the modal
+    const registerButton = document.getElementById('register-email-user-btn');
+    if (registerButton) {
+        registerButton.addEventListener('click', registerEmailOnlyUser);
+    }
+    
+    // Add button in the Email Users tab
+    const addEmailUserButton = document.getElementById('add-email-user');
+    if (addEmailUserButton) {
+        addEmailUserButton.addEventListener('click', () => {
+            const modal = new bootstrap.Modal(document.getElementById('email-user-modal'));
+            modal.show();
+        });
+    }
+    
+    // Navigation menu item
+    const navRegisterEmailUser = document.getElementById('nav-register-email-user');
+    if (navRegisterEmailUser) {
+        navRegisterEmailUser.addEventListener('click', () => {
+            const modal = new bootstrap.Modal(document.getElementById('email-user-modal'));
+            modal.show();
+        });
+    }
+    
+    // Email Users tab click handler to load users
+    const emailUsersTab = document.getElementById('email-users-tab');
+    if (emailUsersTab) {
+        emailUsersTab.addEventListener('click', loadEmailOnlyUsers);
+    }
+}
+
+// Extend the loadUsers function to also load email-only users
+const originalLoadUsers = window.loadUsers;
+window.loadUsers = async function() {
+    await originalLoadUsers();
+    loadEmailOnlyUsers();
+};
+
+// Initialize email-only user functionality on DOM load
+document.addEventListener('DOMContentLoaded', initEmailOnlyUserFunctionality);
+
 // Make functions globally accessible for use in other modules
 window.loadUsers = loadUsers;
 window.fetchUserAndOpenEditModal = fetchUserAndOpenEditModal;
+window.loadEmailOnlyUsers = loadEmailOnlyUsers;
+window.registerEmailOnlyUser = registerEmailOnlyUser;

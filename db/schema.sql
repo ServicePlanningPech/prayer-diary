@@ -21,7 +21,7 @@ CREATE TABLE profiles (
   content_delivery_email BOOLEAN NOT NULL DEFAULT FALSE,
   notification_method TEXT NOT NULL DEFAULT 'none',
   CONSTRAINT user_role_check CHECK (user_role IN ('Administrator', 'User')),
-  CONSTRAINT approval_state_check CHECK (approval_state IN ('Pending', 'Approved', 'Rejected'))
+  CONSTRAINT approval_state_check CHECK (approval_state IN ('Pending', 'Approved', 'Rejected', 'emailonly'))
 );
 
 -- Create a table for prayer calendar entries

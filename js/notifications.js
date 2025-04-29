@@ -49,7 +49,7 @@ async function sendEmailNotifications(type, title, content, date) {
     await window.waitForAuthStability();
     try {
         // Get users who have opted in for email notifications 
-        // Now using the new content_delivery_email field
+        // Include both approved users and email-only users
         const { data: users, error } = await supabase
             .from('profiles')
             .select(`
@@ -57,7 +57,7 @@ async function sendEmailNotifications(type, title, content, date) {
                 full_name,
                 email
             `)
-            .eq('approval_state', 'Approved')
+            .or('approval_state.eq.Approved,approval_state.eq.emailonly')
             .eq('content_delivery_email', true);
             
         if (error) throw error;
