@@ -975,24 +975,24 @@ async function registerEmailOnlyUser() {
         registerBtn.textContent = 'Registering...';
         registerBtn.disabled = true;
         
-        // Generate a unique ID for the user
-        const userId = crypto.randomUUID();
+        // Wait for auth stability to ensure we have a valid token
+        await window.waitForAuthStability();
         
-        // Create the profile record
-        const { data, error } = await supabase
-            .from('profiles')
-            .insert({
-                id: userId,
+        // Call the Edge Function to register the email-only user
+        // This bypasses Row Level Security (RLS) by using service role key
+        const { data, error } = await supabase.functions.invoke('register-email-user', {
+            body: {
                 full_name: fullName,
-                email: email,
-                approval_state: 'emailonly',  // Special state for email-only users
-                content_delivery_email: true, // They want to receive emails
-                calendar_hide: true,         // Hide from calendar
-                user_role: 'User',
-                profile_set: true            // No need to set up profile
-            });
-            
+                email: email
+            }
+        });
+        
         if (error) throw error;
+        
+        // Check if the Edge Function returned an error
+        if (data && data.error) {
+            throw new Error(data.error);
+        }
         
         // Close the modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('email-user-modal'));
