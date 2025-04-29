@@ -234,6 +234,7 @@ function setupDrawerLinks(drawerMenu, closeDrawer) {
         '#nav-urgent',
         // Admin links
         '#nav-manage-users',
+        '#nav-register-email-user',
         '#nav-manage-calendar', 
         '#nav-manage-updates',
         '#nav-manage-urgent',
@@ -303,6 +304,17 @@ function setupDrawerLinks(drawerMenu, closeDrawer) {
                         window.showView('manage-users-view');
                         if (typeof loadUsers === 'function') loadUsers();
                     } 
+                    else if (id === 'nav-register-email-user') {
+                        // Open the email-only user registration modal
+                        console.log('Opening email-only user registration modal from drawer');
+                        const emailUserModal = document.getElementById('email-user-modal');
+                        if (emailUserModal) {
+                            const modal = new bootstrap.Modal(emailUserModal);
+                            modal.show();
+                        } else {
+                            console.error('Email user modal not found in DOM');
+                        }
+                    }
                     else if (id === 'nav-manage-calendar') {
                         window.showView('manage-calendar-view');
                         if (typeof loadCalendarAdmin === 'function') loadCalendarAdmin();
