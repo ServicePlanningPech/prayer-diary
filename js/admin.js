@@ -411,16 +411,38 @@ async function updateUserApproval(userId, state) {
                 approval_state: state
             })
             .eq('id', userId)
-            .select('full_name'); // Get the name for the notification
+            .select('full_name, email'); // Get the name and email for notification and email_only_users check
             
         if (error) {
             console.error('Error updating user approval:', error);
             throw error;
         }
         
-        // If approving, also send welcome email
-        if (state === 'Approved') {
+        // If approving, also send welcome email and check for email_only_users entry
+        if (state === 'Approved' && data && data.length > 0) {
+            // Send approval email
             await sendApprovalEmail(userId);
+            
+            // Check if user exists in email_only_users table and remove if found
+            if (data[0].email) {
+                try {
+                    // Silently try to remove any matching email_only_users entry
+                    const { error: deleteError } = await supabase
+                        .from('email_only_users')
+                        .delete()
+                        .eq('email', data[0].email);
+                    
+                    if (deleteError) {
+                        // Just log the error but don't interrupt the approval flow
+                        console.warn('Could not delete email_only_users entry:', deleteError);
+                    } else {
+                        console.log(`Successfully removed email_only_user entry for ${data[0].email}`);
+                    }
+                } catch (emailUserError) {
+                    // Just log any error but don't interrupt the approval flow
+                    console.warn('Error checking email_only_users:', emailUserError);
+                }
+            }
         }
         
         // Show success notification
@@ -697,12 +719,13 @@ async function approveAllPendingUsers(pendingUsers) {
         for (const user of pendingUsers) {
             try {
                 // Update user profile
-                const { error } = await supabase
+                const { data, error } = await supabase
                     .from('profiles')
                     .update({
                         approval_state: 'Approved'
                     })
-                    .eq('id', user.id);
+                    .eq('id', user.id)
+                    .select('email');
                     
                 if (error) throw error;
                 
@@ -711,6 +734,24 @@ async function approveAllPendingUsers(pendingUsers) {
                     await sendApprovalEmail(user.id);
                 } catch (emailError) {
                     console.warn(`Warning: Email failed for ${user.full_name}:`, emailError);
+                }
+                
+                // Check if user exists in email_only_users table and remove if found
+                if (data && data.length > 0 && data[0].email) {
+                    try {
+                        // Silently try to remove any matching email_only_users entry
+                        const { error: deleteError } = await supabase
+                            .from('email_only_users')
+                            .delete()
+                            .eq('email', data[0].email);
+                        
+                        if (!deleteError) {
+                            console.log(`Successfully removed email_only_user entry for ${data[0].email}`);
+                        }
+                    } catch (emailUserError) {
+                        // Just log any error but don't interrupt the approval flow
+                        console.warn(`Error checking email_only_users for ${user.full_name}:`, emailUserError);
+                    }
                 }
                 
                 successCount++;
