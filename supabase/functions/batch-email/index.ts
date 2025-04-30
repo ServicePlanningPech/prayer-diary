@@ -115,19 +115,18 @@ serve(async (req) => {
     
  
       
-    // Get users who have opted in for email notifications
-    // Include both approved users and email-only users
-    const { data: users, error } = await supabaseClient
+    // Get approved users who have opted in for email notifications
+    const { data: approvedUsers, error: approvedError } = await supabaseClient
       .from('profiles')
       .select('id, full_name, email')
-      .or('approval_state.eq.Approved,approval_state.eq.emailonly') // Include both approved and email-only users
+      .eq('approval_state', 'Approved')
       .eq('content_delivery_email', true);
       
-    if (error) {
-      console.error('Database query error:', error.message);
+    if (approvedError) {
+      console.error('Database query error for approved users:', approvedError.message);
       return new Response(JSON.stringify({
-        error: 'Failed to fetch recipients',
-        details: error.message
+        error: 'Failed to fetch approved recipients',
+        details: approvedError.message
       }), {
         status: 500,
         headers: {
@@ -136,6 +135,29 @@ serve(async (req) => {
         }
       });
     }
+    
+    // Get email-only users from the email_only_users table
+    const { data: emailOnlyUsers, error: emailOnlyError } = await supabaseClient
+      .from('email_only_users')
+      .select('id, full_name, email')
+      .eq('active', true);
+      
+    if (emailOnlyError) {
+      console.error('Database query error for email-only users:', emailOnlyError.message);
+      return new Response(JSON.stringify({
+        error: 'Failed to fetch email-only recipients',
+        details: emailOnlyError.message
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    
+    // Combine both sets of users
+    const users = [...(approvedUsers || []), ...(emailOnlyUsers || [])];
     
     // Filter out users without email
     const userEmails = users

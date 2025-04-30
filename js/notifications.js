@@ -48,19 +48,39 @@ async function sendNotification(type, title, content, date, notificationMethods 
 async function sendEmailNotifications(type, title, content, date) {
     await window.waitForAuthStability();
     try {
-        // Get users who have opted in for email notifications 
-        // Include both approved users and email-only users
-        const { data: users, error } = await supabase
+        // Get approved users who have opted in for email notifications
+        const { data: approvedUsers, error: approvedError } = await supabase
             .from('profiles')
             .select(`
                 id,
                 full_name,
                 email
             `)
-            .or('approval_state.eq.Approved,approval_state.eq.emailonly')
+            .eq('approval_state', 'Approved')
             .eq('content_delivery_email', true);
             
-        if (error) throw error;
+        if (approvedError) {
+            console.error('Error fetching approved users:', approvedError);
+            throw approvedError;
+        }
+        
+        // Get email-only users from the email_only_users table
+        const { data: emailOnlyUsers, error: emailOnlyError } = await supabase
+            .from('email_only_users')
+            .select(`
+                id,
+                full_name,
+                email
+            `)
+            .eq('active', true);
+            
+        if (emailOnlyError) {
+            console.error('Error fetching email-only users:', emailOnlyError);
+            throw emailOnlyError;
+        }
+        
+        // Combine both sets of users
+        const users = [...(approvedUsers || []), ...(emailOnlyUsers || [])];
         
         // Log the number of recipients
         console.log(`Sending email notifications to ${users.length} recipients`);

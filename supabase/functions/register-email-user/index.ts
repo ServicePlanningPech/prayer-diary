@@ -1,5 +1,5 @@
 // Supabase Edge Function: register-email-user
-// Creates an email-only user entry bypassing RLS
+// Creates an email-only user entry in a separate table (no auth)
 
 import { serve } from 'https://deno.land/std@0.170.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -81,25 +81,53 @@ serve(async (req) => {
       throw new Error('Missing required parameters: full_name and email are required')
     }
 
-    // Generate a unique ID for the user
-    const userId = crypto.randomUUID()
+    // Check if email already exists in the email_only_users table
+    const { data: existingUser, error: checkError } = await supabaseAdmin
+      .from('email_only_users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle()
 
-    // Create the profile record with service role key (bypasses RLS)
-    const { data, error } = await supabaseAdmin
-      .from('profiles')
-      .insert({
-        id: userId,
-        full_name: full_name,
-        email: email,
-        approval_state: 'emailonly',  // Special state for email-only users
-        content_delivery_email: true, // They want to receive emails
-        calendar_hide: true,          // Hide from calendar
-        user_role: 'User',
-        profile_set: true             // No need to set up profile
-      })
+    if (checkError) {
+      console.error('Error checking for existing email-only user:', checkError)
+    }
+
+    let userId, data, error
+
+    if (existingUser) {
+      // Email already exists, update the record
+      console.log('Email-only user already exists, updating record')
+      userId = existingUser.id
+      
+      const updateResult = await supabaseAdmin
+        .from('email_only_users')
+        .update({
+          full_name: full_name,
+          active: true,
+        })
+        .eq('id', userId)
+        .select()
+
+      data = updateResult.data
+      error = updateResult.error
+    } else {
+      // Create a new email-only user
+      console.log('Creating new email-only user')
+      const insertResult = await supabaseAdmin
+        .from('email_only_users')
+        .insert({
+          full_name: full_name,
+          email: email,
+          active: true
+        })
+        .select()
+
+      data = insertResult.data
+      error = insertResult.error
+    }
 
     if (error) {
-      throw new Error(`Failed to create email-only user: ${error.message}`)
+      throw new Error(`Failed to create/update email-only user: ${error.message}`)
     }
 
     // Return success response
@@ -107,7 +135,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `Email-only user '${full_name}' registered successfully`,
-        userId: userId
+        userId: userId || (data && data[0]?.id)
       }),
       {
         status: 200,

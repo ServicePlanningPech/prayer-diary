@@ -979,7 +979,6 @@ async function registerEmailOnlyUser() {
         await window.waitForAuthStability();
         
         // Call the Edge Function to register the email-only user
-        // This bypasses Row Level Security (RLS) by using service role key
         const { data, error } = await supabase.functions.invoke('register-email-user', {
             body: {
                 full_name: fullName,
@@ -1031,11 +1030,11 @@ async function loadEmailOnlyUsers() {
     container.innerHTML = createLoadingSpinner();
     
     try {
-        // Fetch email-only users from profiles
+        // Fetch email-only users from the new email_only_users table
         const { data: users, error } = await supabase
-            .from('profiles')
-            .select('id, full_name, email')
-            .eq('approval_state', 'emailonly')
+            .from('email_only_users')
+            .select('id, full_name, email, active')
+            .eq('active', true)
             .order('full_name', { ascending: true });
             
         if (error) throw error;
@@ -1119,15 +1118,15 @@ async function deleteEmailOnlyUser(userId) {
         deleteBtn.textContent = 'Deleting...';
         deleteBtn.disabled = true;
         
-        // Delete the user profile from the profiles table
-        const { error: profileError } = await supabase
-            .from('profiles')
+        // Delete the user from the email_only_users table
+        const { error: deleteError } = await supabase
+            .from('email_only_users')
             .delete()
             .eq('id', userId);
             
-        if (profileError) {
-            console.error('Error deleting email-only user profile:', profileError);
-            throw new Error(`Failed to delete user profile: ${profileError.message}`);
+        if (deleteError) {
+            console.error('Error deleting email-only user:', deleteError);
+            throw new Error(`Failed to delete email-only user: ${deleteError.message}`);
         }
         
         // Show success notification
