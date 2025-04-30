@@ -25,8 +25,12 @@ document.addEventListener('DOMContentLoaded', initializeApp);
 
 // Initialize app function
 function initializeApp() {
-	// Check if returning from profile save (should run early)
+    // Initialize splash screen first
+    initSplashScreen();
+    
+    // Check if returning from profile save (should run early)
     checkForPostProfileSave();
+    
     // Set up all modals
     setupAllModals();
     
@@ -61,6 +65,51 @@ function initializeApp() {
             initTopics();
         }
     });
+}
+
+// Splash Screen functionality
+function initSplashScreen() {
+    // Set the version number from APP_VERSION
+    document.getElementById('splash-version-number').textContent = APP_VERSION;
+    
+    // Add splash-active class to main content containers
+    document.getElementById('landing-view').classList.add('splash-active');
+    document.getElementById('app-views').classList.add('splash-active');
+    
+    // Show splash screen
+    const splashScreen = document.getElementById('splash-screen');
+    
+    // Set a timer to hide the splash screen after 5 seconds
+    setTimeout(() => {
+        // Start the fade out animation
+        splashScreen.classList.add('fade-out');
+        
+        // After animation completes, remove the splash screen and show app
+        setTimeout(() => {
+            // Remove splash screen from DOM
+            splashScreen.remove();
+            
+            // Remove splash-active class from main containers
+            document.getElementById('landing-view').classList.remove('splash-active');
+            document.getElementById('app-views').classList.remove('splash-active');
+            
+            // Show initial view as normal (depends on logged in state)
+            if (isLoggedIn()) {
+                // Show the app views
+                document.getElementById('landing-view').classList.add('d-none');
+                document.getElementById('app-views').classList.remove('d-none');
+                // Show calendar view
+                showView('calendar-view');
+                // Load prayer calendar
+                loadPrayerCalendar();
+            } else {
+                // Show login modal
+                setTimeout(() => {
+                    openAuthModal('login');
+                }, 100);
+            }
+        }, 500); // Wait for the fade animation to complete
+    }, 5000); // 5 seconds display time
 }
 
 // Add this to app.js or at the beginning of your main execution flow

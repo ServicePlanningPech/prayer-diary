@@ -921,6 +921,105 @@ body {
         margin: 0;
     }
 }
+/* Splash Screen Styles */
+.splash-screen-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #483D8B; /* Primary app color */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10000; /* Ensure it's above everything */
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.splash-screen-container.fade-out {
+    opacity: 0;
+}
+
+.splash-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100%;
+    max-width: 80%;
+    padding: 2rem;
+}
+
+.splash-logo {
+    width: 120px;
+    height: auto;
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.splash-title {
+    color: white;
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.splash-verse {
+    color: rgba(255, 255, 255, 0.9);
+    font-style: italic;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+    max-width: 600px;
+}
+
+.splash-verse-ref {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+}
+
+.splash-loading {
+    margin-top: 1.5rem;
+}
+
+.splash-footer {
+    padding: 1rem;
+    width: 100%;
+    text-align: center;
+}
+
+.splash-version {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+/* Media Queries for Responsive Design */
+@media (max-width: 576px) {
+    .splash-logo {
+        width: 90px;
+    }
+    
+    .splash-title {
+        font-size: 1.6rem;
+    }
+    
+    .splash-verse {
+        font-size: 0.9rem;
+    }
+}
+
+/* Ensure the app is hidden while splash screen is showing */
+#landing-view.splash-active,
+#app-views.splash-active {
+    display: none !important;
+}
+
 /* Add these styles to the end of your style.css file */
 
 /* Make profile image buttons the same width */
