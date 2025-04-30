@@ -16,6 +16,9 @@ window.PRAYER_DIARY = {
 // Flag to track if update notification is already shown
 let updateNotificationShown = false;
 
+// Get the last acknowledged version from localStorage (if any)
+const lastAcknowledgedVersion = localStorage.getItem('lastAcknowledgedVersion');
+
 // Global variable for test date (used to show prayer cards for a different date)
 window.testDate = null;
 
@@ -279,9 +282,12 @@ function registerServiceWorkerAndCheckForUpdates() {
                 navigator.serviceWorker.addEventListener('message', event => {
                     if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
                         console.log('Update available notification received from Service Worker');
-                        // Show update notification if not already shown
-                        if (!updateNotificationShown) {
-                            showUpdateNotification(event.data.currentVersion);
+                        const newVersion = event.data.currentVersion;
+                        
+                        // Only show notification if not already shown AND 
+                        // if this version hasn't been acknowledged before
+                        if (!updateNotificationShown && newVersion !== lastAcknowledgedVersion) {
+                            showUpdateNotification(newVersion);
                             updateNotificationShown = true;
                         }
                     }
@@ -308,6 +314,8 @@ function checkForAppUpdate(registration) {
 
 // Show update notification to user
 function showUpdateNotification(newVersion) {
+    // Store the version for later use
+    const currentNewVersion = newVersion;
     // Create toast container if it doesn't exist
     let toastContainer = document.querySelector('.toast-container.position-fixed.top-0.end-0.p-3');
     if (!toastContainer) {
@@ -347,6 +355,9 @@ function showUpdateNotification(newVersion) {
         // Show a loading message
         this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
         this.disabled = true;
+        
+        // Store the current version as acknowledged to prevent update loop
+        localStorage.setItem('lastAcknowledgedVersion', currentNewVersion);
         
         // Force update by unregistering the service worker and reloading
         if ('serviceWorker' in navigator) {
