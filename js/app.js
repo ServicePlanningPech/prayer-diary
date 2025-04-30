@@ -336,7 +336,7 @@ function showUpdateNotification(newVersion) {
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
         <div class="toast-body">
-            <p>A new version of Prayer Diary (v${newVersion}) is available!</p>
+            <p>A new version of Prayer Diary (v${currentNewVersion}) is available!</p>
             <div class="mt-2 pt-2 border-top d-flex justify-content-end">
                 <button type="button" class="btn btn-primary btn-sm" id="update-app-btn">Update Now</button>
             </div>
