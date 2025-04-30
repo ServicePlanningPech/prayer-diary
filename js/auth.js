@@ -320,13 +320,14 @@ function openAuthModal(mode) {
             if (confirmPasswordInput) confirmPasswordInput.setAttribute('required', '');
             if (signupHelpText) signupHelpText.classList.remove('d-none');
             
-            // Initially disable the signup button until all fields are filled
-            if (submitBtn) submitBtn.disabled = true;
+            // Let validation function handle the button state
+            // Do not disable by default as it prevents users from submitting even when all fields are filled
         }
         
         // Re-attach event listener for switch link - with null check
         const switchLink = document.getElementById('auth-switch');
         if (switchLink) {
+            switchLink.removeEventListener('click', toggleAuthMode);
             switchLink.addEventListener('click', toggleAuthMode);
         }
         
@@ -334,12 +335,17 @@ function openAuthModal(mode) {
         const formInputs = document.querySelectorAll('#auth-form input');
         formInputs.forEach(input => {
             if (input) {
+                // Remove existing event listener first to prevent duplicates
+                input.removeEventListener('input', validateAuthForm);
                 input.addEventListener('input', validateAuthForm);
+                console.log(`Added input validation listener to ${input.id || 'unknown input'}`);
             }
         });
         
-        // Initial validation
+        // Call validateAuthForm immediately and after a short delay
+        // This helps ensure the form state is evaluated correctly
         validateAuthForm();
+        setTimeout(validateAuthForm, 100);
         
         // Show the modal
         modal.show();
@@ -410,8 +416,10 @@ function toggleAuthMode() {
         // Re-attach event listener for switch link
         const switchLink = document.getElementById('auth-switch');
         if (switchLink) {
-            switchLink.addEventListener('click', toggleAuthMode);
-        }
+        // Replace the event listener instead of just adding a new one
+            switchLink.removeEventListener('click', toggleAuthMode);
+        switchLink.addEventListener('click', toggleAuthMode);
+    }
         
         // Re-validate the form
         validateAuthForm();
@@ -423,19 +431,41 @@ function toggleAuthMode() {
 // Validate the auth form
 function validateAuthForm() {
     const submitBtn = document.getElementById('auth-submit');
-    const isLogin = document.getElementById('auth-modal-title').textContent === 'Log In';
+    const authModalTitle = document.getElementById('auth-modal-title');
     
-    const email = document.getElementById('auth-email').value.trim();
-    const password = document.getElementById('auth-password').value;
+    if (!submitBtn || !authModalTitle) {
+        console.error('Cannot find submit button or modal title element');
+        return;
+    }
+    
+    const isLogin = authModalTitle.textContent === 'Log In';
+    
+    const email = document.getElementById('auth-email')?.value.trim() || '';
+    const password = document.getElementById('auth-password')?.value || '';
+    
+    // For debugging
+    console.log(`Form validation: isLogin=${isLogin}, email=${email ? 'set' : 'empty'}, password=${password ? 'set' : 'empty'}`);
     
     if (isLogin) {
         // Login requires only email and password
         submitBtn.disabled = !(email && password);
+        console.log(`Login button ${submitBtn.disabled ? 'disabled' : 'enabled'}`);
     } else {
         // Signup requires name, email, password, and matching password confirmation
-        const fullName = document.getElementById('signup-name').value.trim();
-        const confirmPassword = document.getElementById('auth-confirm-password').value;
+        const signupNameInput = document.getElementById('signup-name');
+        const confirmPasswordInput = document.getElementById('auth-confirm-password');
         const passwordMatchMessage = document.querySelector('.password-match-message');
+        
+        if (!signupNameInput || !confirmPasswordInput) {
+            console.error('Signup form fields not found');
+            return;
+        }
+        
+        const fullName = signupNameInput.value.trim();
+        const confirmPassword = confirmPasswordInput.value;
+        
+        // Debug log
+        console.log(`Signup validation: name=${fullName ? 'set' : 'empty'}, confirmPassword=${confirmPassword ? 'set' : 'empty'}`);
         
         // Check if passwords match when both fields have values
         let passwordsMatch = true;
@@ -443,18 +473,24 @@ function validateAuthForm() {
             passwordsMatch = password === confirmPassword;
             
             // Show/hide password match message
-            if (passwordsMatch) {
-                passwordMatchMessage.classList.add('d-none');
-            } else {
-                passwordMatchMessage.classList.remove('d-none');
+            if (passwordMatchMessage) {
+                if (passwordsMatch) {
+                    passwordMatchMessage.classList.add('d-none');
+                } else {
+                    passwordMatchMessage.classList.remove('d-none');
+                }
             }
         } else {
             // If one or both password fields are empty, hide the mismatch message
-            passwordMatchMessage.classList.add('d-none');
+            if (passwordMatchMessage) {
+                passwordMatchMessage.classList.add('d-none');
+            }
         }
         
         // Enable submit button only if all fields are filled and passwords match
-        submitBtn.disabled = !(fullName && email && password && confirmPassword && passwordsMatch);
+        const shouldEnable = fullName && email && password && confirmPassword && passwordsMatch;
+        submitBtn.disabled = !shouldEnable;
+        console.log(`Signup button ${submitBtn.disabled ? 'disabled' : 'enabled'}: fullName=${!!fullName}, email=${!!email}, password=${!!password}, confirmPassword=${!!confirmPassword}, passwordsMatch=${passwordsMatch}`);
     }
 }
 
