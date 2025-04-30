@@ -250,7 +250,7 @@ function openAuthModal(mode) {
             sessionStorage.removeItem('prayerDiaryLogoutTime');
             
             // Show a message then reload
-            showToast('Please Wait', 'Refreshing the page for a clean login...', 'info');
+            //showToast('Please Wait', 'Refreshing the page for a clean login...', 'info');
             setTimeout(() => {
                 window.location.reload();
             }, 1500);
@@ -832,7 +832,7 @@ async function logout() {
             dismissToast(logoutToastId);
             
             // Show success message
-            showToast('Logged Out', 'You have been successfully logged out', 'success', 3000);
+            //showToast('Logged Out', 'You have been successfully logged out', 'success', 3000);
             
             console.log("Logout procedure completed");
             
