@@ -675,25 +675,25 @@ html, body {
 }
 
 #other-content .calendar-day {
+	aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 4px; /* Changed from 50% to 4px to make it square like main calendar */
-    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
     cursor: pointer;
-    transition: all 0.2s ease;
-}
+    transition: all 0.2s;
+ }
 
 #other-content .calendar-day:hover {
     background-color: #e9ecef;
 }
 
 #other-content .calendar-day.selected {
-    background-color: var(--primary-color);
+    background-color: #483D8B;
     color: white;
-    border-color: var(--primary-color);
 }
 
 /* Prayer divider styling */
