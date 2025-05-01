@@ -334,8 +334,11 @@ function setupDrawerLinks(drawerMenu, closeDrawer) {
                         if (typeof initEmailTestView === 'function') initEmailTestView();
                     } 
                     else if (id === 'nav-change-password') {
-                        if (typeof openChangePasswordModal === 'function') openChangePasswordModal();
-                    } 
+						// Use a longer delay to ensure drawer is fully closed before opening modal
+						setTimeout(() => {
+							if (typeof openChangePasswordModal === 'function') openChangePasswordModal();
+						}, 400); // Longer timeout to avoid animation conflicts
+}
                     else if (id === 'btn-logout') {
                         if (typeof logout === 'function') logout();
                     } 
