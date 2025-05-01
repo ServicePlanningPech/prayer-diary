@@ -18,6 +18,7 @@ body {
     flex-direction: column;
 }
 
+/* This prevents refresh of app when scroll down is done */
 html, body {
 	overscroll-behavior-y: none;
 }
