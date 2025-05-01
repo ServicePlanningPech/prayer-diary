@@ -18,6 +18,10 @@ body {
     flex-direction: column;
 }
 
+html, body {
+	overscroll-behavior-y: none;
+}
+
 /* Custom bg-primary-dark */
 .bg-primary-dark {
     background-color: var(--primary-dark) !important;
