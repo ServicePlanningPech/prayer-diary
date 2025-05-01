@@ -1918,36 +1918,37 @@
                         .catch(function(err) {
                             console.log('ServiceWorker registration failed: ', err);
                         });
-						 // Add popstate listener to prevent accidental exit via mobile back button
-						 function isStandalone() {
-							return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-						  }
-
-						  if (isStandalone()) {
-							// Build a stack of fake states to trap back
-							let backTrapDepth = 2;
-
-							for (let i = 0; i < backTrapDepth; i++) {
-							  history.pushState({ level: i }, '');
-							}
-
-							window.addEventListener('popstate', (event) => {
-							  const exit = confirm("Do you want to exit the app?");
-							  if (exit) {
-								// Navigate all the way back (may exit app)
-								history.go(-backTrapDepth);
-							  } else {
-								// Rebuild trap stack
-								for (let i = 0; i < backTrapDepth; i++) {
-								  history.pushState({ level: i }, '');
-								}
-							  }
-							});
-						  }
                 });
             });
         }
     </script>
+	<script>
+	  function isStandalone() {
+		return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+	  }
+
+	  if (isStandalone()) {
+		// Build a stack of fake states to trap back
+		let backTrapDepth = 2;
+
+		for (let i = 0; i < backTrapDepth; i++) {
+		  history.pushState({ level: i }, '');
+		}
+
+		window.addEventListener('popstate', (event) => {
+		  const exit = confirm("Do you want to exit the app?");
+		  if (exit) {
+			// Navigate all the way back (may exit app)
+			history.go(-backTrapDepth);
+		  } else {
+			// Rebuild trap stack
+			for (let i = 0; i < backTrapDepth; i++) {
+			  history.pushState({ level: i }, '');
+			}
+		  }
+		});
+	  }
+	</script>
     <!-- Square Camera Module for profile photo capture -->
     <script src="js/square-camera.js?v=dev"></script>
 </body>
