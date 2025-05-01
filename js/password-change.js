@@ -3,11 +3,55 @@
 // Initialize password change functionality
 document.addEventListener('DOMContentLoaded', initPasswordChange);
 
+// Also initialize after navigation updates
+document.addEventListener('navigation-updated', function() {
+    console.log('Navigation updated, re-initializing password change functionality');
+    setTimeout(setupPasswordChangeHandlers, 200);
+});
+
 function initPasswordChange() {
-    // Set up event listener for opening the password change modal
+    setupPasswordChangeHandlers();
+}
+
+// Separate function to set up password change handlers that can be called multiple times
+function setupPasswordChangeHandlers() {
+    // Set up event listener for opening the password change modal from main menu
     const changePasswordLink = document.getElementById('nav-change-password');
     if (changePasswordLink) {
         changePasswordLink.addEventListener('click', openPasswordChangeModal);
+    }
+    
+    // Special handling for drawer menu password change links
+    const drawerMenu = document.querySelector('.drawer-menu');
+    if (drawerMenu) {
+        console.log('Setting up drawer menu password change handlers');
+        const drawerPasswordLinks = drawerMenu.querySelectorAll('#nav-change-password');
+        
+        drawerPasswordLinks.forEach(link => {
+            // Remove existing listeners to prevent duplicates
+            const newLink = link.cloneNode(true);
+            link.parentNode.replaceChild(newLink, link);
+            
+            // Add our special handler
+            newLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent event bubbling
+                
+                console.log('Password change link clicked in drawer');
+                
+                // Close the drawer first if it's open
+                if (typeof window.closeDrawer === 'function') {
+                    console.log('Closing drawer before showing password modal');
+                    window.closeDrawer();
+                }
+                
+                // Use a longer delay to ensure drawer is fully closed
+                setTimeout(function() {
+                    console.log('Now opening password change modal');
+                    openPasswordChangeModal();
+                }, 500);
+            });
+        });
     }
     
     // Set up form submission handler
@@ -43,7 +87,9 @@ function initPasswordChange() {
 }
 
 // Open the password change modal
+window.openChangePasswordModal = openPasswordChangeModal;
 function openPasswordChangeModal() {
+    console.log('Opening password change modal...');
     // Reset the form and error messages
     const form = document.getElementById('change-password-form');
     if (form) form.reset();
