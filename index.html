@@ -1920,21 +1920,26 @@
                         });
 						 // Add popstate listener to prevent accidental exit via mobile back button
 						function isStandalone() {
-						  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-						}
+							return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+						  }
 
-						if (isStandalone()) {
-						  history.pushState(null, '', location.href);
+						  if (isStandalone()) {
+							// Always keep one dummy state at the top
+							history.pushState({ dummy: true }, '', location.href);
 
-						  window.addEventListener('popstate', function () {
-							const exit = confirm("Do you want to exit the app?");
-							if (exit) {
-							  window.close(); // May not work
-							} else {
-							  history.pushState(null, '', location.href); // Re-block back
-							}
-						  });
-						}
+							window.addEventListener('popstate', function (event) {
+							  if (event.state && event.state.dummy) {
+								const exit = confirm("Do you want to exit the app?");
+								if (exit) {
+								  // Let the app close naturally
+								  history.back(); // optional: exits if there's a real page behind
+								} else {
+								  // Re-push dummy state to trap back again
+								  history.pushState({ dummy: true }, '', location.href);
+								}
+							  }
+							});
+						  }
                 });
             });
         }
