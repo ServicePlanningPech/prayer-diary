@@ -691,8 +691,9 @@ html, body {
 }
 
 #other-content .calendar-day.selected {
-    background-color: #483D8B;
+    background-color: var(--primary-color);
     color: white;
+    border-color: var(--primary-color);
 }
 
 /* Prayer divider styling */
