@@ -20,4 +20,4 @@ const PUSH_NOTIFICATION_ENABLED = true; // Enabled for push notification integra
 // App constants
 const APP_NAME = 'Prayer Diary';
 // This is the canonical app version used across the app
-const APP_VERSION = '1.0.013';
+const APP_VERSION = '1.0.014';
