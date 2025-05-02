@@ -515,7 +515,7 @@ function displayUserList(users, containerId, isAllocated) {
         const imgSrc = user.profile_image_url || 'img/placeholder-profile.png';
         
         if (isAllocated) {
-            // Template for assigned users
+            // Template for assigned users - keeping original layout
             html += `
             <div class="member-card" data-user-id="${user.id}">
                 <div class="member-top-row">
@@ -529,24 +529,20 @@ function displayUserList(users, containerId, isAllocated) {
                 <div class="member-badge-row">
                     <span class="badge bg-primary day-badge-inline">Day ${user.pray_day}</span>
                 </div>
-                <div class="member-bottom-row" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
-                    <select class="form-select month-selector" data-user-id="${user.id}" style="flex: 1; min-width: 120px;">
+                <div class="member-bottom-row">
+                    <select class="form-select month-selector" data-user-id="${user.id}">
                         <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <div class="button-container" style="min-width: 90px;">
-                        <button type="button" class="btn btn-primary assign-user-btn" 
-                            data-user-id="${user.id}" 
-                            style="width: 100%; touch-action: manipulation;">
-                            Reassign
-                        </button>
-                    </div>
+                    <button class="btn btn-primary assign-user fix-clickable" data-user-id="${user.id}">
+                        Reassign
+                    </button>
                 </div>
             </div>
             `;
         } else {
-            // Template for unassigned users
+            // Template for unassigned users - keeping original layout
             html += `
             <div class="member-card" data-user-id="${user.id}">
                 <div class="member-top-row">
@@ -557,19 +553,15 @@ function displayUserList(users, containerId, isAllocated) {
                         <div class="member-name">${user.full_name}</div>
                     </div>
                 </div>
-                <div class="member-bottom-row" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
-                    <select class="form-select month-selector" data-user-id="${user.id}" style="flex: 1; min-width: 120px;">
+                <div class="member-bottom-row">
+                    <select class="form-select month-selector" data-user-id="${user.id}">
                         <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <div class="button-container" style="min-width: 90px;">
-                        <button type="button" class="btn btn-primary assign-user-btn" 
-                            data-user-id="${user.id}" 
-                            style="width: 100%; touch-action: manipulation;">
-                            Assign
-                        </button>
-                    </div>
+                    <button class="btn btn-primary assign-user fix-clickable" data-user-id="${user.id}">
+                        Assign
+                    </button>
                 </div>
             </div>
             `;
@@ -578,93 +570,52 @@ function displayUserList(users, containerId, isAllocated) {
     
     container.innerHTML = html;
     
-    // Add special CSS for mobile touch devices
-    const mobileStyle = document.createElement('style');
-    mobileStyle.innerHTML = `
-        /* More balanced mobile styles */
-        @media (max-width: 767px) {
-            .button-container {
-                min-width: 80px !important;
-            }
-            
-            .assign-user-btn {
-                min-height: 38px !important; /* Still touch-friendly but not too large */
-                font-size: 14px !important;
-            }
-            
-            /* Add padding to the member card to separate from scrolling */
-            .member-card {
-                padding: 5px;
-                margin-bottom: 10px;
-            }
-            
-            /* Make sure bottom row wraps gracefully on very small screens */
-            .member-bottom-row {
-                flex-wrap: wrap;
-            }
-            
-            /* On very small screens, buttons can go full width but not on medium mobile */
-            @media (max-width: 350px) {
-                .button-container {
-                    min-width: 100% !important;
-                    margin-top: 5px;
-                }
-            }
+    // Add a specific class to make only the buttons more clickable
+    const clickFixStyle = document.createElement('style');
+    clickFixStyle.textContent = `
+        /* Fix for button clickability without changing layout */
+        .fix-clickable {
+            position: relative !important;
+            z-index: 5 !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Make sure the button has sufficient clickable area */
+        .assign-user {
+            min-height: 38px;
+            margin-left: 8px;
         }
     `;
-    document.head.appendChild(mobileStyle);
+    document.head.appendChild(clickFixStyle);
     
-    // Set up event handlers with a short delay to ensure DOM is ready
-    setTimeout(() => {
-        // Handle button clicks
-        const assignButtons = container.querySelectorAll('.assign-user-btn');
-        console.log(`Found ${assignButtons.length} assign buttons to set up`);
+    // Fix for buttons - using direct event attachment 
+    const buttons = container.querySelectorAll('.assign-user');
+    buttons.forEach(button => {
+        // Store the user ID
+        const userId = button.dataset.userId;
         
-        assignButtons.forEach(button => {
-            // Remove existing event listeners to be safe
-            const newButton = button.cloneNode(true);
-            button.parentNode.replaceChild(newButton, button);
+        // Remove any existing listeners (cleaning up old ones)
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        
+        // Add a new direct click listener
+        newButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             
-            // Add event listener for clicks (works for both mouse and touch)
-            newButton.addEventListener('click', function(event) {
-                // Prevent default and stop propagation
-                event.preventDefault();
-                event.stopPropagation();
-                
-                console.log(`Button clicked for user ID: ${this.dataset.userId}`);
-                
-                // Get user ID from data attribute
-                const userId = this.dataset.userId;
-                
-                // Add visual feedback
-                this.disabled = true;
-                const originalText = this.textContent;
-                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-                
-                // Small delay for visual feedback
-                setTimeout(() => {
-                    // Call assign function
-                    assignUserToDay(userId);
-                    
-                    // Restore button state
-                    setTimeout(() => {
-                        this.disabled = false;
-                        this.textContent = originalText;
-                    }, 500);
-                }, 100);
-            });
+            // Call the function with the user ID
+            assignUserToDay(userId);
         });
-        
-        // Set up month selector event handlers
-        const monthSelectors = container.querySelectorAll('.month-selector');
-        monthSelectors.forEach(select => {
-            select.addEventListener('change', function() {
-                const userId = this.dataset.userId;
-                const monthValue = parseInt(this.value);
-                updateUserMonths(userId, monthValue);
-            });
+    });
+    
+    // Add event listeners to month selectors
+    container.querySelectorAll('.month-selector').forEach(select => {
+        select.addEventListener('change', function() {
+            const userId = this.dataset.userId;
+            const months = parseInt(this.value);
+            updateUserMonths(userId, months);
         });
-    }, 100);
+    });
 }
 
 // Assign a user to the selected day
