@@ -88,9 +88,9 @@ function showInstallationSuccessMessage() {
     installContainer.className = 'install-success-message';
     installContainer.innerHTML = `
         <div class="install-message-content">
-            <h3>Installation Complete!</h3>
-            <p>Prayer Diary has been added to your home screen.</p>
-            <p>Please close this window and launch the app from your home screen icon for the best experience.</p>
+            <h3>Installation in progress</h3>
+            <p>PECH prayer diary is being installed. You should shortly see a message confirming installation. An app launch icon will be added to one of your home screens or app drawer</p>
+            <p>Please wait for the message, then close this window and launch the app from your home screen icon for the best experience.</p>
             <button id="close-after-install" class="btn btn-primary">Close and Launch from Icon</button>
         </div>
     `;
@@ -261,7 +261,7 @@ function initSplashScreen() {
     // Show splash screen
     const splashScreen = document.getElementById('splash-screen');
     
-    // Set a timer to hide the splash screen after 5 seconds
+    // Set a timer to hide the splash screen after 3 seconds
     setTimeout(() => {
         // Start the fade out animation
         splashScreen.classList.add('fade-out');
@@ -302,7 +302,7 @@ function initSplashScreen() {
                 }
             }
         }, 500); // Wait for the fade animation to complete
-    }, 5000); // 5 seconds display time
+    }, 3000); // 3 seconds display time
 }
 
 // Add this to app.js or at the beginning of your main execution flow

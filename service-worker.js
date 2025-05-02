@@ -2,7 +2,7 @@
 
 // Define a version for the app that changes with each significant update
 // Note: This should match the version in config.js
-const APP_VERSION = '1.0.016'; // Change this version when deploying a new version
+const APP_VERSION = '1.0.017'; // Change this version when deploying a new version
 
 // Use APP_VERSION and timestamp for cache busting
 const CACHE_NAME = `prayer-diary-${APP_VERSION}-${Date.now()}`;
