@@ -529,14 +529,16 @@ function displayUserList(users, containerId, isAllocated) {
                 <div class="member-badge-row">
                     <span class="badge bg-primary day-badge-inline">Day ${user.pray_day}</span>
                 </div>
-                <div class="member-bottom-row">
-                    <select class="form-select month-selector" data-user-id="${user.id}">
+                <div class="member-bottom-row" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                    <select class="form-select month-selector" data-user-id="${user.id}" style="flex: 1; min-width: 120px;">
                         <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <div class="button-wrapper" style="position: relative; z-index: 5; margin-left: 8px;">
-                        <button class="btn btn-primary assign-user w-100" data-user-id="${user.id}" style="position: relative;">
+                    <div class="button-container" style="min-width: 100px; padding: 5px;">
+                        <button type="button" class="btn btn-primary btn-lg assign-user-btn" 
+                            data-user-id="${user.id}" 
+                            style="width: 100%; font-size: 16px; padding: 8px 12px; touch-action: manipulation;">
                             Reassign
                         </button>
                     </div>
@@ -555,14 +557,16 @@ function displayUserList(users, containerId, isAllocated) {
                         <div class="member-name">${user.full_name}</div>
                     </div>
                 </div>
-                <div class="member-bottom-row">
-                    <select class="form-select month-selector" data-user-id="${user.id}">
+                <div class="member-bottom-row" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                    <select class="form-select month-selector" data-user-id="${user.id}" style="flex: 1; min-width: 120px;">
                         <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <div class="button-wrapper" style="position: relative; z-index: 5; margin-left: 8px;">
-                        <button class="btn btn-primary assign-user w-100" data-user-id="${user.id}" style="position: relative;">
+                    <div class="button-container" style="min-width: 100px; padding: 5px;">
+                        <button type="button" class="btn btn-primary btn-lg assign-user-btn" 
+                            data-user-id="${user.id}" 
+                            style="width: 100%; font-size: 16px; padding: 8px 12px; touch-action: manipulation;">
                             Assign
                         </button>
                     </div>
@@ -574,36 +578,96 @@ function displayUserList(users, containerId, isAllocated) {
     
     container.innerHTML = html;
     
-    // Add event listeners to assign buttons with a small delay to ensure DOM is updated
-    setTimeout(() => {
-        // Add event listeners to assign buttons
-        const buttons = container.querySelectorAll('.assign-user');
-        buttons.forEach(button => {
-            // Ensure the button is fully clickable by adding explicit click area styling
-            button.style.cursor = 'pointer';
-            button.style.position = 'relative';
-            button.style.zIndex = '10';
+    // Add special CSS for mobile touch devices
+    const mobileStyle = document.createElement('style');
+    mobileStyle.innerHTML = `
+        @media (max-width: 767px) {
+            .button-container {
+                min-width: 100% !important;
+                padding: 10px 0 !important;
+            }
             
-            // Add the event listener for the assign/reassign action
-            button.addEventListener('click', (event) => {
-                // Prevent event bubbling
-                event.stopPropagation();
-                
-                // Get the user ID and perform the assignment
-                const userId = button.dataset.userId;
-                assignUserToDay(userId);
+            .assign-user-btn {
+                min-height: 44px !important; /* Minimum recommended touch target size */
+                font-size: 18px !important;
+                display: block !important;
+                width: 100% !important;
+            }
+            
+            .member-bottom-row {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+        }
+    `;
+    document.head.appendChild(mobileStyle);
+    
+    // Set up event handlers on a delay to ensure DOM is ready
+    setTimeout(() => {
+        // Handle button clicks - IMPORTANT: Using a different class name to avoid conflicts
+        const assignButtons = container.querySelectorAll('.assign-user-btn');
+        console.log(`Found ${assignButtons.length} assign buttons to set up`);
+        
+        assignButtons.forEach(button => {
+            // Remove existing event listeners to be safe
+            const newButton = button.cloneNode(true);
+            button.parentNode.replaceChild(newButton, button);
+            
+            // Set up multiple event handlers for maximum compatibility
+            ['click', 'touchstart', 'touchend'].forEach(eventType => {
+                newButton.addEventListener(eventType, function(event) {
+                    // Prevent default and stop propagation
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    console.log(`Button ${eventType} event triggered for user ID: ${this.dataset.userId}`);
+                    
+                    // For touchstart, we need to handle it specially
+                    if (eventType === 'touchstart') {
+                        // Just highlight the button without taking action
+                        this.classList.add('active');
+                        return;
+                    }
+                    
+                    // For touchend or click, actually perform the action
+                    if (eventType === 'touchend' || eventType === 'click') {
+                        // Remove highlight
+                        this.classList.remove('active');
+                        
+                        // Get user ID from data attribute
+                        const userId = this.dataset.userId;
+                        
+                        // Add visual feedback
+                        this.disabled = true;
+                        const originalText = this.textContent;
+                        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+                        
+                        // Small delay for feedback
+                        setTimeout(() => {
+                            // Call assign function
+                            assignUserToDay(userId);
+                            
+                            // Restore button state
+                            setTimeout(() => {
+                                this.disabled = false;
+                                this.textContent = originalText;
+                            }, 1000);
+                        }, 200);
+                    }
+                }, { passive: false }); // Important: non-passive listener to allow preventDefault
             });
         });
         
-        // Add event listeners to month selectors
-        container.querySelectorAll('.month-selector').forEach(select => {
+        // Set up month selector event handlers
+        const monthSelectors = container.querySelectorAll('.month-selector');
+        monthSelectors.forEach(select => {
             select.addEventListener('change', function() {
                 const userId = this.dataset.userId;
-                const months = parseInt(this.value);
-                updateUserMonths(userId, months);
+                const monthValue = parseInt(this.value);
+                updateUserMonths(userId, monthValue);
             });
         });
-    }, 50);
+    }, 100); // Slightly longer delay for mobile
 }
 
 // Assign a user to the selected day
