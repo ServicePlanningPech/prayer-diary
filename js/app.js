@@ -31,6 +31,24 @@ let deferredPrompt;
 let installInProgress = false;
 const installContainer = document.createElement('div');
 
+// Create a global tracking flag for installation availability
+window.appIsInstallable = false;
+
+// Patch the Bootstrap Modal to prevent login display when installable
+if (typeof bootstrap !== 'undefined') {
+    const originalModalShow = bootstrap.Modal.prototype.show;
+    bootstrap.Modal.prototype.show = function() {
+        // If this is the auth modal and app is installable, block it
+        if (this._element && this._element.id === 'auth-modal' && window.appIsInstallable) {
+            console.log('Bootstrap Modal show intercepted - auth modal blocked due to installation availability');
+            return; // Block the modal from showing
+        }
+        
+        // Otherwise, proceed as normal
+        return originalModalShow.apply(this, arguments);
+    };
+}
+
 // Listen for the beforeinstallprompt event
 window.addEventListener('beforeinstallprompt', (e) => {
     // Prevent the mini-info bar from appearing on mobile
@@ -39,14 +57,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
     // Store the event so it can be triggered later
     deferredPrompt = e;
     
-    // Set the installation flag to block login modal
-    window.blockLoginModal = true;
-    sessionStorage.setItem('delayLoginForInstall', 'true');
+    // Set global flag that the app is installable
+    window.appIsInstallable = true;
+    console.log('App is installable, modal blocking activated');
     
-    // Log that the app is installable
-    console.log('App is installable, install prompt available, blocking login modal');
-    
-    // Show install button immediately
+    // Show install button immediately if not already shown
     if (!document.querySelector('.custom-install-button')) {
         showInstallButton();
     }
@@ -133,24 +148,19 @@ function showInstallButton() {
             // Clear the deferredPrompt variable
             deferredPrompt = null;
             
-            // Clear the installation in progress flag
+            // Clear the installation flags
             installInProgress = false;
+            window.appIsInstallable = false;
             
             // Remove the button after installation attempt
             installButton.remove();
             
-            // Allow login modal to show again
-            window.blockLoginModal = false;
-            sessionStorage.removeItem('delayLoginForInstall');
-            
-            // If the user chose not to install, show login
-            if (outcome === 'dismissed') {
-                if (!isLoggedIn()) {
-                    console.log('Installation dismissed, showing login modal now');
-                    setTimeout(() => {
-                        openAuthModal('login');
-                    }, 300);
-                }
+            // Now it's safe to show login
+            if (outcome === 'dismissed' && !isLoggedIn()) {
+                console.log('Installation dismissed, showing login modal now');
+                setTimeout(() => {
+                    openAuthModal('login');
+                }, 500);
             }
         }
     });
@@ -164,8 +174,8 @@ function showInstallButton() {
 
 // Initialize app function
 function initializeApp() {
-    // Set initial state for login blocking
-    window.blockLoginModal = false;
+    // Set initial state for installable flag
+    window.appIsInstallable = false;
     
     // Initialize splash screen first
     initSplashScreen();
@@ -203,17 +213,13 @@ function initializeApp() {
     // Handle login and installation flow sequencing
     console.log('Checking for installation state...');
     
-    // Check if we already have the install button flag - if so, clear it
-    // This prevents duplicate buttons on page refresh
+    // Make sure we don't have leftover flags from previous sessions
     if(sessionStorage.getItem('installButtonShown')) {
         sessionStorage.removeItem('installButtonShown');
     }
     
-    // Completely disable the automatic login if installation is possible
-    if (deferredPrompt) {
-        window.blockLoginModal = true;
-        console.log('Installation available, login modal blocked via global flag');
-    }
+    // Nothing else to do here - the beforeinstallprompt event and patched bootstrap modal
+    // will handle the rest of the installation and login process
     
     // Initialize topics functionality
     document.addEventListener('login-state-changed', function(event) {
@@ -259,8 +265,8 @@ function initSplashScreen() {
                 showView('calendar-view');
                 // Load prayer calendar
                 loadPrayerCalendar();
-            } else {
-                // Show login modal
+            } else if (!window.appIsInstallable) {
+                // Only show login if app is not installable
                 setTimeout(() => {
                     openAuthModal('login');
                 }, 100);
