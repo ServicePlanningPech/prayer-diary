@@ -169,9 +169,12 @@ function showInstallButton() {
                 // Slight delay to ensure cleanup is complete
                 setTimeout(() => {
                     try {
-                        // Manually create and show a new modal
-                        const authModal = new bootstrap.Modal(document.getElementById('auth-modal'));
-                        authModal.show();
+                        // Re-initialize auth system to ensure login works properly
+                        window.restoreAuthFunctionality = true;
+                        initAuth();
+                        
+                        // Use the standard method which has all the proper event handlers
+                        openAuthModal('login');
                     } catch (e) {
                         console.error('Error showing auth modal:', e);
                     }
@@ -189,8 +192,9 @@ function showInstallButton() {
 
 // Initialize app function
 function initializeApp() {
-    // Set initial state for installable flag
+    // Set initial flags
     window.appIsInstallable = false;
+    window.restoreAuthFunctionality = false;
     
     // Initialize splash screen first
     initSplashScreen();
@@ -286,13 +290,12 @@ function initSplashScreen() {
                     // Only show login if we're not handling installation
                     console.log('Not handling installation, safe to show login');
                     setTimeout(() => {
-                        // Try to create a new modal to avoid any previous patching
-                        try {
-                            const authModal = new bootstrap.Modal(document.getElementById('auth-modal'));
-                            authModal.show();
-                        } catch (e) {
-                            console.error('Error showing login modal:', e);
-                        }
+                        // Restore auth functionality
+                        window.restoreAuthFunctionality = true;
+                        initAuth();
+                        
+                        // Use standard login function which has proper event handlers
+                        openAuthModal('login');
                     }, 500);
                 } else {
                     console.log('Handling installation, not showing login yet');

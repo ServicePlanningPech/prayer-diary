@@ -59,8 +59,16 @@ async function initAuth() {
     try {
         console.log("Initializing authentication...");
         
-        // !IMPORTANT: Skip auto-login completely - we'll handle this elsewhere
-        return;
+        // Check if we should restore functionality
+        if (window.restoreAuthFunctionality !== true) {
+            // !IMPORTANT: Skip auto-login completely - we'll handle this elsewhere
+            console.log("Auto-login disabled, waiting for installation to complete");
+            return;
+        } else {
+            console.log("Auth functionality restored after installation");
+            // Reset the flag
+            window.restoreAuthFunctionality = false;
+        }
         
         // FIRST CHECK: Look for our custom reset password parameter
         const params = new URLSearchParams(window.location.search);
