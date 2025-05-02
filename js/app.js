@@ -89,8 +89,8 @@ function showInstallationSuccessMessage() {
     installContainer.innerHTML = `
         <div class="install-message-content">
             <h3>Installation in progress</h3>
-            <p>PECH prayer diary is being installed. You should shortly see a message confirming installation. An app launch icon will be added to one of your home screens or app drawer</p>
-            <p>Please wait for the message, then close this window and launch the app from your home screen icon for the best experience.</p>
+            <p>PECH prayer diary is being installed. You should shortly see a message confirming installation. An app launch icon will be added to your device</p>
+            <p>Please wait for the message, then close this window and launch the app from your app icon for the best experience.</p>
             <button id="close-after-install" class="btn btn-primary">Close and Launch from Icon</button>
         </div>
     `;
