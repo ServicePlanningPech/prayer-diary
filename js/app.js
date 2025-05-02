@@ -39,18 +39,18 @@ window.addEventListener('beforeinstallprompt', (e) => {
     // Store the event so it can be triggered later
     deferredPrompt = e;
     
-    // Log that the app is installable
-    console.log('App is installable, install prompt available');
+    // Set the installation flag to block login modal
+    window.blockLoginModal = true;
+    sessionStorage.setItem('delayLoginForInstall', 'true');
     
-    // Check if we're already logged in - if not, show install button first
-    if (!isLoggedIn()) {
-        // Set a flag to delay login modal
-        sessionStorage.setItem('delayLoginForInstall', 'true');
-        // Show the install button
+    // Log that the app is installable
+    console.log('App is installable, install prompt available, blocking login modal');
+    
+    // Show install button immediately
+    if (!document.querySelector('.custom-install-button')) {
         showInstallButton();
     }
 });
-
 // Listen for the appinstalled event
 window.addEventListener('appinstalled', (evt) => {
     // Log app installation
@@ -139,10 +139,14 @@ function showInstallButton() {
             // Remove the button after installation attempt
             installButton.remove();
             
+            // Allow login modal to show again
+            window.blockLoginModal = false;
+            sessionStorage.removeItem('delayLoginForInstall');
+            
             // If the user chose not to install, show login
             if (outcome === 'dismissed') {
-                sessionStorage.removeItem('delayLoginForInstall');
                 if (!isLoggedIn()) {
+                    console.log('Installation dismissed, showing login modal now');
                     setTimeout(() => {
                         openAuthModal('login');
                     }, 300);
@@ -160,6 +164,9 @@ function showInstallButton() {
 
 // Initialize app function
 function initializeApp() {
+    // Set initial state for login blocking
+    window.blockLoginModal = false;
+    
     // Initialize splash screen first
     initSplashScreen();
     
@@ -194,35 +201,19 @@ function initializeApp() {
     }
     
     // Handle login and installation flow sequencing
+    console.log('Checking for installation state...');
+    
     // Check if we already have the install button flag - if so, clear it
     // This prevents duplicate buttons on page refresh
     if(sessionStorage.getItem('installButtonShown')) {
         sessionStorage.removeItem('installButtonShown');
     }
     
-    // Check for installable state with a delay to ensure all systems are ready
-    setTimeout(() => {
-        if (!isInStandaloneMode() && deferredPrompt) {
-            console.log('App is installable and not in standalone mode');
-            // Set the install flag to prevent login modal
-            sessionStorage.setItem('delayLoginForInstall', 'true');
-            // Show the install button
-            showInstallButton();
-            sessionStorage.setItem('installButtonShown', 'true');
-        } else {
-            // If not installable or already in standalone mode
-            // and not logged in, show login modal
-            if (!isLoggedIn()) {
-                console.log('Not installable or already in standalone mode, showing login');
-                // Clear any delay flag
-                sessionStorage.removeItem('delayLoginForInstall');
-                // Show login with slight delay
-                setTimeout(() => {
-                    openAuthModal('login');
-                }, 500);
-            }
-        }
-    }, 1000);
+    // Completely disable the automatic login if installation is possible
+    if (deferredPrompt) {
+        window.blockLoginModal = true;
+        console.log('Installation available, login modal blocked via global flag');
+    }
     
     // Initialize topics functionality
     document.addEventListener('login-state-changed', function(event) {

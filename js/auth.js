@@ -59,6 +59,12 @@ async function initAuth() {
     try {
         console.log("Initializing authentication...");
         
+        // Check if we should block login based on global flag
+        if (window.blockLoginModal === true) {
+            console.log("Authentication initialization blocked by global flag");
+            return;
+        }
+        
         // Check if we're in installation mode - if so, delay auth process
         if (sessionStorage.getItem('delayLoginForInstall') === 'true') {
             console.log("Authentication initialization delayed for installation");
@@ -244,6 +250,12 @@ function setupAuthListeners() {
 // Open auth modal for login or signup
 function openAuthModal(mode) {
     try {
+        // Check global blocking flag first
+        if (window.blockLoginModal === true) {
+            console.log('Login modal blocked by global flag');
+            return;
+        }
+        
         // Check if we should delay login for installation
         if (sessionStorage.getItem('delayLoginForInstall') === 'true') {
             console.log('Delaying login modal for app installation');
