@@ -515,7 +515,7 @@ function displayUserList(users, containerId, isAllocated) {
         const imgSrc = user.profile_image_url || 'img/placeholder-profile.png';
         
         if (isAllocated) {
-            // Template for assigned users - keeping original layout
+            // Template for assigned users - using original layout
             html += `
             <div class="member-card" data-user-id="${user.id}">
                 <div class="member-top-row">
@@ -535,14 +535,14 @@ function displayUserList(users, containerId, isAllocated) {
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <button class="btn btn-primary assign-user fix-clickable" data-user-id="${user.id}">
+                    <button class="btn btn-primary assign-user" data-user-id="${user.id}">
                         Reassign
                     </button>
                 </div>
             </div>
             `;
         } else {
-            // Template for unassigned users - keeping original layout
+            // Template for unassigned users - using original layout
             html += `
             <div class="member-card" data-user-id="${user.id}">
                 <div class="member-top-row">
@@ -559,7 +559,7 @@ function displayUserList(users, containerId, isAllocated) {
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <button class="btn btn-primary assign-user fix-clickable" data-user-id="${user.id}">
+                    <button class="btn btn-primary assign-user" data-user-id="${user.id}">
                         Assign
                     </button>
                 </div>
@@ -570,51 +570,34 @@ function displayUserList(users, containerId, isAllocated) {
     
     container.innerHTML = html;
     
-    // Add a specific class to make only the buttons more clickable
-    const clickFixStyle = document.createElement('style');
-    clickFixStyle.textContent = `
-        /* Fix for button clickability without changing layout */
-        .fix-clickable {
-            position: relative !important;
-            z-index: 5 !important;
-            pointer-events: auto !important;
-        }
-        
-        /* Make sure the button has sufficient clickable area */
-        .assign-user {
-            min-height: 38px;
-            margin-left: 8px;
-        }
-    `;
-    document.head.appendChild(clickFixStyle);
-    
-    // Fix for buttons - using direct event attachment 
-    const buttons = container.querySelectorAll('.assign-user');
-    buttons.forEach(button => {
-        // Store the user ID
+    // Add event listeners to assign buttons
+    container.querySelectorAll('.assign-user').forEach(button => {
+        // Store user ID before removing the button
         const userId = button.dataset.userId;
         
-        // Remove any existing listeners (cleaning up old ones)
-        const newButton = button.cloneNode(true);
-        button.parentNode.replaceChild(newButton, button);
-        
-        // Add a new direct click listener
-        newButton.addEventListener('click', function(e) {
+        // Directly attach click handler to make sure it works
+        button.onclick = function(e) {
+            // Prevent default behavior and stop propagation
             e.preventDefault();
             e.stopPropagation();
             
-            // Call the function with the user ID
+            console.log('Assign button clicked for user:', userId);
+            
+            // Call the assignment function
             assignUserToDay(userId);
-        });
+            
+            // Return false to prevent any further event handling
+            return false;
+        };
     });
     
     // Add event listeners to month selectors
     container.querySelectorAll('.month-selector').forEach(select => {
-        select.addEventListener('change', function() {
+        select.onchange = function() {
             const userId = this.dataset.userId;
             const months = parseInt(this.value);
             updateUserMonths(userId, months);
-        });
+        };
     });
 }
 
