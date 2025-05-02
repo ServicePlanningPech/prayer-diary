@@ -529,16 +529,16 @@ function displayUserList(users, containerId, isAllocated) {
                 <div class="member-badge-row">
                     <span class="badge bg-primary day-badge-inline">Day ${user.pray_day}</span>
                 </div>
-                <div class="member-bottom-row" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                <div class="member-bottom-row" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
                     <select class="form-select month-selector" data-user-id="${user.id}" style="flex: 1; min-width: 120px;">
                         <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <div class="button-container" style="min-width: 100px; padding: 5px;">
-                        <button type="button" class="btn btn-primary btn-lg assign-user-btn" 
+                    <div class="button-container" style="min-width: 90px;">
+                        <button type="button" class="btn btn-primary assign-user-btn" 
                             data-user-id="${user.id}" 
-                            style="width: 100%; font-size: 16px; padding: 8px 12px; touch-action: manipulation;">
+                            style="width: 100%; touch-action: manipulation;">
                             Reassign
                         </button>
                     </div>
@@ -557,16 +557,16 @@ function displayUserList(users, containerId, isAllocated) {
                         <div class="member-name">${user.full_name}</div>
                     </div>
                 </div>
-                <div class="member-bottom-row" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                <div class="member-bottom-row" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
                     <select class="form-select month-selector" data-user-id="${user.id}" style="flex: 1; min-width: 120px;">
                         <option value="0" ${user.pray_months === 0 ? 'selected' : ''}>All months</option>
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <div class="button-container" style="min-width: 100px; padding: 5px;">
-                        <button type="button" class="btn btn-primary btn-lg assign-user-btn" 
+                    <div class="button-container" style="min-width: 90px;">
+                        <button type="button" class="btn btn-primary assign-user-btn" 
                             data-user-id="${user.id}" 
-                            style="width: 100%; font-size: 16px; padding: 8px 12px; touch-action: manipulation;">
+                            style="width: 100%; touch-action: manipulation;">
                             Assign
                         </button>
                     </div>
@@ -581,30 +581,42 @@ function displayUserList(users, containerId, isAllocated) {
     // Add special CSS for mobile touch devices
     const mobileStyle = document.createElement('style');
     mobileStyle.innerHTML = `
+        /* More balanced mobile styles */
         @media (max-width: 767px) {
             .button-container {
-                min-width: 100% !important;
-                padding: 10px 0 !important;
+                min-width: 80px !important;
             }
             
             .assign-user-btn {
-                min-height: 44px !important; /* Minimum recommended touch target size */
-                font-size: 18px !important;
-                display: block !important;
-                width: 100% !important;
+                min-height: 38px !important; /* Still touch-friendly but not too large */
+                font-size: 14px !important;
             }
             
+            /* Add padding to the member card to separate from scrolling */
+            .member-card {
+                padding: 5px;
+                margin-bottom: 10px;
+            }
+            
+            /* Make sure bottom row wraps gracefully on very small screens */
             .member-bottom-row {
-                flex-direction: column !important;
-                align-items: stretch !important;
+                flex-wrap: wrap;
+            }
+            
+            /* On very small screens, buttons can go full width but not on medium mobile */
+            @media (max-width: 350px) {
+                .button-container {
+                    min-width: 100% !important;
+                    margin-top: 5px;
+                }
             }
         }
     `;
     document.head.appendChild(mobileStyle);
     
-    // Set up event handlers on a delay to ensure DOM is ready
+    // Set up event handlers with a short delay to ensure DOM is ready
     setTimeout(() => {
-        // Handle button clicks - IMPORTANT: Using a different class name to avoid conflicts
+        // Handle button clicks
         const assignButtons = container.querySelectorAll('.assign-user-btn');
         console.log(`Found ${assignButtons.length} assign buttons to set up`);
         
@@ -613,48 +625,33 @@ function displayUserList(users, containerId, isAllocated) {
             const newButton = button.cloneNode(true);
             button.parentNode.replaceChild(newButton, button);
             
-            // Set up multiple event handlers for maximum compatibility
-            ['click', 'touchstart', 'touchend'].forEach(eventType => {
-                newButton.addEventListener(eventType, function(event) {
-                    // Prevent default and stop propagation
-                    event.preventDefault();
-                    event.stopPropagation();
+            // Add event listener for clicks (works for both mouse and touch)
+            newButton.addEventListener('click', function(event) {
+                // Prevent default and stop propagation
+                event.preventDefault();
+                event.stopPropagation();
+                
+                console.log(`Button clicked for user ID: ${this.dataset.userId}`);
+                
+                // Get user ID from data attribute
+                const userId = this.dataset.userId;
+                
+                // Add visual feedback
+                this.disabled = true;
+                const originalText = this.textContent;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                
+                // Small delay for visual feedback
+                setTimeout(() => {
+                    // Call assign function
+                    assignUserToDay(userId);
                     
-                    console.log(`Button ${eventType} event triggered for user ID: ${this.dataset.userId}`);
-                    
-                    // For touchstart, we need to handle it specially
-                    if (eventType === 'touchstart') {
-                        // Just highlight the button without taking action
-                        this.classList.add('active');
-                        return;
-                    }
-                    
-                    // For touchend or click, actually perform the action
-                    if (eventType === 'touchend' || eventType === 'click') {
-                        // Remove highlight
-                        this.classList.remove('active');
-                        
-                        // Get user ID from data attribute
-                        const userId = this.dataset.userId;
-                        
-                        // Add visual feedback
-                        this.disabled = true;
-                        const originalText = this.textContent;
-                        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-                        
-                        // Small delay for feedback
-                        setTimeout(() => {
-                            // Call assign function
-                            assignUserToDay(userId);
-                            
-                            // Restore button state
-                            setTimeout(() => {
-                                this.disabled = false;
-                                this.textContent = originalText;
-                            }, 1000);
-                        }, 200);
-                    }
-                }, { passive: false }); // Important: non-passive listener to allow preventDefault
+                    // Restore button state
+                    setTimeout(() => {
+                        this.disabled = false;
+                        this.textContent = originalText;
+                    }, 500);
+                }, 100);
             });
         });
         
@@ -667,7 +664,7 @@ function displayUserList(users, containerId, isAllocated) {
                 updateUserMonths(userId, monthValue);
             });
         });
-    }, 100); // Slightly longer delay for mobile
+    }, 100);
 }
 
 // Assign a user to the selected day
