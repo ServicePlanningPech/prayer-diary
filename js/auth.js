@@ -59,17 +59,8 @@ async function initAuth() {
     try {
         console.log("Initializing authentication...");
         
-        // Check if we should block login based on global flag
-        if (window.blockLoginModal === true) {
-            console.log("Authentication initialization blocked by global flag");
-            return;
-        }
-        
-        // Check if we're in installation mode - if so, delay auth process
-        if (sessionStorage.getItem('delayLoginForInstall') === 'true') {
-            console.log("Authentication initialization delayed for installation");
-            return;
-        }
+        // !IMPORTANT: Skip auto-login completely - we'll handle this elsewhere
+        return;
         
         // FIRST CHECK: Look for our custom reset password parameter
         const params = new URLSearchParams(window.location.search);

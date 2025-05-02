@@ -51,20 +51,24 @@ if (typeof bootstrap !== 'undefined') {
 
 // Listen for the beforeinstallprompt event
 window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('Installation prompt detected!');
+    
     // Prevent the mini-info bar from appearing on mobile
     e.preventDefault();
     
     // Store the event so it can be triggered later
     deferredPrompt = e;
     
-    // Set global flag that the app is installable
-    window.appIsInstallable = true;
-    console.log('App is installable, modal blocking activated');
+    // Set a flag to indicate we're handling installation
+    sessionStorage.setItem('handlingInstallation', 'true');
     
-    // Show install button immediately if not already shown
-    if (!document.querySelector('.custom-install-button')) {
-        showInstallButton();
-    }
+    // Only show install button if it doesn't already exist
+    setTimeout(() => {
+        // Guard against duplicate buttons
+        if (!document.querySelector('.custom-install-button')) {
+            showInstallButton();
+        }
+    }, 500);
 });
 // Listen for the appinstalled event
 window.addEventListener('appinstalled', (evt) => {
@@ -133,11 +137,15 @@ function showInstallButton() {
     // Set installation in progress flag
     installInProgress = true;
     
+    console.log('Adding installation button to navbar');
+    
     const installButton = document.createElement('button');
     installButton.className = 'btn btn-sm btn-outline-light custom-install-button';
     installButton.innerHTML = '<i class="bi bi-download me-1"></i> Install App';
     installButton.addEventListener('click', async () => {
         if (deferredPrompt) {
+            console.log('Install button clicked, showing prompt');
+            
             // Show the install prompt
             deferredPrompt.prompt();
             
@@ -148,19 +156,26 @@ function showInstallButton() {
             // Clear the deferredPrompt variable
             deferredPrompt = null;
             
-            // Clear the installation flags
+            // Clean up all flags
             installInProgress = false;
-            window.appIsInstallable = false;
+            sessionStorage.removeItem('handlingInstallation');
             
-            // Remove the button after installation attempt
+            // Remove the button
             installButton.remove();
             
-            // Now it's safe to show login
-            if (outcome === 'dismissed' && !isLoggedIn()) {
-                console.log('Installation dismissed, showing login modal now');
+            // Show login based on the outcome
+            if (!isLoggedIn()) {
+                console.log('User not logged in, showing login modal');
+                // Slight delay to ensure cleanup is complete
                 setTimeout(() => {
-                    openAuthModal('login');
-                }, 500);
+                    try {
+                        // Manually create and show a new modal
+                        const authModal = new bootstrap.Modal(document.getElementById('auth-modal'));
+                        authModal.show();
+                    } catch (e) {
+                        console.error('Error showing auth modal:', e);
+                    }
+                }, 800);
             }
         }
     });
@@ -265,11 +280,23 @@ function initSplashScreen() {
                 showView('calendar-view');
                 // Load prayer calendar
                 loadPrayerCalendar();
-            } else if (!window.appIsInstallable) {
-                // Only show login if app is not installable
-                setTimeout(() => {
-                    openAuthModal('login');
-                }, 100);
+            } else {
+                // If we're handling installation, don't show login yet
+                if (!sessionStorage.getItem('handlingInstallation')) {
+                    // Only show login if we're not handling installation
+                    console.log('Not handling installation, safe to show login');
+                    setTimeout(() => {
+                        // Try to create a new modal to avoid any previous patching
+                        try {
+                            const authModal = new bootstrap.Modal(document.getElementById('auth-modal'));
+                            authModal.show();
+                        } catch (e) {
+                            console.error('Error showing login modal:', e);
+                        }
+                    }, 500);
+                } else {
+                    console.log('Handling installation, not showing login yet');
+                }
             }
         }, 500); // Wait for the fade animation to complete
     }, 5000); // 5 seconds display time
