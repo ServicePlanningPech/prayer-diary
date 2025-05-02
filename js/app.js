@@ -26,6 +26,110 @@ window.testDate = null;
 document.addEventListener('DOMContentLoaded', initializeApp);
 
 
+// PWA Install detection and handling
+let deferredPrompt;
+const installContainer = document.createElement('div');
+
+// Listen for the beforeinstallprompt event
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent the mini-info bar from appearing on mobile
+    e.preventDefault();
+    
+    // Store the event so it can be triggered later
+    deferredPrompt = e;
+    
+    // Log that the app is installable
+    console.log('App is installable, install prompt available');
+    
+    // Optional: Show your custom install button here if you want one
+    // showInstallButton();
+});
+
+// Listen for the appinstalled event
+window.addEventListener('appinstalled', (evt) => {
+    // Log app installation
+    console.log('Prayer Diary was installed!');
+    
+    // Show installation success message
+    showInstallationSuccessMessage();
+    
+    // Clear the deferredPrompt variable
+    deferredPrompt = null;
+});
+
+// Function to show installation success message
+function showInstallationSuccessMessage() {
+    // Create and style the message container
+    installContainer.className = 'install-success-message';
+    installContainer.innerHTML = `
+        <div class="install-message-content">
+            <h3>Installation Complete!</h3>
+            <p>Prayer Diary has been added to your home screen.</p>
+            <p>Please close this window and launch the app from your home screen icon for the best experience.</p>
+            <button id="close-after-install" class="btn btn-primary">Close and Launch from Icon</button>
+        </div>
+    `;
+    
+    // Add to document
+    document.body.appendChild(installContainer);
+    
+    // Add button functionality
+    document.getElementById('close-after-install').addEventListener('click', () => {
+        // Close the window/tab
+        window.close();
+        
+        // Fallback message if window.close() doesn't work
+        setTimeout(() => {
+            installContainer.innerHTML = `
+                <div class="install-message-content">
+                    <h3>Please Close This Window</h3>
+                    <p>Your browser prevented automatic closing.</p>
+                    <p>Please manually close this window and open the Prayer Diary app from your home screen.</p>
+                </div>
+            `;
+        }, 300);
+    });
+}
+
+// Check if running in standalone mode (installed on home screen)
+function isInStandaloneMode() {
+    return (window.matchMedia('(display-mode: standalone)').matches) || 
+           (window.navigator.standalone) || 
+           document.referrer.includes('android-app://');
+}
+
+// Optional: Function to show custom install button
+function showInstallButton() {
+    // Only show if not already in standalone mode
+    if (isInStandaloneMode()) return;
+    
+    const installButton = document.createElement('button');
+    installButton.className = 'btn btn-sm btn-outline-light custom-install-button';
+    installButton.innerHTML = '<i class="bi bi-download me-1"></i> Install App';
+    installButton.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            // Show the install prompt
+            deferredPrompt.prompt();
+            
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User installation choice: ${outcome}`);
+            
+            // Clear the deferredPrompt variable
+            deferredPrompt = null;
+            
+            // Remove the button after installation attempt
+            installButton.remove();
+        }
+    });
+    
+    // Add to document in navbar next to the refresh button
+    const refreshButton = document.getElementById('refresh-button');
+    if (refreshButton && refreshButton.parentNode) {
+        refreshButton.parentNode.appendChild(installButton);
+    }
+}
+
 // Initialize app function
 function initializeApp() {
     // Initialize splash screen first
@@ -48,6 +152,15 @@ function initializeApp() {
     setTimeout(function() {
         document.dispatchEvent(new CustomEvent('navigation-updated'));
     }, 1500);
+    
+    // Check for standalone mode and show install button if appropriate
+    if (!isInStandaloneMode() && !sessionStorage.getItem('installButtonShown')) {
+        // Set a slight delay to ensure UI is ready
+        setTimeout(() => {
+            showInstallButton();
+            sessionStorage.setItem('installButtonShown', 'true');
+        }, 2000);
+    }
     
     // Set up delete user confirmation modal functionality
     const deleteUserModal = document.getElementById('delete-user-modal');

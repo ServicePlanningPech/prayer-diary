@@ -1258,3 +1258,47 @@ body.small-photo .prayer-card .card-body [style*="float: left"] {
     margin-right: 15px !important;
     margin-bottom: 0 !important;
 }
+
+/* PWA Installation Message Styles */
+.install-success-message {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.install-message-content {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 90%;
+    width: 350px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.install-message-content h3 {
+    color: #483D8B;
+    margin-bottom: 15px;
+}
+
+.install-message-content p {
+    margin-bottom: 15px;
+}
+
+.install-message-content button {
+    background-color: #483D8B;
+    border-color: #483D8B;
+    margin-top: 10px;
+}
+
+.custom-install-button {
+    margin-left: 8px;
+    white-space: nowrap;
+}
