@@ -535,9 +535,11 @@ function displayUserList(users, containerId, isAllocated) {
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <button class="btn btn-primary assign-user" data-user-id="${user.id}">
-                        Reassign
-                    </button>
+                    <div class="button-wrapper" style="position: relative; z-index: 5; margin-left: 8px;">
+                        <button class="btn btn-primary assign-user w-100" data-user-id="${user.id}" style="position: relative;">
+                            Reassign
+                        </button>
+                    </div>
                 </div>
             </div>
             `;
@@ -559,9 +561,11 @@ function displayUserList(users, containerId, isAllocated) {
                         <option value="1" ${user.pray_months === 1 ? 'selected' : ''}>Odd months</option>
                         <option value="2" ${user.pray_months === 2 ? 'selected' : ''}>Even months</option>
                     </select>
-                    <button class="btn btn-primary assign-user" data-user-id="${user.id}">
-                        Assign
-                    </button>
+                    <div class="button-wrapper" style="position: relative; z-index: 5; margin-left: 8px;">
+                        <button class="btn btn-primary assign-user w-100" data-user-id="${user.id}" style="position: relative;">
+                            Assign
+                        </button>
+                    </div>
                 </div>
             </div>
             `;
@@ -570,22 +574,36 @@ function displayUserList(users, containerId, isAllocated) {
     
     container.innerHTML = html;
     
-    // Add event listeners to assign buttons
-    container.querySelectorAll('.assign-user').forEach(button => {
-        button.addEventListener('click', () => {
-            const userId = button.dataset.userId;
-            assignUserToDay(userId);
+    // Add event listeners to assign buttons with a small delay to ensure DOM is updated
+    setTimeout(() => {
+        // Add event listeners to assign buttons
+        const buttons = container.querySelectorAll('.assign-user');
+        buttons.forEach(button => {
+            // Ensure the button is fully clickable by adding explicit click area styling
+            button.style.cursor = 'pointer';
+            button.style.position = 'relative';
+            button.style.zIndex = '10';
+            
+            // Add the event listener for the assign/reassign action
+            button.addEventListener('click', (event) => {
+                // Prevent event bubbling
+                event.stopPropagation();
+                
+                // Get the user ID and perform the assignment
+                const userId = button.dataset.userId;
+                assignUserToDay(userId);
+            });
         });
-    });
-    
-    // Add event listeners to month selectors
-    container.querySelectorAll('.month-selector').forEach(select => {
-        select.addEventListener('change', function() {
-            const userId = this.dataset.userId;
-            const months = parseInt(this.value);
-            updateUserMonths(userId, months);
+        
+        // Add event listeners to month selectors
+        container.querySelectorAll('.month-selector').forEach(select => {
+            select.addEventListener('change', function() {
+                const userId = this.dataset.userId;
+                const months = parseInt(this.value);
+                updateUserMonths(userId, months);
+            });
         });
-    });
+    }, 50);
 }
 
 // Assign a user to the selected day
