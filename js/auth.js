@@ -59,6 +59,12 @@ async function initAuth() {
     try {
         console.log("Initializing authentication...");
         
+        // Check if we're in installation mode - if so, delay auth process
+        if (sessionStorage.getItem('delayLoginForInstall') === 'true') {
+            console.log("Authentication initialization delayed for installation");
+            return;
+        }
+        
         // FIRST CHECK: Look for our custom reset password parameter
         const params = new URLSearchParams(window.location.search);
         const hasResetParam = params.has('reset_password');

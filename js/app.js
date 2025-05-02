@@ -109,6 +109,12 @@ function showInstallButton() {
     // Only show if not already in standalone mode
     if (isInStandaloneMode()) return;
     
+    // Check if button already exists
+    if (document.querySelector('.custom-install-button')) {
+        console.log('Install button already exists, not adding another');
+        return;
+    }
+    
     // Set installation in progress flag
     installInProgress = true;
     
@@ -169,22 +175,6 @@ function initializeApp() {
     // Set up service worker and check for updates
     registerServiceWorkerAndCheckForUpdates();
     
-    // Check for standalone mode and show install button if appropriate
-    // with delay to ensure proper initialization
-    setTimeout(() => {
-        if (!isInStandaloneMode() && deferredPrompt && !sessionStorage.getItem('installButtonShown')) {
-            showInstallButton();
-            sessionStorage.setItem('installButtonShown', 'true');
-        }
-        
-        // Check if we should proceed with showing login modal
-        if (!isLoggedIn() && !sessionStorage.getItem('delayLoginForInstall') && !installInProgress) {
-            setTimeout(function() {
-                openAuthModal('login');
-            }, 500);
-        }
-    }, 1500);
-    
     // Force refresh of the drawer navigation after a short delay
     // This ensures any dynamically added menu items are included
     setTimeout(function() {
@@ -202,6 +192,37 @@ function initializeApp() {
             }
         });
     }
+    
+    // Handle login and installation flow sequencing
+    // Check if we already have the install button flag - if so, clear it
+    // This prevents duplicate buttons on page refresh
+    if(sessionStorage.getItem('installButtonShown')) {
+        sessionStorage.removeItem('installButtonShown');
+    }
+    
+    // Check for installable state with a delay to ensure all systems are ready
+    setTimeout(() => {
+        if (!isInStandaloneMode() && deferredPrompt) {
+            console.log('App is installable and not in standalone mode');
+            // Set the install flag to prevent login modal
+            sessionStorage.setItem('delayLoginForInstall', 'true');
+            // Show the install button
+            showInstallButton();
+            sessionStorage.setItem('installButtonShown', 'true');
+        } else {
+            // If not installable or already in standalone mode
+            // and not logged in, show login modal
+            if (!isLoggedIn()) {
+                console.log('Not installable or already in standalone mode, showing login');
+                // Clear any delay flag
+                sessionStorage.removeItem('delayLoginForInstall');
+                // Show login with slight delay
+                setTimeout(() => {
+                    openAuthModal('login');
+                }, 500);
+            }
+        }
+    }, 1000);
     
     // Initialize topics functionality
     document.addEventListener('login-state-changed', function(event) {
