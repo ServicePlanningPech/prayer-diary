@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', initializeApp);
 
 // PWA Install detection and handling
 let deferredPrompt;
+let installInProgress = false;
 const installContainer = document.createElement('div');
 
 // Listen for the beforeinstallprompt event
@@ -41,8 +42,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
     // Log that the app is installable
     console.log('App is installable, install prompt available');
     
-    // Optional: Show your custom install button here if you want one
-    // showInstallButton();
+    // Check if we're already logged in - if not, show install button first
+    if (!isLoggedIn()) {
+        // Set a flag to delay login modal
+        sessionStorage.setItem('delayLoginForInstall', 'true');
+        // Show the install button
+        showInstallButton();
+    }
 });
 
 // Listen for the appinstalled event
@@ -103,6 +109,9 @@ function showInstallButton() {
     // Only show if not already in standalone mode
     if (isInStandaloneMode()) return;
     
+    // Set installation in progress flag
+    installInProgress = true;
+    
     const installButton = document.createElement('button');
     installButton.className = 'btn btn-sm btn-outline-light custom-install-button';
     installButton.innerHTML = '<i class="bi bi-download me-1"></i> Install App';
@@ -118,8 +127,21 @@ function showInstallButton() {
             // Clear the deferredPrompt variable
             deferredPrompt = null;
             
+            // Clear the installation in progress flag
+            installInProgress = false;
+            
             // Remove the button after installation attempt
             installButton.remove();
+            
+            // If the user chose not to install, show login
+            if (outcome === 'dismissed') {
+                sessionStorage.removeItem('delayLoginForInstall');
+                if (!isLoggedIn()) {
+                    setTimeout(() => {
+                        openAuthModal('login');
+                    }, 300);
+                }
+            }
         }
     });
     
@@ -147,20 +169,27 @@ function initializeApp() {
     // Set up service worker and check for updates
     registerServiceWorkerAndCheckForUpdates();
     
+    // Check for standalone mode and show install button if appropriate
+    // with delay to ensure proper initialization
+    setTimeout(() => {
+        if (!isInStandaloneMode() && deferredPrompt && !sessionStorage.getItem('installButtonShown')) {
+            showInstallButton();
+            sessionStorage.setItem('installButtonShown', 'true');
+        }
+        
+        // Check if we should proceed with showing login modal
+        if (!isLoggedIn() && !sessionStorage.getItem('delayLoginForInstall') && !installInProgress) {
+            setTimeout(function() {
+                openAuthModal('login');
+            }, 500);
+        }
+    }, 1500);
+    
     // Force refresh of the drawer navigation after a short delay
     // This ensures any dynamically added menu items are included
     setTimeout(function() {
         document.dispatchEvent(new CustomEvent('navigation-updated'));
     }, 1500);
-    
-    // Check for standalone mode and show install button if appropriate
-    if (!isInStandaloneMode() && !sessionStorage.getItem('installButtonShown')) {
-        // Set a slight delay to ensure UI is ready
-        setTimeout(() => {
-            showInstallButton();
-            sessionStorage.setItem('installButtonShown', 'true');
-        }, 2000);
-    }
     
     // Set up delete user confirmation modal functionality
     const deleteUserModal = document.getElementById('delete-user-modal');

@@ -238,6 +238,12 @@ function setupAuthListeners() {
 // Open auth modal for login or signup
 function openAuthModal(mode) {
     try {
+        // Check if we should delay login for installation
+        if (sessionStorage.getItem('delayLoginForInstall') === 'true') {
+            console.log('Delaying login modal for app installation');
+            return;
+        }
+        
         // Check if we're trying to log in after a forced logout
         // If it's been less than 2 seconds since forced logout, reload the page
         const forcedLogoutFlag = sessionStorage.getItem('prayerDiaryForcedLogout');
