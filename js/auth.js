@@ -61,14 +61,20 @@ async function initAuth() {
         
         // Check if we should restore functionality
         if (window.restoreAuthFunctionality !== true) {
-            // !IMPORTANT: Skip auto-login completely - we'll handle this elsewhere
-            console.log("Auto-login disabled, waiting for installation to complete");
-            return;
-        } else {
-            console.log("Auth functionality restored after installation");
-            // Reset the flag
-            window.restoreAuthFunctionality = false;
+            // Before skipping auto-login, check if we're running as installed app
+            if (typeof window.isInStandaloneMode === 'function' && window.isInStandaloneMode()) {
+                console.log("Running in standalone mode, forcing auth functionality restoration");
+                window.restoreAuthFunctionality = true;
+            } else {
+                // !IMPORTANT: Skip auto-login completely - we'll handle this elsewhere
+                console.log("Auto-login disabled, waiting for installation to complete");
+                return;
+            }
         }
+        
+        console.log("Auth functionality enabled");
+        // Reset the flag for future use
+        window.restoreAuthFunctionality = false;
         
         // FIRST CHECK: Look for our custom reset password parameter
         const params = new URLSearchParams(window.location.search);

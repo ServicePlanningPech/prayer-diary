@@ -80,6 +80,15 @@ window.addEventListener('appinstalled', (evt) => {
     
     // Clear the deferredPrompt variable
     deferredPrompt = null;
+    
+    // Set a flag in localStorage to indicate successful installation
+    // This helps with authentication on next app start
+    try {
+        localStorage.setItem('prayerDiaryInstalled', 'true');
+        localStorage.setItem('prayerDiaryInstalledTime', Date.now().toString());
+    } catch (e) {
+        console.warn("Couldn't set installation flag in localStorage:", e);
+    }
 });
 
 // Function to show installation success message
@@ -117,10 +126,23 @@ function showInstallationSuccessMessage() {
 }
 
 // Check if running in standalone mode (installed on home screen)
-function isInStandaloneMode() {
-    return (window.matchMedia('(display-mode: standalone)').matches) || 
-           (window.navigator.standalone) || 
-           document.referrer.includes('android-app://');
+// Make this function globally available for other modules
+window.isInStandaloneMode = function isInStandaloneMode() {
+    // Check multiple conditions to detect standalone mode
+    const displayModeStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    const navigatorStandalone = window.navigator.standalone; // iOS Safari
+    const androidApp = document.referrer.includes('android-app://');
+    const installedFlag = localStorage.getItem('prayerDiaryInstalled') === 'true';
+    
+    // Log the detected mode for debugging
+    console.log('Mode detection:', {
+        displayModeStandalone,
+        navigatorStandalone,
+        androidApp,
+        installedFlag
+    });
+    
+    return displayModeStandalone || navigatorStandalone || androidApp || installedFlag;
 }
 
 // Optional: Function to show custom install button
@@ -194,7 +216,15 @@ function showInstallButton() {
 function initializeApp() {
     // Set initial flags
     window.appIsInstallable = false;
-    window.restoreAuthFunctionality = false;
+    
+    // Check if the app is already installed and running in standalone mode
+    if (isInStandaloneMode()) {
+        window.restoreAuthFunctionality = true;
+        console.log("App running in standalone mode, auth functionality enabled automatically");
+    } else {
+        window.restoreAuthFunctionality = false;
+        console.log("App running in browser mode, auth functionality dependent on installation state");
+    }
     
     // Initialize splash screen first
     initSplashScreen();
