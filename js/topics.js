@@ -1,5 +1,8 @@
 // Prayer Topics Management Module
 
+// Load the topic camera module
+document.write('<script src="js/load-topic-camera.js"></script>');
+
 // Variables to track state
 let allTopics = [];
 let filteredTopics = [];

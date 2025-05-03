@@ -1621,6 +1621,81 @@
         </div>
     </div>
 
+    <!-- Topic Management Modal -->
+    <div class="modal fade" id="topic-management-modal" tabindex="-1" aria-labelledby="topic-management-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="topic-management-title">Manage Prayer Topics</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <button id="add-topic-btn" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i> Add New Topic
+                        </button>
+                    </div>
+                    <div id="topics-list-container">
+                        <!-- Topics will be dynamically inserted here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Prayer Topic Modal with Camera Functionality -->
+    <div class="modal fade" id="topic-edit-modal" tabindex="-1" aria-labelledby="topic-edit-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="topic-edit-title">Add Prayer Topic</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="topic-form">
+                        <input type="hidden" id="topic-id">
+                        <div class="mb-3">
+                            <label for="topic-title" class="form-label">Topic Title or person name(s)</label>
+                            <input type="text" class="form-control" id="topic-title" placeholder="Enter topic title or person name(s)">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="topic-image" class="form-label">Image</label>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="me-3">
+                                    <img id="topic-image-preview" class="border rounded" 
+                                         src="img/placeholder-profile.png" alt="Topic preview" 
+                                         style="width: 80px; height: 80px; object-fit: cover;">
+                                </div>
+                                <div class="d-flex">
+                                    <button type="button" class="btn btn-outline-primary" id="select-topic-image">
+                                        <i class="bi bi-upload me-1"></i> Upload Image
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary ms-2" id="take-topic-photo">
+                                        <i class="bi bi-camera me-1"></i> Take Photo
+                                    </button>
+                                    <input type="file" class="d-none" id="topic-image" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="topic-text-editor" class="form-label">Prayer Details</label>
+                            <div id="topic-text-editor"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-topic" disabled>Save Topic</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Mobile Navigation Drawer -->
     <div class="nav-overlay"></div>
     <div class="nav-drawer">
@@ -1761,53 +1836,6 @@
         </div>
     </div>
 
-    <!-- Add/Edit Topic Modal -->
-    <div class="modal fade" id="topic-edit-modal" tabindex="-1" aria-labelledby="topic-edit-title" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="topic-edit-title">Add Prayer Topic</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="topic-form">
-                        <input type="hidden" id="topic-id">
-                        
-                        <div class="mb-3">
-                            <label for="topic-title" class="form-label">Topic Title <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="topic-title" placeholder="Enter topic title" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="topic-image" class="form-label">Topic Image</label>
-                            <div class="d-flex align-items-center mb-2">
-                                <div class="me-3">
-                                    <img id="topic-image-preview" class="topic-img-preview border rounded" 
-                                         src="img/placeholder-profile.png" alt="Topic image preview" 
-                                         style="width: 100px; height: 100px; object-fit: cover;">
-                                </div>
-                                <div>
-                                    <button type="button" class="btn btn-outline-primary" id="select-topic-image">
-                                        <i class="bi bi-camera me-1"></i> Upload Image
-                                    </button>
-                                    <input type="file" class="d-none" id="topic-image" accept="image/*">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="topic-text-editor" class="form-label">Topic Text <span class="text-danger">*</span></label>
-                            <div id="topic-text-editor"></div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="save-topic" disabled>Save Topic</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Toast container -->
     <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" id="toast-container">
