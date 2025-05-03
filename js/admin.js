@@ -384,7 +384,7 @@ async function saveUserPermissions() {
         modal.hide();
         
         // Show success notification - no need to reload users as modal is closing
-        showToast('Success', 'User permissions updated successfully.', 'success');
+        //showToast('Success', 'User permissions updated successfully.', 'success');
         
         // Instead of calling loadUsers() which causes redundancy,
         // update the UI to reflect changes to the edited user
@@ -661,7 +661,7 @@ async function deleteUser(userId) {
         }
         
         // Show success notification
-        showToast('Success', `User ${userData ? userData.full_name : ''} has been deleted successfully.`, 'success');
+        //showToast('Success', `User ${userData ? userData.full_name : ''} has been deleted successfully.`, 'success');
         
         // Remove the user card from the DOM
         try {
@@ -1042,7 +1042,7 @@ async function registerEmailOnlyUser() {
         document.getElementById('email-user-form').reset();
         
         // Show success message
-        showToast('Success', `Email-only user '${fullName}' registered successfully`, 'success');
+        //showToast('Success', `Email-only user '${fullName}' registered successfully`, 'success');
         
         // Reload email users list
         loadEmailOnlyUsers();
@@ -1171,7 +1171,7 @@ async function deleteEmailOnlyUser(userId) {
         }
         
         // Show success notification
-        showToast('Success', 'Email-only user has been deleted successfully.', 'success');
+        //showToast('Success', 'Email-only user has been deleted successfully.', 'success');
         
         // Reload email users list
         loadEmailOnlyUsers();

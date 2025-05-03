@@ -358,7 +358,7 @@ function switchCamera() {
     currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
     
     // Show a toast to indicate the change
-    showToast('Camera', 'Switching to ' + (currentFacingMode === "user" ? 'front' : 'rear') + ' camera...', 'info');
+    //showToast('Camera', 'Switching to ' + (currentFacingMode === "user" ? 'front' : 'rear') + ' camera...', 'info');
     
     // Restart the camera with the new facing mode
     startCamera();
