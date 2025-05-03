@@ -29,7 +29,7 @@ function initTopics() {
                     ['clean']
                 ]
             },
-            placeholder: 'Enter topic text...'
+            placeholder: ''
         });
         
         // Set up image selection for topic
@@ -364,31 +364,22 @@ async function saveTopic() {
             throw new Error(response.error || 'Failed to save topic');
         }
         
-        // Close the modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('topic-edit-modal'));
-        if (modal) {
-            modal.hide();
+        // Close the edit modal
+        const editModal = bootstrap.Modal.getInstance(document.getElementById('topic-edit-modal'));
+        if (editModal) {
+            editModal.hide();
         }
         
-        // Show success notification and refresh the page to avoid session issues
-        showNotification('Success', response.message + ' - Refreshing to update data...', 'success');
+        // Show success notification
+        showNotification('Success', response.message, 'success');
         
-        // Save state before refreshing
-        sessionStorage.setItem('topicSaved', 'true');
-        sessionStorage.setItem('lastAction', 'saveTopic');
+        // Reload the topics list to include the new/updated topic
+        await loadTopics();
         
-        // Save current view to restore after refresh
-        const currentView = document.querySelector('.view-content:not(.d-none)')?.id || '';
-        if (currentView) {
-            sessionStorage.setItem('lastView', currentView);
-            // Remember we were on the topics tab
-            sessionStorage.setItem('activeCalendarTab', 'topics');
-        }
-        
-        // Refresh the page after a short delay
+        // Reopen the topic management modal with updated list
         setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+            openTopicManagement();
+        }, 500);
         
     } catch (error) {
         console.error('Error saving topic:', error);
