@@ -273,9 +273,9 @@ function setupDatePickerHandlers() {
 function createPrayerCard(entry) {
     const imgSrc = entry.image_url || 'img/placeholder-profile.png';
     
-    // Add badge based on type (member or topic)
+    // Add badge based on type (member or topic)  **DEPRECATED
     const typeBadge = entry.type === 'topic' 
-        ? '<span class="badge bg-info position-absolute top-0 end-0 m-2">Topic</span>' 
+        ? '' 
         : '';
     
     // Format prayer points: preserve HTML formatting for topics
