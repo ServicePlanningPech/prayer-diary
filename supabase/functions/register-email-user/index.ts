@@ -117,7 +117,7 @@ serve(async (req) => {
           }
         }),
         {
-          status: 409, // Conflict status code
+          status: 200, // Return a 200 so client can parse error message
           headers: {
             'Content-Type': 'application/json',
             ...corsHeaders

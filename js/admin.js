@@ -1045,24 +1045,9 @@ async function registerEmailOnlyUser() {
         // Destructure the response
         const { data, error } = response;
 	  
-	  console.log(`DATA=${data}`);
-	  console.log(`RESPONSE.ERROR=${response.error}`);
-	  console.log(`RESPONSESTATUS ${response.status}`);
-	  console.log(`DATAERROR ${data.error}`);
-        //if (error) throw error;
-        
         // Check if the Edge Function returned an error
         if (data && data.error) {
-            // Check if this is a conflict error (email already exists in profiles)
-            if (response.status === 409 || 
-                data.error.includes('already registered as a') || 
-                data.error.includes('already registered as an')) {
-                
-                // Just throw the error with the entire message which contains user details
-                throw new Error(data.error);
-            } else {
-                throw new Error(data.error);
-            }
+			throw new Error(data.error);
         }
         
         // Close the modal
@@ -1079,7 +1064,7 @@ async function registerEmailOnlyUser() {
         loadEmailOnlyUsers();
         
     } catch (error) {
-        console.error('Error registering email-only user:', error);
+        console.error('Error registering email-only user:', error.message);
         
         // Check if this is a duplicate email error with already registered user
         if (error.message.includes('already registered as a') || 
