@@ -1010,6 +1010,21 @@ async function registerEmailOnlyUser() {
             return;
         }
         
+        // Check if email field has invalid class (from our validation)
+        const emailInput = document.getElementById('email-user-email');
+        if (emailInput && emailInput.classList.contains('is-invalid')) {
+            // Get the error message from the feedback element
+            const feedbackElement = emailInput.nextElementSibling;
+            let errorMessage = 'This email address cannot be used';
+            
+            if (feedbackElement && feedbackElement.classList.contains('invalid-feedback')) {
+                errorMessage = feedbackElement.textContent;
+            }
+            
+            showToast('Error', errorMessage, 'error');
+            return;
+        }
+        
         // Show loading state on the button
         const registerBtn = document.getElementById('register-email-user-btn');
         const originalText = registerBtn.textContent;
@@ -1020,18 +1035,30 @@ async function registerEmailOnlyUser() {
         await window.waitForAuthStability();
         
         // Call the Edge Function to register the email-only user
-        const { data, error } = await supabase.functions.invoke('register-email-user', {
+        const response = await supabase.functions.invoke('register-email-user', {
             body: {
                 full_name: fullName,
                 email: email
             }
         });
         
+        // Destructure the response
+        const { data, error } = response;
+        
         if (error) throw error;
         
         // Check if the Edge Function returned an error
         if (data && data.error) {
-            throw new Error(data.error);
+            // Check if this is a conflict error (email already exists in profiles)
+            if (response.status === 409 || 
+                data.error.includes('already registered as a') || 
+                data.error.includes('already registered as an')) {
+                
+                // Just throw the error with the entire message which contains user details
+                throw new Error(data.error);
+            } else {
+                throw new Error(data.error);
+            }
         }
         
         // Close the modal
@@ -1042,14 +1069,22 @@ async function registerEmailOnlyUser() {
         document.getElementById('email-user-form').reset();
         
         // Show success message
-        //showToast('Success', `Email-only user '${fullName}' registered successfully`, 'success');
+        showToast('Success', `Email-only user '${fullName}' registered successfully`, 'success');
         
         // Reload email users list
         loadEmailOnlyUsers();
         
     } catch (error) {
         console.error('Error registering email-only user:', error);
-        showToast('Error', `Failed to register email-only user: ${error.message}`, 'error');
+        
+        // Check if this is a duplicate email error with already registered user
+        if (error.message.includes('already registered as a') || 
+            error.message.includes('already registered as an')) {
+            // Show the full error message which contains user details
+            showToast('Duplicate Email', error.message, 'error');
+        } else {
+            showToast('Error', `Failed to register email-only user: ${error.message}`, 'error');
+        }
     } finally {
         // Reset button state
         const registerBtn = document.getElementById('register-email-user-btn');
@@ -1201,6 +1236,24 @@ function initEmailOnlyUserFunctionality() {
     const addEmailUserButton = document.getElementById('add-email-user');
     if (addEmailUserButton) {
         addEmailUserButton.addEventListener('click', () => {
+            // Reset the form before showing
+            const emailUserForm = document.getElementById('email-user-form');
+            if (emailUserForm) {
+                emailUserForm.reset();
+            }
+            
+            // Remove any existing validation messages
+            const emailInput = document.getElementById('email-user-email');
+            if (emailInput) {
+                emailInput.classList.remove('is-invalid');
+                
+                // Remove any existing feedback element
+                const existingFeedback = emailInput.nextElementSibling;
+                if (existingFeedback && existingFeedback.classList.contains('invalid-feedback')) {
+                    existingFeedback.remove();
+                }
+            }
+            
             const modal = new bootstrap.Modal(document.getElementById('email-user-modal'));
             modal.show();
         });
@@ -1210,6 +1263,24 @@ function initEmailOnlyUserFunctionality() {
     const navRegisterEmailUser = document.getElementById('nav-register-email-user');
     if (navRegisterEmailUser) {
         navRegisterEmailUser.addEventListener('click', () => {
+            // Reset the form before showing
+            const emailUserForm = document.getElementById('email-user-form');
+            if (emailUserForm) {
+                emailUserForm.reset();
+            }
+            
+            // Remove any existing validation messages
+            const emailInput = document.getElementById('email-user-email');
+            if (emailInput) {
+                emailInput.classList.remove('is-invalid');
+                
+                // Remove any existing feedback element
+                const existingFeedback = emailInput.nextElementSibling;
+                if (existingFeedback && existingFeedback.classList.contains('invalid-feedback')) {
+                    existingFeedback.remove();
+                }
+            }
+            
             const modal = new bootstrap.Modal(document.getElementById('email-user-modal'));
             modal.show();
         });
@@ -1219,6 +1290,112 @@ function initEmailOnlyUserFunctionality() {
     const emailUsersTab = document.getElementById('email-users-tab');
     if (emailUsersTab) {
         emailUsersTab.addEventListener('click', loadEmailOnlyUsers);
+    }
+    
+    // Initialize email input validation
+    const emailInput = document.getElementById('email-user-email');
+    if (emailInput) {
+        // Add debounce function to avoid too many checks
+        let typingTimer;
+        const doneTypingInterval = 800; // ms
+        
+        emailInput.addEventListener('input', function() {
+            clearTimeout(typingTimer);
+            
+            // Clear any existing validation message when typing starts
+            this.classList.remove('is-invalid');
+            
+            // Remove any existing feedback element
+            const existingFeedback = this.nextElementSibling;
+            if (existingFeedback && existingFeedback.classList.contains('invalid-feedback')) {
+                existingFeedback.remove();
+            }
+            
+            // Set a timer to check email after user stops typing
+            typingTimer = setTimeout(() => validateEmailInput(this.value), doneTypingInterval);
+        });
+    }
+}
+
+// Validate email input to check if it's already in use
+async function validateEmailInput(email) {
+    if (!email || email.trim() === '') return;
+    
+    const emailInput = document.getElementById('email-user-email');
+    if (!emailInput) return;
+    
+    try {
+        // Check if the email is a valid format
+        const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailPattern.test(email)) {
+            // Invalid email format, but we'll let the browser's built-in validation handle this
+            return;
+        }
+        
+        // First check for registered users in profiles
+        const { data: existingUser, error: userError } = await supabase
+            .from('profiles')
+            .select('id, full_name, approval_state')
+            .eq('email', email)
+            .maybeSingle();
+            
+        if (userError) {
+            console.error('Error checking email in profiles:', userError);
+            return;
+        }
+        
+        if (existingUser) {
+            // Email exists in registered users
+            emailInput.classList.add('is-invalid');
+            
+            // Create feedback message if it doesn't exist
+            let feedbackElement = emailInput.nextElementSibling;
+            if (!feedbackElement || !feedbackElement.classList.contains('invalid-feedback')) {
+                feedbackElement = document.createElement('div');
+                feedbackElement.classList.add('invalid-feedback');
+                emailInput.parentNode.insertBefore(feedbackElement, emailInput.nextSibling);
+            }
+            
+            const statusText = existingUser.approval_state === 'Approved' ? 'an approved' : 'a ' + existingUser.approval_state.toLowerCase();
+            feedbackElement.textContent = `This email is already registered as ${statusText} user: ${existingUser.full_name}`;
+            return;
+        }
+        
+        // Then check email-only users
+        const { data: existingEmailUser, error: emailUserError } = await supabase
+            .from('email_only_users')
+            .select('id, full_name')
+            .eq('email', email)
+            .eq('active', true)
+            .maybeSingle();
+            
+        if (emailUserError) {
+            console.error('Error checking email in email_only_users:', emailUserError);
+            return;
+        }
+        
+        if (existingEmailUser) {
+            // Email exists in email-only users
+            emailInput.classList.add('is-invalid');
+            
+            // Create feedback message if it doesn't exist
+            let feedbackElement = emailInput.nextElementSibling;
+            if (!feedbackElement || !feedbackElement.classList.contains('invalid-feedback')) {
+                feedbackElement = document.createElement('div');
+                feedbackElement.classList.add('invalid-feedback');
+                emailInput.parentNode.insertBefore(feedbackElement, emailInput.nextSibling);
+            }
+            
+            feedbackElement.textContent = `This email is already registered as an email-only user: ${existingEmailUser.full_name}`;
+            return;
+        }
+        
+        // Email is valid and not in use
+        emailInput.classList.remove('is-invalid');
+        emailInput.classList.add('is-valid');
+        
+    } catch (error) {
+        console.error('Error validating email:', error);
     }
 }
 

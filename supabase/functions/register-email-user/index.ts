@@ -91,6 +91,40 @@ serve(async (req) => {
     if (checkError) {
       console.error('Error checking for existing email-only user:', checkError)
     }
+    
+    // Check if email already exists in the profiles table with any status
+    const { data: existingProfileUser, error: checkProfileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, full_name, approval_state')
+      .eq('email', email)
+      .maybeSingle()
+
+    if (checkProfileError) {
+      console.error('Error checking for existing profile user:', checkProfileError)
+    }
+
+    // If a user with this email already exists in profiles, return an error
+    if (existingProfileUser) {
+      const status = existingProfileUser.approval_state || 'registered';
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `This email is already registered as a ${status.toLowerCase()} user: ${existingProfileUser.full_name}`,
+          existingUser: {
+            id: existingProfileUser.id,
+            fullName: existingProfileUser.full_name,
+            status: status
+          }
+        }),
+        {
+          status: 409, // Conflict status code
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        }
+      )
+    }
 
     let userId, data, error
 
