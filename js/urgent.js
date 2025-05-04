@@ -9,6 +9,38 @@ let selectedUrgentId = null; // Track selected urgent prayer
 // Loading flags to prevent duplicate calls
 let isLoadingUrgentAdmin = false;
 
+// Function to clean up content colors to avoid dark mode issues
+function cleanupContentColors(htmlContent) {
+    if (!htmlContent) return '';
+  
+    // Create a temporary DOM element to process the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+  
+    // Remove all inline color styles
+    const elementsWithStyle = tempDiv.querySelectorAll('[style*="color"]');
+    elementsWithStyle.forEach(el => {
+        // Remove only color-related styles but keep other styles
+        const style = el.getAttribute('style');
+        if (style) {
+            const newStyle = style.replace(/color\s*:\s*[^;]+;?/gi, '');
+            if (newStyle.trim()) {
+                el.setAttribute('style', newStyle);
+            } else {
+                el.removeAttribute('style');
+            }
+        }
+    });
+  
+    // Also handle span elements with color attribute
+    const elementsWithColorAttr = tempDiv.querySelectorAll('[color]');
+    elementsWithColorAttr.forEach(el => {
+        el.removeAttribute('color');
+    });
+  
+    return tempDiv.innerHTML;
+}
+
 // Initialize the Rich Text Editor for urgent prayers
 function initUrgentEditor() {
     console.log('DEBUG: initUrgentEditor - Start initialization');
@@ -16,6 +48,14 @@ function initUrgentEditor() {
         console.log('DEBUG: initUrgentEditor - Duplicate call detected, aborting');
         return;
     }
+    
+    // Define custom formats that exclude direct color styling
+    const allowedFormats = [
+        'bold', 'italic', 'underline', 'strike', 
+        'header', 'list', 'bullet', 'indent', 
+        'link', 'image', 'direction', 'align', 'blockquote'
+        // Notice we're NOT including 'color' in the allowed formats
+    ];
         
     // Initialize urgent editor if not already initialized
     if (!urgentEditor) {
@@ -31,7 +71,8 @@ function initUrgentEditor() {
                     ['link', 'image'],
                     ['clean']
                 ]
-            }
+            },
+            formats: allowedFormats
         });
         
         // Add editor change handler to update button states
@@ -57,6 +98,7 @@ function initUrgentEditor() {
                     ['clean']
                 ]
             },
+            formats: allowedFormats,
             placeholder: 'Edit urgent prayer request...',
         });
     }
@@ -574,6 +616,10 @@ async function createUrgentPrayer(action, submitBtn) {
         if (urgentEditor && urgentEditor.root) {
             content = urgentEditor.root.innerHTML;
             console.log('DEBUG: createUrgentPrayer - Retrieved content length:', content.length);
+            
+            // Clean the content to remove color styling
+            content = cleanupContentColors(content);
+            console.log('DEBUG: createUrgentPrayer - Content cleaned to be theme-aware');
         } else {
             console.error('DEBUG: createUrgentPrayer - urgentEditor or root element is not available');
             throw new Error('Editor not properly initialized');
@@ -808,6 +854,9 @@ function createUrgentCard(prayer) {
         day: 'numeric' 
     });
     
+    // Clean up content and wrap in a theme-aware container
+    const cleanContent = cleanupContentColors(prayer.content);
+    
     // Full card for regular user view
     let cardHtml = `
     <div class="card urgent-card mb-3 border-danger">
@@ -816,8 +865,8 @@ function createUrgentCard(prayer) {
         </div>
         <div class="card-body">
             <p class="urgent-date text-muted"><i class="bi bi-calendar"></i> ${formattedDate}</p>
-            <div class="urgent-content">
-                ${prayer.content}
+            <div class="urgent-content content-container">
+                ${cleanContent}
             </div>
         </div>
     </div>

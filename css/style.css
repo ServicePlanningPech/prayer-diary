@@ -1,5 +1,30 @@
 /* Custom CSS for Prayer Diary App - Bootstrap Morph Edition */
 
+/* Theme-aware content styling */
+.content-container {
+  /* Base styles */
+  font-family: inherit;
+}
+
+/* Light mode (default) */
+.content-container {
+  color: #212529; /* Bootstrap's default text color */
+}
+
+/* Dark mode */ 
+body.dark-mode .content-container {
+  color: #e2e2e2; /* Light text for dark mode */
+}
+
+/* Make sure links are visible in both modes */
+body.dark-mode .content-container a {
+  color: #8bb9fe; /* Lighter blue for dark mode */
+}
+
+.content-container a {
+  color: #0d6efd; /* Bootstrap's default link color */
+}
+
 :root {
     --primary-color: #483D8B; /* DarkSlateBlue */
     --primary-light: #6a5acd; /* SlateBlue */

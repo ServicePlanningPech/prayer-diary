@@ -10,6 +10,38 @@ let selectedUpdateId = null; // Track selected update
 let isLoadingUpdatesAdmin = false;
 let isCheckingDateExists = false;
 
+// Function to clean up content colors to avoid dark mode issues
+function cleanupContentColors(htmlContent) {
+    if (!htmlContent) return '';
+  
+    // Create a temporary DOM element to process the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+  
+    // Remove all inline color styles
+    const elementsWithStyle = tempDiv.querySelectorAll('[style*="color"]');
+    elementsWithStyle.forEach(el => {
+        // Remove only color-related styles but keep other styles
+        const style = el.getAttribute('style');
+        if (style) {
+            const newStyle = style.replace(/color\s*:\s*[^;]+;?/gi, '');
+            if (newStyle.trim()) {
+                el.setAttribute('style', newStyle);
+            } else {
+                el.removeAttribute('style');
+            }
+        }
+    });
+  
+    // Also handle span elements with color attribute
+    const elementsWithColorAttr = tempDiv.querySelectorAll('[color]');
+    elementsWithColorAttr.forEach(el => {
+        el.removeAttribute('color');
+    });
+  
+    return tempDiv.innerHTML;
+}
+
 // Initialize the Rich Text Editor for updates
 function initUpdateEditor() {
     console.log('DEBUG: initUpdateEditor - Start initialization');
@@ -17,6 +49,14 @@ function initUpdateEditor() {
         console.log('DEBUG: initUpdateEditor - Duplicate call detected, aborting');
         return;
     }
+    
+    // Define custom formats that exclude direct color styling
+    const allowedFormats = [
+        'bold', 'italic', 'underline', 'strike', 
+        'header', 'list', 'bullet', 'indent', 
+        'link', 'image', 'direction', 'align', 'blockquote'
+        // Notice we're NOT including 'color' in the allowed formats
+    ];
         
     // Initialize update editor if not already initialized
     if (!updateEditor) {
@@ -33,6 +73,7 @@ function initUpdateEditor() {
                     ['clean']
                 ]
             },
+            formats: allowedFormats
         });
         
         // Add editor change handler to update button states
@@ -58,6 +99,7 @@ function initUpdateEditor() {
                     ['clean']
                 ]
             },
+            formats: allowedFormats,
             placeholder: 'Edit prayer update...',
         });
     }
@@ -460,10 +502,14 @@ async function viewUpdateDetails(updateId) {
         day: 'numeric' 
     });
     
+    // Clean up the content and wrap it in content-container for theme awareness
+    const cleanContent = cleanupContentColors(update.content);
+    const processedContent = `<div class="content-container">${cleanContent}</div>`;
+    
     // Set modal content
     document.getElementById('view-update-title').textContent = update.title;
     document.getElementById('view-update-date').querySelector('span').textContent = formattedDate;
-    document.getElementById('view-update-content').innerHTML = update.content;
+    document.getElementById('view-update-content').innerHTML = processedContent;
     
     // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('view-update-modal'));
@@ -791,6 +837,10 @@ async function createPrayerUpdate(action, submitBtn) {
         if (updateEditor && updateEditor.root) {
             content = updateEditor.root.innerHTML;
             console.log('DEBUG: createPrayerUpdate - Retrieved content length:', content.length);
+            
+            // Clean the content to remove color styling
+            content = cleanupContentColors(content);
+            console.log('DEBUG: createPrayerUpdate - Content cleaned to be theme-aware');
         } else {
             console.error('DEBUG: createPrayerUpdate - updateEditor or root element is not available');
             throw new Error('Editor not properly initialized');
@@ -1035,14 +1085,17 @@ function createUpdateCard(update) {
         day: 'numeric' 
     });
     
+    // Clean up content and wrap in a theme-aware container
+    const cleanContent = cleanupContentColors(update.content);
+    
     // Full card for regular user view
     let cardHtml = `
     <div class="card update-card mb-3">
         <div class="card-body">
             <h5 class="card-title">${update.title}</h5>
             <p class="update-date text-muted"><i class="bi bi-calendar"></i> ${formattedDate}</p>
-            <div class="update-content">
-                ${update.content}
+            <div class="update-content content-container">
+                ${cleanContent}
             </div>
         </div>
     </div>
