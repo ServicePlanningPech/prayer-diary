@@ -1044,6 +1044,9 @@ async function registerEmailOnlyUser() {
         
         // Destructure the response
         const { data, error } = response;
+	  
+	  console.log(`DATA=${data}`);
+	  console.log(`RESPONSE.ERROR=${response.error}`);
 	  console.log(`RESPONSESTATUS ${response.status}`);
 	  console.log(`DATAERROR ${data.error}`);
         //if (error) throw error;
