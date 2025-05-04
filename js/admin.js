@@ -1044,7 +1044,8 @@ async function registerEmailOnlyUser() {
         
         // Destructure the response
         const { data, error } = response;
-        
+	  console.log(`RESPONSESTATUS ${response.status}`);
+	  console.log(`DATAERROR ${data.error}`);
         //if (error) throw error;
         
         // Check if the Edge Function returned an error
