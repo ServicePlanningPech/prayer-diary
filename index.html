@@ -257,7 +257,7 @@
                 </div>
             </div>
             
-			 <div class="modal fade" id="date-picker-modal" tabindex="-1" aria-labelledby="date-picker-title" aria-hidden="true">
+			<div class="modal fade" id="date-picker-modal" tabindex="-1" aria-labelledby="date-picker-title" aria-hidden="true">
 				<div class="modal-dialog modal-dialog-centered">
 					<div class="modal-content">
 						<div class="modal-header">
@@ -265,11 +265,60 @@
 							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 						</div>
 						<div class="modal-body">
-							<div class="mb-3">
-								<label for="test-date" class="form-label">Select date to view prayers for:</label>
-								<input type="date" class="form-control" id="test-date">
+							<!-- Add tabs for date/person selection -->
+							<ul class="nav nav-tabs mb-3" id="date-picker-tabs" role="tablist">
+								<li class="nav-item" role="presentation">
+									<button class="nav-link active" id="date-tab" data-bs-toggle="tab" 
+											data-bs-target="#date-content" type="button" role="tab" 
+											aria-controls="date-content" aria-selected="true">By Date</button>
+								</li>
+								<li class="nav-item" role="presentation">
+									<button class="nav-link" id="person-tab" data-bs-toggle="tab" 
+											data-bs-target="#person-content" type="button" role="tab" 
+											aria-controls="person-content" aria-selected="false">By Person</button>
+								</li>
+							</ul>
+							
+							<div class="tab-content" id="datePickerTabContent">
+								<!-- Date selection tab -->
+								<div class="tab-pane fade show active" id="date-content" role="tabpanel" aria-labelledby="date-tab">
+									<div class="mb-3">
+										<label for="test-date" class="form-label">Select date to view prayers for:</label>
+										<input type="date" class="form-control" id="test-date">
+									</div>
+									<p class="text-muted small">Select any date to view the prayer content assigned for that day.</p>
+								</div>
+								
+								<!-- Person search tab -->
+								<div class="tab-pane fade" id="person-content" role="tabpanel" aria-labelledby="person-tab">
+									<div class="mb-3">
+										<label for="person-search" class="form-label">Search for a person:</label>
+										<div class="input-group">
+											<input type="text" class="form-control" id="person-search" placeholder="Enter name...">
+											<button class="btn btn-outline-secondary" type="button" id="search-person-btn">
+												<i class="bi bi-search"></i>
+											</button>
+										</div>
+									</div>
+									
+									<div id="search-results-container" class="mb-3">
+										<!-- Search results will be dynamically inserted here -->
+										<p class="text-muted small" id="search-instructions">Enter a name to search for a person in the prayer calendar.</p>
+										<div id="person-search-results" class="list-group d-none">
+											<!-- Search results will go here -->
+										</div>
+										<div id="search-spinner" class="text-center d-none">
+											<div class="spinner-border spinner-border-sm text-primary" role="status">
+												<span class="visually-hidden">Loading...</span>
+											</div>
+											<span class="ms-2">Searching...</span>
+										</div>
+										<div id="no-results-message" class="alert alert-info mt-2 d-none">
+											No matching people found. Try a different search term.
+										</div>
+									</div>
+								</div>
 							</div>
-							<p class="text-muted small">Select any date to view the prayer content assigned for that day.</p>
 						</div>
 						<div class="modal-footer">
 							<button type="button" class="btn btn-secondary" id="reset-test-date">Return to Today</button>
@@ -1896,7 +1945,7 @@
         loadScript("js/ui.js");
         loadScript("js/calendar.js");
         loadScript("js/topics.js");
-     //   loadScript("js/distribution.js");
+        loadScript("js/person-search.js");
         loadScript("js/updates.js");
         loadScript("js/urgent.js");
         loadScript("js/profile.js");
