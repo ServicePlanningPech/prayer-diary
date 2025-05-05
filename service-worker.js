@@ -41,6 +41,11 @@ const urlsToCache = [
 
 // Install event - cache assets
 self.addEventListener('install', event => {
+  console.log('[Service Worker] Install event');
+  
+  // Force the waiting service worker to become the active service worker immediately
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -78,13 +83,12 @@ self.addEventListener('install', event => {
         console.error('Cache opening failed:', error);
       })
   );
-  
-  // Force the waiting service worker to become the active service worker
-  self.skipWaiting();
 });
 
 // Activate event - clean up old caches and take control
 self.addEventListener('activate', event => {
+  console.log('[Service Worker] Activate event');
+  
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     Promise.all([
@@ -100,7 +104,19 @@ self.addEventListener('activate', event => {
         );
       }),
       // Take control of all clients immediately
-      self.clients.claim()
+      self.clients.claim().then(() => {
+        console.log('[Service Worker] Claimed all clients');
+        
+        // Notify all clients that the service worker is active
+        self.clients.matchAll().then(clients => {
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'SW_ACTIVATED',
+              version: APP_VERSION
+            });
+          });
+        });
+      })
     ])
   );
 });

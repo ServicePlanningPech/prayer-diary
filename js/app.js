@@ -488,81 +488,104 @@ async function checkForSuperAdmin() {
 
 // Register service worker with explicit push support
 function registerServiceWorkerWithPushSupport() {
-return new Promise((resolve, reject) => {
-if (!('serviceWorker' in navigator)) {
-  console.warn('Service workers are not supported in this browser');
-  return reject(new Error('Service workers not supported'));
-}
+  return new Promise((resolve, reject) => {
+    if (!('serviceWorker' in navigator)) {
+    console.warn('Service workers are not supported in this browser');
+    return reject(new Error('Service workers not supported'));
+    }
+    
+    // Listen for activation message from the service worker
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (event.data && event.data.type === 'SW_ACTIVATED') {
+        console.log('[Client] Received service worker activation message for version:', event.data.version);
+        
+        // If we have a pending resolve function, call it
+        if (window.pendingServiceWorkerResolve) {
+        window.pendingServiceWorkerResolve(navigator.serviceWorker.controller);
+          window.pendingServiceWorkerResolve = null;
+        }
+    }
+    
+    if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+      console.log('Update available notification received from Service Worker');
+      const newVersion = event.data.currentVersion;
+      
+      // Only show notification if not already shown AND 
+    // if this version hasn't been acknowledged before
+  if (!updateNotificationShown && newVersion !== lastAcknowledgedVersion) {
+    showUpdateNotification(newVersion);
+    updateNotificationShown = true;
+  }
+    }
+});
 
 // Register the service worker with the correct path
 const swPath = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/service-worker.js' : '/service-worker.js';
 const swScope = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/' : '/';
 
-console.log('Registering service worker at:', swPath, 'with scope:', swScope);
+console.log('[Client] Registering service worker at:', swPath, 'with scope:', swScope);
 
 navigator.serviceWorker.register(swPath, {
 scope: swScope
 })
 .then(registration => {
-console.log('Service Worker registered with scope:', registration.scope);
+console.log('[Client] Service Worker registered with scope:', registration.scope);
 
 // Store the registration globally for future use with push notifications
 window.swRegistration = registration;
 
-// Setup update event listener
-navigator.serviceWorker.addEventListener('message', event => {
-if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
-console.log('Update available notification received from Service Worker');
-const newVersion = event.data.currentVersion;
+// Check the current state of the service worker
+if (registration.active) {
+console.log('[Client] Service worker is already active');
+resolve(registration);
+return;
+}
 
-// Only show notification if not already shown AND 
-  // if this version hasn't been acknowledged before
-    if (!updateNotificationShown && newVersion !== lastAcknowledgedVersion) {
-        showUpdateNotification(newVersion);
-        updateNotificationShown = true;
-    }
-    }
-    });
-      
-      // Wait for service worker to become active
-      if (registration.installing) {
-        console.log('Service worker is installing, waiting for activation');
-        registration.installing.addEventListener('statechange', function(event) {
-          if (event.target.state === 'activated') {
-            console.log('Service worker activated successfully');
-            resolve(registration);
-          }
-        });
-      } else if (registration.waiting) {
-        console.log('Service worker is waiting, forcing activation');
-        // Send message to activate immediately
-        registration.waiting.postMessage({action: 'skipWaiting'});
-        
-        // Listen for controller change indicating activation
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          console.log('Service worker controller changed, now active');
+if (registration.installing) {
+console.log('[Client] Service worker is installing');
+  registration.installing.addEventListener('statechange', event => {
+  console.log('[Client] Service worker state changed to:', event.target.state);
+  if (event.target.state === 'activated') {
+      console.log('[Client] Service worker activated via statechange event');
+    resolve(registration);
+  }
+  });
+} else if (registration.waiting) {
+  console.log('[Client] Service worker is waiting, forcing activation');
+  // Create a promise that will be resolved when we receive the activation message
+const activationPromise = new Promise(activationResolve => {
+window.pendingServiceWorkerResolve = activationResolve;
+});
+
+// Send skipWaiting message
+registration.waiting.postMessage({action: 'skipWaiting'});
+  
+    // Listen for controller change indicating activation
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('[Client] Service worker controller changed');
+  });
+    
+      // Wait for activation or timeout
+        Promise.race([
+          activationPromise,
+          new Promise(timeoutResolve => setTimeout(timeoutResolve, 5000))
+        ]).then(() => {
           resolve(registration);
-        }, {once: true});
-      } else if (registration.active) {
-        console.log('Service worker is already active');
-        resolve(registration);
+        });
       } else {
-        console.warn('Service worker registration completed but no worker found');
+        console.warn('[Client] No installing or waiting service worker found');
+        // Just resolve with what we have
         resolve(registration);
       }
       
-      // Set a timeout to resolve anyway after 3 seconds to prevent blocking
+      // Set a fallback timeout
       setTimeout(() => {
-        if (registration.active) {
-          console.log('Service worker activated within timeout period');
-        } else {
-          console.warn('Service worker not activated within timeout, continuing anyway');
-        }
+        console.warn('[Client] Service worker activation timeout - resolving anyway');
         resolve(registration);
-      }, 3000);
+      }, 6000);
     })
     .catch(error => {
-      console.error('Service Worker registration failed:', error);
+      console.error('[Client] Service Worker registration failed:', error);
       reject(error);
     });
   });

@@ -137,8 +137,7 @@ serve(async (req) => {
           notificationPayload,
           {
             // Add TTL of 24 hours (in seconds) to ensure notifications don't expire too quickly
-            TTL: 86400,
-            urgency: 'high'
+            TTL: 86400
           }
         )
 
