@@ -179,41 +179,68 @@ self.addEventListener('fetch', event => {
 
 // Push notification event
 self.addEventListener('push', event => {
-  console.log('Push notification received:', event);
+  console.log('[Service Worker] Push Received', event);
   
-  let notificationData = {};
+  // Get the base URL based on the service worker scope
+  const baseUrl = self.registration.scope;
+  
+  let notificationData = {
+    title: 'Prayer Diary',
+    body: 'New prayer update or request',
+    icon: `${baseUrl}img/icons/android/android-launchericon-192-192.png`,
+    badge: `${baseUrl}img/icons/android/android-launchericon-72-72.png`,
+    data: { url: '/' }
+  };
   
   // Try to extract the notification data from the push event
-  try {
-    if (event.data) {
-      notificationData = event.data.json();
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      // Merge with defaults, preserving required fields
+      notificationData = {
+        ...notificationData,
+        ...data,
+        // Ensure icon and badge have absolute paths if they don't already
+        icon: data.icon || notificationData.icon,
+        badge: data.badge || notificationData.badge
+      };
+    } catch (e) {
+      console.error('[Service Worker] Error parsing push data:', e);
+      // Just use default notification data
     }
-  } catch (error) {
-    console.error('Error parsing push notification data:', error);
-    // If parsing fails, use a default notification
-    notificationData = {
-      title: 'New Notification',
-      body: 'You have a new notification from Prayer Diary',
-      data: { url: '/' }
-    };
   }
   
-  // Set up notification options
+  // Set up notification options with best practices
   const options = {
-    body: notificationData.body || notificationData.message || 'New prayer update or request',
-    icon: 'img/icons/android/android-launchericon-192-192.png',
-    badge: 'img/icons/android/android-launchericon-72-72.png',
+    body: notificationData.body,
+    icon: notificationData.icon,
+    badge: notificationData.badge,
     data: notificationData.data || { url: '/' },
     tag: notificationData.tag || 'prayer-diary-notification',
-    // Allow vibrations on mobile devices
-    vibrate: [100, 50, 100],
-    // Auto-close after 30 seconds
-    requireInteraction: false,
+    renotify: notificationData.renotify || false,
+    requireInteraction: notificationData.requireInteraction || true,
+    vibrate: [100, 50, 100, 50, 100],
+    actions: notificationData.actions || [
+      {
+        action: 'view',
+        title: 'View'
+      }
+    ],
+    // Ensure it's not silent
     silent: false
   };
   
+  // CRITICAL: Use waitUntil to keep service worker alive until notification is shown
   event.waitUntil(
-    self.registration.showNotification(notificationData.title || 'Prayer Diary', options)
+    self.registration.showNotification(notificationData.title, options)
+      .then(() => {
+        console.log('[Service Worker] Notification successfully displayed');
+        return Promise.resolve();
+      })
+      .catch(error => {
+        console.error('[Service Worker] Error showing notification:', error);
+        return Promise.resolve();
+      })
   );
 });
 

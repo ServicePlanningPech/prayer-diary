@@ -250,26 +250,61 @@ async function subscribeToPushNotifications() {
     
     // Check if service worker is supported
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.log('Push notifications not supported');
+      console.log('Push notifications not supported on this browser');
       return false;
     }
     
-    // Get the service worker registration
-    const registration = await navigator.serviceWorker.ready;
+    // Get the service worker registration - use global registration if available
+    const registration = window.swRegistration || await navigator.serviceWorker.ready;
+    console.log('Service worker ready with scope:', registration.scope);
     
     // Get the VAPID public key from the server
     const vapidPublicKey = await getVapidPublicKey();
+    console.log('VAPID public key retrieved successfully');
     
-    // Subscribe to push notifications
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-    });
+    // Check for existing subscription
+    let subscription = await registration.pushManager.getSubscription();
     
-    console.log('Push notification subscription successful');
+    // If subscription exists but might be expired, unsubscribe first
+    if (subscription) {
+      console.log('Existing subscription found, checking if valid...');
+      try {
+        // Try a simple operation to check validity
+        const endpoint = subscription.endpoint;
+        console.log('Subscription appears valid. Endpoint:', endpoint.substring(0, 30) + '...');
+      } catch (e) {
+        console.log('Existing subscription appears invalid, unsubscribing...');
+        await subscription.unsubscribe();
+        subscription = null;
+      }
+    }
+    
+    // Create a new subscription if needed
+    if (!subscription) {
+      console.log('Creating new push subscription...');
+      try {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        });
+        console.log('New push subscription created successfully');
+      } catch (subError) {
+        console.error('Failed to create push subscription:', subError);
+        if (Notification.permission === 'denied') {
+          console.log('Permission denied for notifications');
+        }
+        return false;
+      }
+    }
     
     // Save subscription to database
     const saved = await saveSubscriptionToDatabase(subscription);
+    if (saved) {
+      console.log('Push subscription saved to server successfully');
+    } else {
+      console.error('Failed to save push subscription to server');
+    }
+    
     return saved;
   } catch (error) {
     console.error('Error subscribing to push notifications:', error);

@@ -6,7 +6,7 @@ import { serve } from 'https://deno.land/std@0.170.0/http/server.ts'
 // CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',  // Added POST to allowed methods
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
   'Access-Control-Max-Age': '86400'
 };
@@ -18,8 +18,8 @@ serve(async (req) => {
   }
 
   try {
-    // Only allow GET requests
-    if (req.method !== 'GET') {
+    // Allow both GET and POST requests
+    if (req.method !== 'GET' && req.method !== 'POST') {
       throw new Error('Method not allowed')
     }
 

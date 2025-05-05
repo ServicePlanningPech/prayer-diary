@@ -131,10 +131,15 @@ serve(async (req) => {
           continue
         }
 
-        // Send the notification with the correct field name
+        // Send the notification with the correct field name and TTL
         await webpush.sendNotification(
-          subscription.subscription_data,  // FIXED: Changed from subscription_object to subscription_data
-          notificationPayload
+          subscription.subscription_data,  // Using subscription_data field
+          notificationPayload,
+          {
+            // Add TTL of 24 hours (in seconds) to ensure notifications don't expire too quickly
+            TTL: 86400,
+            urgency: 'high'
+          }
         )
 
         // Record successful delivery

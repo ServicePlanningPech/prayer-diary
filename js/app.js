@@ -239,7 +239,8 @@ function initializeApp() {
     setupTabCloseLogout();
     
     // Set up service worker and check for updates
-    registerServiceWorkerAndCheckForUpdates();
+registerServiceWorkerWithPushSupport();
+checkForAppUpdates();
     
     // Force refresh of the drawer navigation after a short delay
     // This ensures any dynamically added menu items are included
@@ -478,45 +479,60 @@ async function checkForSuperAdmin() {
     }
 }
 
-// Register service worker and check for updates
-function registerServiceWorkerAndCheckForUpdates() {
-    if ('serviceWorker' in navigator) {
-        // Register the service worker with the correct path
-        const swPath = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/service-worker.js' : '/service-worker.js';
-        console.log('Registering service worker at:', swPath);
-        navigator.serviceWorker.register(swPath)
-            .then(registration => {
-                console.log('Service Worker registered with scope:', registration.scope);
-                
-                // Check for update after a delay to ensure everything is loaded
-                setTimeout(() => {
-                    checkForAppUpdate(registration);
-                }, 5000);
-                
-                // Check for updates periodically (every 30 minutes)
-                setInterval(() => {
-                    checkForAppUpdate(registration);
-                }, 30 * 60 * 1000);
-                
-                // Setup update event listener
-                navigator.serviceWorker.addEventListener('message', event => {
-                    if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
-                        console.log('Update available notification received from Service Worker');
-                        const newVersion = event.data.currentVersion;
-                        
-                        // Only show notification if not already shown AND 
-                        // if this version hasn't been acknowledged before
-                        if (!updateNotificationShown && newVersion !== lastAcknowledgedVersion) {
-                            showUpdateNotification(newVersion);
-                            updateNotificationShown = true;
-                        }
-                    }
-                });
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
-            });
-    }
+// Register service worker with explicit push support
+function registerServiceWorkerWithPushSupport() {
+if ('serviceWorker' in navigator) {
+// Register the service worker with the correct path
+const swPath = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/service-worker.js' : '/service-worker.js';
+const swScope = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/' : '/';
+
+console.log('Registering service worker at:', swPath, 'with scope:', swScope);
+
+navigator.serviceWorker.register(swPath, {
+scope: swScope
+})
+.then(registration => {
+console.log('Service Worker registered with scope:', registration.scope);
+
+// Store the registration globally for future use with push notifications
+window.swRegistration = registration;
+
+// Setup update event listener
+navigator.serviceWorker.addEventListener('message', event => {
+if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+console.log('Update available notification received from Service Worker');
+const newVersion = event.data.currentVersion;
+
+// Only show notification if not already shown AND 
+// if this version hasn't been acknowledged before
+if (!updateNotificationShown && newVersion !== lastAcknowledgedVersion) {
+showUpdateNotification(newVersion);
+updateNotificationShown = true;
+}
+}
+});
+})
+.catch(error => {
+console.error('Service Worker registration failed:', error);
+});
+}
+}
+
+// Check for app updates
+function checkForAppUpdates() {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    // Wait for service worker to be ready before checking for updates
+    setTimeout(() => {
+      if (window.swRegistration) {
+        checkForAppUpdate(window.swRegistration);
+        
+        // Check for updates periodically (every 30 minutes)
+        setInterval(() => {
+          checkForAppUpdate(window.swRegistration);
+        }, 30 * 60 * 1000);
+      }
+    }, 5000);
+  }
 }
 
 // Check for app updates by comparing versions
