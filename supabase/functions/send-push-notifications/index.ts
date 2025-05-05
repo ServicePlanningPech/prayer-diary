@@ -92,22 +92,22 @@ serve(async (req) => {
     }
 
     // Get the base URL from environment variable or use the GitHub Pages URL as default
-const BASE_URL = Deno.env.get('APP_URL') || 'https://serviceplanningpech.github.io/prayer-diary';
+    const BASE_URL = Deno.env.get('APP_URL') || 'https://serviceplanningpech.github.io/prayer-diary';
 
-// Prepare notification payload with absolute URLs for icons
-const notificationPayload = JSON.stringify({
-    title: title,
-    body: message,
-    icon: `${BASE_URL}/img/icons/android/android-launchericon-96-96.png`,
-    badge: `${BASE_URL}/img/icons/android/android-launchericon-72-72.png`,
-    data: {
-    dateOfArrival: Date.now(),
-    primaryKey: 1,
-      url: data?.url || '/',
-    contentType,
-    contentId
-  }
-})
+    // Prepare notification payload with absolute URLs for icons
+    const notificationPayload = JSON.stringify({
+      title: title,
+      body: message,
+      icon: `${BASE_URL}/img/icons/android/android-launchericon-96-96.png`,
+      badge: `${BASE_URL}/img/icons/android/android-launchericon-72-72.png`,
+      data: {
+        dateOfArrival: Date.now(),
+        primaryKey: 1,
+        url: data?.url || '/',
+        contentType,
+        contentId
+      }
+    })
 
     // Send push notifications and track results
     const results = []
@@ -124,15 +124,16 @@ const notificationPayload = JSON.stringify({
     
     for (const subscription of activeSubscriptions) {
       try {
-        // Skip if subscription has no endpoint
-        if (!subscription.subscription_object || !subscription.subscription_object.endpoint) {
+        // FIXED: Use subscription_data instead of subscription_object
+        // Skip if subscription data is missing or invalid
+        if (!subscription.subscription_data || !subscription.subscription_data.endpoint) {
           console.log(`Skipping invalid subscription for user ${subscription.user_id}`)
           continue
         }
 
-        // Send the notification
+        // Send the notification with the correct field name
         await webpush.sendNotification(
-          subscription.subscription_object,
+          subscription.subscription_data,  // FIXED: Changed from subscription_object to subscription_data
           notificationPayload
         )
 

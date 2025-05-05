@@ -1,520 +1,486 @@
 // Push Notifications Module
+// Manages push notification subscriptions and permissions
 
-// Check if push notifications are supported
-function arePushNotificationsSupported() {
-    return 'serviceWorker' in navigator && 'PushManager' in window;
+// Constants
+const PERMISSION_PROMPT_KEY = 'pushNotificationPermissionPromptShown';
+const PERMISSION_PROMPT_DELAY = 3000; // 3 seconds
+
+// Variable to track if initialization has been done
+let pushInitialized = false;
+
+// Initialize push notification functionality
+document.addEventListener('DOMContentLoaded', setupPushNotificationListeners);
+
+// When user logs in, initialize push notifications
+document.addEventListener('login-state-changed', function(event) {
+  if (event.detail && event.detail.loggedIn) {
+    // Call after a short delay to ensure profile is loaded
+    setTimeout(initializePushNotifications, 2000);
+  }
+});
+
+// Set up listeners for the notification permission UI
+function setupPushNotificationListeners() {
+  // Set up permission prompt listeners
+  setupPermissionPromptListeners();
+  
+  // Listen for changes in user preferences
+  document.addEventListener('user-preferences-changed', function(event) {
+    if (event.detail && event.detail.notificationMethod === 'push') {
+      requestNotificationPermission();
+    }
+  });
 }
 
-// Variable to track if we're already subscribed
-let pushSubscription = null;
-
-// Initialize push notifications
-async function initPushNotifications() {
-    if (!arePushNotificationsSupported()) {
-        console.log('Push notifications are not supported in this browser');
-        return false;
+// NEW FUNCTION: Initialize push notifications at app startup
+async function initializePushNotifications() {
+  // Prevent multiple initializations
+  if (pushInitialized) {
+    console.log('Push notifications already initialized');
+    return;
+  }
+  
+  try {
+    console.log('Initializing push notifications');
+    
+    // Wait for auth to be stable before checking user preferences
+    await waitForAuthStability();
+    
+    // Only proceed if the user is logged in and has a profile
+    if (!isLoggedIn() || !userProfile) {
+      console.log('User not logged in or profile not loaded, skipping push initialization');
+      return;
     }
-
-    try {
-        // Ensure user is logged in
-        if (!isLoggedIn()) {
-            console.log('User must be logged in to initialize push notifications');
-            return false;
-        }
-
-        // First, register service worker if not already registered
-        const registration = await registerServiceWorker();
-        if (!registration) {
-            console.error('Could not register service worker for push notifications');
-            return false;
-        }
-
-        // Check for existing subscription
-        pushSubscription = await registration.pushManager.getSubscription();
-        
-        return true;
-    } catch (error) {
-        console.error('Error initializing push notifications:', error);
-        return false;
-    }
-}
-
-// Register service worker for push notifications
-async function registerServiceWorker() {
-    try {
-        // Check if service worker is already registered
+    
+    // Check if user has opted for push notifications
+    if (userProfile.notification_method === 'push') {
+      console.log('User has opted for push notifications, checking subscription');
+      
+      // Check if push is supported in this browser
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log('Push notifications not supported in this browser');
+        return;
+      }
+      
+      // Check permission state
+      const permission = Notification.permission;
+      if (permission === 'denied') {
+        console.log('Push permission denied by user');
+        // Consider updating the user profile to disable push if permission denied
+        return;
+      }
+      
+      // Only proceed if permission is granted
+      if (permission === 'granted') {
+        // Get service worker registration
         const registration = await navigator.serviceWorker.ready;
-        if (registration) {
-            console.log('Service worker already registered:', registration);
-            return registration;
+        
+        // Check existing subscription
+        let subscription = await registration.pushManager.getSubscription();
+        
+        // If no subscription exists or it needs to be renewed, create a new one
+        if (!subscription) {
+          console.log('No existing push subscription, creating new one');
+          
+          // Get VAPID key from server
+          const vapidPublicKey = await getVapidPublicKey();
+          
+          // Create new subscription
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+          });
+          
+          // Save the new subscription to database
+          await saveSubscriptionToDatabase(subscription);
+        } else {
+          console.log('Existing push subscription found, updating database');
+          // Update the existing subscription in the database
+          await saveSubscriptionToDatabase(subscription);
         }
         
-        // Get the appropriate service worker path
-        const swPath = window.location.pathname.includes('/prayer-diary') ? 
-            '/prayer-diary/service-worker.js' : 
-            '/service-worker.js';
-
-        // Register service worker
-        const newRegistration = await navigator.serviceWorker.register(swPath);
-        console.log('Service worker registered for push notifications:', newRegistration);
-        
-        // Wait for service worker to be ready
-        await navigator.serviceWorker.ready;
-        
-        return newRegistration;
-    } catch (error) {
-        console.error('Error registering service worker for push notifications:', error);
-        return null;
+        pushInitialized = true;
+        console.log('Push notification initialization complete');
+      } else {
+        // Ask for permission if not yet granted
+        console.log('Permission not granted, requesting permission');
+        requestNotificationPermission();
+      }
+    } else {
+      console.log('User has not opted for push notifications, skipping initialization');
     }
+  } catch (error) {
+    console.error('Error initializing push notifications:', error);
+  }
+}
+
+// Request notification permission
+async function requestNotificationPermission() {
+  // Check if notifications are supported
+  if (!('Notification' in window)) {
+    console.log('This browser does not support notifications');
+    return false;
+  }
+  
+  // If permission already granted, we're good
+  if (Notification.permission === 'granted') {
+    console.log('Notification permission already granted');
+    return true;
+  }
+  
+  // If permission denied, we can't ask again
+  if (Notification.permission === 'denied') {
+    console.log('Notification permission previously denied');
+    // Show instructions for re-enabling
+    showNotificationHelp();
+    return false;
+  }
+  
+  try {
+    // Show custom permission prompt first for better UX
+    const shouldProceed = await showCustomPermissionPrompt();
+    
+    if (shouldProceed) {
+      // Request browser permission
+      const permission = await Notification.requestPermission();
+      
+      if (permission === 'granted') {
+        console.log('Notification permission granted!');
+        
+        // Now that we have permission, we can subscribe
+        await subscribeToPushNotifications();
+        return true;
+      } else {
+        console.log('Notification permission not granted:', permission);
+        return false;
+      }
+    } else {
+      console.log('User declined custom permission prompt');
+      return false;
+    }
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return false;
+  }
+}
+
+// Show a custom permission prompt to improve user experience
+function showCustomPermissionPrompt() {
+  return new Promise((resolve) => {
+    // Check if we've shown this prompt before
+    const promptShown = localStorage.getItem(PERMISSION_PROMPT_KEY);
+    if (promptShown) {
+      // If we've shown it before, just proceed to browser prompt
+      resolve(true);
+      return;
+    }
+    
+    // Create a custom prompt element
+    const promptElement = document.createElement('div');
+    promptElement.className = 'notification-permission-prompt';
+    promptElement.innerHTML = `
+      <h5><i class="bi bi-bell me-2"></i>Enable Notifications?</h5>
+      <p>Allow notifications to receive alerts when new prayer updates and urgent prayer requests are added.</p>
+      <div class="actions">
+        <button id="notification-later-btn" class="btn btn-sm btn-outline-secondary">Ask Later</button>
+        <button id="notification-allow-btn" class="btn btn-sm btn-primary">Allow</button>
+      </div>
+    `;
+    
+    // Add to document
+    document.body.appendChild(promptElement);
+    
+    // Animate in
+    setTimeout(() => {
+      promptElement.classList.add('show');
+    }, 100);
+    
+    // Add button listeners
+    document.getElementById('notification-allow-btn').addEventListener('click', () => {
+      // Mark prompt as shown
+      localStorage.setItem(PERMISSION_PROMPT_KEY, 'true');
+      // Remove the prompt
+      promptElement.classList.remove('show');
+      setTimeout(() => {
+        document.body.removeChild(promptElement);
+      }, 300);
+      // Resolve with true to proceed with browser prompt
+      resolve(true);
+    });
+    
+    document.getElementById('notification-later-btn').addEventListener('click', () => {
+      // Remove the prompt without marking it as shown permanently
+      promptElement.classList.remove('show');
+      setTimeout(() => {
+        document.body.removeChild(promptElement);
+      }, 300);
+      // Resolve with false to cancel
+      resolve(false);
+    });
+  });
+}
+
+// Setup permission prompt listeners
+function setupPermissionPromptListeners() {
+  // We'll use standard click handlers which will be set up on the elements
+  // when they're created in showCustomPermissionPrompt
+}
+
+// Show help for re-enabling notifications
+function showNotificationHelp() {
+  const content = `
+    <p>You previously blocked notifications for this site. To receive prayer notifications, you'll need to change your browser settings.</p>
+    <h6 class="mt-3 mb-2">How to enable notifications:</h6>
+    <ol>
+      <li>Click the lock/info icon in your browser's address bar</li>
+      <li>Find "Notifications" or "Permissions" settings</li>
+      <li>Change from "Block" to "Allow"</li>
+      <li>Refresh this page</li>
+    </ol>
+  `;
+  
+  // Show a notification with instructions
+  showNotification('Notifications Blocked', content);
+}
+
+// Subscribe to push notifications after permission is granted
+async function subscribeToPushNotifications() {
+  try {
+    console.log('Setting up push notification subscription');
+    
+    // Check if service worker is supported
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.log('Push notifications not supported');
+      return false;
+    }
+    
+    // Get the service worker registration
+    const registration = await navigator.serviceWorker.ready;
+    
+    // Get the VAPID public key from the server
+    const vapidPublicKey = await getVapidPublicKey();
+    
+    // Subscribe to push notifications
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+    });
+    
+    console.log('Push notification subscription successful');
+    
+    // Save subscription to database
+    const saved = await saveSubscriptionToDatabase(subscription);
+    return saved;
+  } catch (error) {
+    console.error('Error subscribing to push notifications:', error);
+    return false;
+  }
+}
+
+// UPDATED FUNCTION: Save the subscription to the database
+async function saveSubscriptionToDatabase(subscription) {
+  try {
+    // Wait for auth stability
+    await waitForAuthStability();
+    
+    // Check if we have a valid user ID
+    const userId = getUserId();
+    if (!userId) {
+      console.error('Cannot save subscription: No user ID available');
+      return false;
+    }
+    
+    // Convert subscription to JSON
+    const subscriptionJSON = subscription.toJSON();
+    
+    // First check if a subscription already exists for this user
+    const { data: existingSubscription, error: queryError } = await supabase
+      .from('push_subscriptions')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+      
+    if (queryError && queryError.code !== 'PGRST116') { // Not found error is okay
+      console.error('Error checking existing subscription:', queryError);
+      return false;
+    }
+    
+    if (existingSubscription) {
+      // Update existing subscription
+      const { error: updateError } = await supabase
+        .from('push_subscriptions')
+        .update({
+          subscription_data: subscriptionJSON,
+          active: true,  // Mark as active when updating
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingSubscription.id);
+        
+      if (updateError) {
+        console.error('Error updating subscription:', updateError);
+        return false;
+      }
+    } else {
+      // Insert new subscription
+      const { error: insertError } = await supabase
+        .from('push_subscriptions')
+        .insert({
+          user_id: userId,
+          subscription_data: subscriptionJSON,
+          active: true,  // Set as active on creation
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+        
+      if (insertError) {
+        console.error('Error saving subscription:', insertError);
+        return false;
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in saveSubscriptionToDatabase:', error);
+    return false;
+  }
 }
 
 // Get the VAPID public key from the server
 async function getVapidPublicKey() {
-    try {
-        await window.waitForAuthStability();
-        
-        // Get the current auth token
-        const authToken = window.authToken;
-        if (!authToken) {
-            throw new Error('Not authenticated');
-        }
-        
-        // Call the Edge Function to get the VAPID public key
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/get-vapid-key`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Error fetching VAPID key: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        return data.vapidPublicKey;
-    } catch (error) {
-        console.error('Error getting VAPID public key:', error);
-        throw error;
+  try {
+    // Try to get from localStorage first if available
+    const cachedKey = localStorage.getItem('vapidPublicKey');
+    if (cachedKey) {
+      return cachedKey;
     }
+    
+    // Call Supabase Edge Function to get VAPID key
+    const { data, error } = await supabase.functions.invoke('get-vapid-key');
+    
+    if (error) {
+      console.error('Error getting VAPID key:', error);
+      throw error;
+    }
+    
+    if (data && data.vapidPublicKey) {
+      // Cache the key for future use
+      localStorage.setItem('vapidPublicKey', data.vapidPublicKey);
+      return data.vapidPublicKey;
+    } else {
+      throw new Error('Invalid response from get-vapid-key function');
+    }
+  } catch (error) {
+    console.error('Failed to get VAPID key:', error);
+    throw error;
+  }
 }
 
-// Subscribe to push notifications
-async function subscribeToPushNotifications() {
-    try {
-        // Check if push is supported
-        if (!arePushNotificationsSupported()) {
-            console.error('Push notifications not supported in this browser');
-            return { success: false, error: 'Push notifications not supported' };
-        }
-        
-        // Initialize push notifications
-        await initPushNotifications();
-        
-        // Check if already subscribed
-        if (pushSubscription) {
-            console.log('Already subscribed to push notifications');
-            // Verify the subscription exists in the database
-            await saveSubscriptionToDatabase(pushSubscription);
-            return { success: true, subscription: pushSubscription };
-        }
-        
-        // Get the service worker registration
-        const registration = await navigator.serviceWorker.ready;
-        
-        // Get the VAPID public key
-        const vapidPublicKey = await getVapidPublicKey();
-        
-        // Convert the VAPID key to a Uint8Array
-        const applicationServerKey = urlB64ToUint8Array(vapidPublicKey);
-        
-        // Request user permission and create a subscription
-        pushSubscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: applicationServerKey
-        });
-        
-        console.log('Push notification subscription created:', pushSubscription);
-        
-        // Save the subscription to the database
-        await saveSubscriptionToDatabase(pushSubscription);
-        
-        return { success: true, subscription: pushSubscription };
-    } catch (error) {
-        console.error('Error subscribing to push notifications:', error);
-        
-        // Handle permission denied error specifically
-        if (error.name === 'NotAllowedError') {
-            return { 
-                success: false, 
-                error: 'Permission denied for push notifications. Please enable notifications for this site in your browser settings.' 
-            };
-        }
-        
-        return { success: false, error: error.message };
-    }
+// Helper function to convert base64 to Uint8Array for PushManager
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }
 
-// Save the subscription to the database
-async function saveSubscriptionToDatabase(subscription) {
-    try {
-        await window.waitForAuthStability();
-        
-        // Check if we have a valid subscription object
-        if (!subscription || !subscription.endpoint) {
-            console.error('Invalid subscription object');
-            return false;
+// Test push notifications (for debugging)
+async function testPushNotification() {
+  try {
+    const { data, error } = await supabase.functions.invoke('send-push-notifications', {
+      body: {
+        userIds: [getUserId()],
+        title: 'Test Notification',
+        message: 'This is a test push notification',
+        contentType: 'test',
+        contentId: '00000000-0000-0000-0000-000000000000',
+        data: {
+          url: '/calendar-view'
         }
-        
-        // Get current user ID
-        const userId = getUserId();
-        if (!userId) {
-            console.error('User ID not available');
-            return false;
-        }
-        
-        // Convert subscription to JSON
-        let subscriptionJSON;
-        try {
-            subscriptionJSON = subscription.toJSON();
-            console.log('Subscription JSON:', subscriptionJSON);
-        } catch (jsonError) {
-            console.error('Error converting subscription to JSON:', jsonError);
-            // Fallback to manually extracting the required properties
-            subscriptionJSON = {
-                endpoint: subscription.endpoint,
-                expirationTime: subscription.expirationTime,
-                keys: {
-                    p256dh: subscription.keys?.p256dh,
-                    auth: subscription.keys?.auth
-                }
-            };
-            console.log('Manually created subscription JSON:', subscriptionJSON);
-        }
-        
-        // Prepare subscription data
-        const subscriptionData = {
-            user_id: userId,
-            subscription_object: subscriptionJSON,
-            user_agent: navigator.userAgent,
-            active: true
-        };
-        
-        // First try simple insert
-        console.log('Attempting to insert subscription to database...');
-        const { error: insertError } = await supabase
-            .from('push_subscriptions')
-            .insert(subscriptionData);
-            
-        if (!insertError) {
-            console.log('Push subscription successfully inserted');
-            return true;
-        }
-        
-        // If there's a unique constraint violation, try an update
-        if (insertError && insertError.code === '23505') { // Unique violation code
-            console.log('Subscription already exists, trying update...');
-            
-            // Update the existing subscription
-            const { error: updateError } = await supabase
-                .from('push_subscriptions')
-                .update({
-                    subscription_object: subscriptionJSON,
-                    user_agent: navigator.userAgent,
-                    active: true
-                })
-                .eq('user_id', userId)
-                .filter('subscription_object->>\'endpoint\'', 'eq', subscription.endpoint);
-                
-            if (updateError) {
-                console.error('Error updating push subscription:', updateError);
-                console.error('Full error details:', JSON.stringify(updateError));
-                return false;
-            }
-            
-            console.log('Push subscription successfully updated');
-            return true;
-        }
-        
-        // Log detailed error information
-        console.error('Error inserting push subscription:', insertError);
-        console.error('Full error details:', JSON.stringify(insertError));
-        console.error('Subscription data:', JSON.stringify(subscriptionData));
-        return false;
-    } catch (error) {
-        console.error('Error in saveSubscriptionToDatabase:', error);
-        console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-        return false;
+      }
+    });
+    
+    if (error) {
+      console.error('Error sending test notification:', error);
+      return false;
     }
+    
+    console.log('Test notification result:', data);
+    return true;
+  } catch (error) {
+    console.error('Error in testPushNotification:', error);
+    return false;
+  }
 }
 
 // Unsubscribe from push notifications
 async function unsubscribeFromPushNotifications() {
-    try {
-        // Initialize push notifications to make sure we have current subscription
-        await initPushNotifications();
-        
-        // If no subscription exists, we're already unsubscribed
-        if (!pushSubscription) {
-            console.log('No push subscription found to unsubscribe');
-            return { success: true, message: 'Already unsubscribed' };
-        }
-        
-        // Unsubscribe using the PushManager API
-        const unsubscribed = await pushSubscription.unsubscribe();
-        
-        if (!unsubscribed) {
-            throw new Error('Failed to unsubscribe from push notifications');
-        }
-        
-        // Mark the subscription as inactive in the database
-        await markSubscriptionInactive(pushSubscription);
-        
-        // Reset the local subscription object
-        pushSubscription = null;
-        
-        console.log('Successfully unsubscribed from push notifications');
-        return { success: true };
-    } catch (error) {
-        console.error('Error unsubscribing from push notifications:', error);
-        return { success: false, error: error.message };
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return false;
     }
+    
+    // Get service worker registration
+    const registration = await navigator.serviceWorker.ready;
+    
+    // Get current subscription
+    const subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      console.log('No push subscription found to unsubscribe from');
+      return true;
+    }
+    
+    // Unsubscribe
+    const result = await subscription.unsubscribe();
+    
+    if (result) {
+      console.log('Successfully unsubscribed from push notifications');
+      
+      // Mark as inactive in database
+      await markSubscriptionInactive();
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error unsubscribing from push notifications:', error);
+    return false;
+  }
 }
 
 // Mark a subscription as inactive in the database
-async function markSubscriptionInactive(subscription) {
-    try {
-        await window.waitForAuthStability();
-        
-        if (!subscription || !subscription.endpoint) {
-            console.error('Invalid subscription to mark as inactive');
-            return false;
-        }
-        
-        // Convert the endpoint to a string value we can compare
-        const endpoint = subscription.endpoint;
-        
-        // Update the database to mark this subscription as inactive
-        const { error } = await supabase
-            .from('push_subscriptions')
-            .update({ active: false })
-            .eq('user_id', getUserId())
-            .filter('subscription_object->endpoint', 'eq', endpoint);
-        
-        if (error) {
-            console.error('Error marking subscription as inactive:', error);
-            return false;
-        }
-        
-        console.log('Subscription marked as inactive in database');
-        return true;
-    } catch (error) {
-        console.error('Error in markSubscriptionInactive:', error);
-        return false;
-    }
-}
-
-// Check if we're currently subscribed to push notifications
-async function isPushNotificationSubscribed() {
-    try {
-        // Initialize push notifications
-        await initPushNotifications();
-        
-        // Return true if we have a valid subscription
-        return !!pushSubscription;
-    } catch (error) {
-        console.error('Error checking push notification subscription:', error);
-        return false;
-    }
-}
-
-// Function to update user's notification preference to push
-async function updateUserNotificationMethodToPush() {
-    try {
-        await window.waitForAuthStability();
-        
-        // Get current user ID
-        const userId = getUserId();
-        if (!userId) {
-            console.error('User ID not available');
-            return false;
-        }
-        
-        // Update the user's notification_method in the profile
-        const { error } = await supabase
-            .from('profiles')
-            .update({ notification_method: 'push' })
-            .eq('id', userId);
-        
-        if (error) {
-            console.error('Error updating notification method:', error);
-            return false;
-        }
-        
-        // Update local userProfile
-        if (userProfile) {
-            userProfile.notification_method = 'push';
-        }
-        
-        console.log('Notification method updated to push');
-        return true;
-    } catch (error) {
-        console.error('Error updating notification method:', error);
-        return false;
-    }
-}
-
-// Handle notification permission changes
-async function handleNotificationPermissionChange(newPermission) {
-    console.log('Notification permission changed to:', newPermission);
+async function markSubscriptionInactive() {
+  try {
+    await waitForAuthStability();
     
-    if (newPermission === 'granted') {
-        // User granted permission, subscribe to push notifications
-        const result = await subscribeToPushNotifications();
-        
-        if (result.success) {
-            // Update the user's notification preference to push
-            await updateUserNotificationMethodToPush();
-            
-            // Update the UI to reflect the new notification method
-            const pushRadio = document.getElementById('notification-push');
-            if (pushRadio) {
-                pushRadio.checked = true;
-                
-                // Trigger change event to update related UI elements
-                const event = new Event('change');
-                pushRadio.dispatchEvent(event);
-            }
-            
-            showNotification('Notifications Enabled', 'You will now receive push notifications for prayer updates and urgent prayers.', 'success');
-        }
-    } else if (newPermission === 'denied') {
-        // User denied permission, make sure we're unsubscribed
-        await unsubscribeFromPushNotifications();
-        
-        // If the user has 'push' selected as their notification method, change it to 'none'
-        if (userProfile && userProfile.notification_method === 'push') {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ notification_method: 'none' })
-                .eq('id', getUserId());
-            
-            // Update local userProfile
-            if (!error && userProfile) {
-                userProfile.notification_method = 'none';
-            }
-            
-            // Update the UI
-            const noneRadio = document.getElementById('notification-none');
-            if (noneRadio) {
-                noneRadio.checked = true;
-                
-                // Trigger change event to update related UI elements
-                const event = new Event('change');
-                noneRadio.dispatchEvent(event);
-            }
-            
-            showNotification('Notifications Disabled', 'You have disabled push notifications. You can re-enable them in your browser settings.', 'info');
-        }
-    }
-}
-
-// Request permission for push notifications
-async function requestPushNotificationPermission() {
-    try {
-        // Check if Notification API is supported
-        if (!('Notification' in window)) {
-            throw new Error('This browser does not support desktop notification');
-        }
-        
-        // Check current permission
-        if (Notification.permission === 'granted') {
-            // Already granted, subscribe to push
-            return await subscribeToPushNotifications();
-        } else if (Notification.permission === 'denied') {
-            // Permission previously denied
-            throw new Error('Notification permission was denied. Please enable notifications in your browser settings.');
-        }
-        
-        // Request permission
-        const permission = await Notification.requestPermission();
-        
-        // Handle the result
-        await handleNotificationPermissionChange(permission);
-        
-        if (permission === 'granted') {
-            return await subscribeToPushNotifications();
-        } else {
-            throw new Error('Notification permission was not granted');
-        }
-    } catch (error) {
-        console.error('Error requesting push notification permission:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// Helper function to convert base64 to Uint8Array
-// This is needed to convert the VAPID public key to the format expected by the PushManager
-function urlB64ToUint8Array(base64String) {
-    // Padding the base64 string to make its length a multiple of 4
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
+    const userId = getUserId();
+    if (!userId) return false;
+    
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .update({ active: false })
+      .eq('user_id', userId);
+      
+    if (error) {
+      console.error('Error marking subscription as inactive:', error);
+      return false;
     }
     
-    return outputArray;
+    return true;
+  } catch (error) {
+    console.error('Error in markSubscriptionInactive:', error);
+    return false;
+  }
 }
 
-// Setup event listener for notification permission changes
-document.addEventListener('DOMContentLoaded', () => {
-    // Setup event listener for the push notification radio button
-    document.addEventListener('login-state-changed', async function(event) {
-        if (event.detail && event.detail.loggedIn) {
-            // Initialize push notifications when user is logged in
-            await initPushNotifications();
-            
-            // Setup notification method change handlers
-            const pushRadio = document.getElementById('notification-push');
-            if (pushRadio) {
-                pushRadio.addEventListener('change', async function(e) {
-                    if (this.checked) {
-                        // User selected push notifications, request permission
-                        const result = await requestPushNotificationPermission();
-                        
-                        if (!result.success) {
-                            // If permission was denied, switch back to 'none'
-                            const noneRadio = document.getElementById('notification-none');
-                            if (noneRadio) {
-                                noneRadio.checked = true;
-                                
-                                // Show error notification
-                                showNotification('Permission Required', result.error, 'error');
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Add listener for other notification methods to unsubscribe from push if needed
-            const otherRadios = document.querySelectorAll('input[name="notification-method"]:not(#notification-push)');
-            otherRadios.forEach(radio => {
-                radio.addEventListener('change', async function(e) {
-                    if (this.checked) {
-                        // User selected a different notification method, unsubscribe from push
-                        if (await isPushNotificationSubscribed()) {
-                            await unsubscribeFromPushNotifications();
-                        }
-                    }
-                });
-            });
-        }
-    });
-});
+// Export functions for use in other modules
+window.requestNotificationPermission = requestNotificationPermission;
+window.testPushNotification = testPushNotification;
+window.unsubscribeFromPushNotifications = unsubscribeFromPushNotifications;
