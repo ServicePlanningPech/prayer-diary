@@ -289,7 +289,7 @@ self.addEventListener('notificationclick', event => {
 
 // Handle messages from the client
 self.addEventListener('message', event => {
-  console.log('Service Worker received message:', event.data);
+  console.log('[Service Worker] Received message:', event.data);
   
   if (event.data && event.data.action === 'CHECK_FOR_UPDATES') {
     // Store the version that was last used by the client
@@ -312,5 +312,11 @@ self.addEventListener('message', event => {
     } else {
       console.log('No update available or versions match');
     }
+  }
+  
+  // Handle skipWaiting message to force immediate activation
+  if (event.data && event.data.action === 'skipWaiting') {
+    console.log('[Service Worker] Skip waiting and activate immediately');
+    self.skipWaiting();
   }
 });

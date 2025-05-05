@@ -226,6 +226,17 @@ function initializeApp() {
         console.log("App running in browser mode, auth functionality dependent on installation state");
     }
     
+    // Register service worker first to ensure it's ready for other functionality
+    registerServiceWorkerWithPushSupport()
+      .then(() => {
+        console.log('Service worker registration complete, continuing app initialization');
+        // Check for updates after service worker is registered
+        checkForAppUpdates();
+      })
+      .catch(error => {
+        console.error('Service worker registration failed, continuing without push support:', error);
+      });
+    
     // Initialize splash screen first
     initSplashScreen();
     
@@ -237,10 +248,6 @@ function initializeApp() {
     
     // Set up tab close detection for logout
     setupTabCloseLogout();
-    
-    // Set up service worker and check for updates
-registerServiceWorkerWithPushSupport();
-checkForAppUpdates();
     
     // Force refresh of the drawer navigation after a short delay
     // This ensures any dynamically added menu items are included
@@ -481,7 +488,12 @@ async function checkForSuperAdmin() {
 
 // Register service worker with explicit push support
 function registerServiceWorkerWithPushSupport() {
-if ('serviceWorker' in navigator) {
+return new Promise((resolve, reject) => {
+if (!('serviceWorker' in navigator)) {
+  console.warn('Service workers are not supported in this browser');
+  return reject(new Error('Service workers not supported'));
+}
+
 // Register the service worker with the correct path
 const swPath = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/service-worker.js' : '/service-worker.js';
 const swScope = window.location.pathname.includes('/prayer-diary') ? '/prayer-diary/' : '/';
@@ -504,18 +516,56 @@ console.log('Update available notification received from Service Worker');
 const newVersion = event.data.currentVersion;
 
 // Only show notification if not already shown AND 
-// if this version hasn't been acknowledged before
-if (!updateNotificationShown && newVersion !== lastAcknowledgedVersion) {
-showUpdateNotification(newVersion);
-updateNotificationShown = true;
-}
-}
-});
-})
-.catch(error => {
-console.error('Service Worker registration failed:', error);
-});
-}
+  // if this version hasn't been acknowledged before
+    if (!updateNotificationShown && newVersion !== lastAcknowledgedVersion) {
+        showUpdateNotification(newVersion);
+        updateNotificationShown = true;
+    }
+    }
+    });
+      
+      // Wait for service worker to become active
+      if (registration.installing) {
+        console.log('Service worker is installing, waiting for activation');
+        registration.installing.addEventListener('statechange', function(event) {
+          if (event.target.state === 'activated') {
+            console.log('Service worker activated successfully');
+            resolve(registration);
+          }
+        });
+      } else if (registration.waiting) {
+        console.log('Service worker is waiting, forcing activation');
+        // Send message to activate immediately
+        registration.waiting.postMessage({action: 'skipWaiting'});
+        
+        // Listen for controller change indicating activation
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('Service worker controller changed, now active');
+          resolve(registration);
+        }, {once: true});
+      } else if (registration.active) {
+        console.log('Service worker is already active');
+        resolve(registration);
+      } else {
+        console.warn('Service worker registration completed but no worker found');
+        resolve(registration);
+      }
+      
+      // Set a timeout to resolve anyway after 3 seconds to prevent blocking
+      setTimeout(() => {
+        if (registration.active) {
+          console.log('Service worker activated within timeout period');
+        } else {
+          console.warn('Service worker not activated within timeout, continuing anyway');
+        }
+        resolve(registration);
+      }, 3000);
+    })
+    .catch(error => {
+      console.error('Service Worker registration failed:', error);
+      reject(error);
+    });
+  });
 }
 
 // Check for app updates

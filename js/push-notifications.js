@@ -72,8 +72,18 @@ async function initializePushNotifications() {
       
       // Only proceed if permission is granted
       if (permission === 'granted') {
-        // Get service worker registration
-        const registration = await navigator.serviceWorker.ready;
+        // Ensure the service worker is registered and activated
+        await ensureServiceWorkerReady();
+        
+        // Now get the service worker registration
+        const registration = window.swRegistration || await navigator.serviceWorker.ready;
+        
+        if (!registration || !registration.active) {
+          console.error('No active service worker found');
+          return;
+        }
+        
+        console.log('Service worker is active:', registration.active.state);
         
         // Check existing subscription
         let subscription = await registration.pushManager.getSubscription();
@@ -85,14 +95,21 @@ async function initializePushNotifications() {
           // Get VAPID key from server
           const vapidPublicKey = await getVapidPublicKey();
           
-          // Create new subscription
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-          });
-          
-          // Save the new subscription to database
-          await saveSubscriptionToDatabase(subscription);
+          try {
+            // Create new subscription
+            subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            });
+            
+            console.log('Push subscription created successfully');
+            
+            // Save the new subscription to database
+            await saveSubscriptionToDatabase(subscription);
+          } catch (subscribeError) {
+            console.error('Failed to subscribe to push:', subscribeError);
+            return;
+          }
         } else {
           console.log('Existing push subscription found, updating database');
           // Update the existing subscription in the database
@@ -112,6 +129,78 @@ async function initializePushNotifications() {
   } catch (error) {
     console.error('Error initializing push notifications:', error);
   }
+}
+
+// Helper function to ensure the service worker is registered and active
+async function ensureServiceWorkerReady() {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // If we already have a global registration, use it
+      if (window.swRegistration && window.swRegistration.active) {
+        console.log('Using existing service worker registration');
+        resolve(window.swRegistration);
+        return;
+      }
+      
+      // Determine the service worker path
+      const swPath = window.location.pathname.includes('/prayer-diary') ? 
+                    '/prayer-diary/service-worker.js' : 
+                    '/service-worker.js';
+      const swScope = window.location.pathname.includes('/prayer-diary') ? 
+                     '/prayer-diary/' : 
+                     '/';
+      
+      console.log('Registering service worker at:', swPath, 'with scope:', swScope);
+      
+      // Register the service worker
+      const registration = await navigator.serviceWorker.register(swPath, {
+        scope: swScope
+      });
+      
+      // Store globally
+      window.swRegistration = registration;
+      
+      // If already active, resolve immediately
+      if (registration.active) {
+        console.log('Service worker is already active');
+        resolve(registration);
+        return;
+      }
+      
+      // Wait for the service worker to activate
+      if (registration.installing) {
+        console.log('Service worker is installing, waiting for activation...');
+        registration.installing.addEventListener('statechange', (event) => {
+          if (event.target.state === 'activated') {
+            console.log('Service worker activated successfully');
+            resolve(registration);
+          }
+        });
+      } else if (registration.waiting) {
+        console.log('Service worker is waiting, forcing activation...');
+        // This will trigger activation if a service worker is waiting
+        registration.waiting.postMessage({action: 'skipWaiting'});
+        
+        // Listen for the controllerchange event
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('Service worker controller changed, now active');
+          resolve(registration);
+        }, {once: true});
+      }
+      
+      // Set a timeout just in case
+      setTimeout(() => {
+        if (!registration.active) {
+          console.warn('Service worker activation timed out, continuing anyway');
+        }
+        resolve(registration);
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Error ensuring service worker is ready:', error);
+      reject(error);
+    }
+  });
 }
 
 // Request notification permission
@@ -254,9 +343,17 @@ async function subscribeToPushNotifications() {
       return false;
     }
     
+    // Ensure service worker is registered and active before proceeding
+    await ensureServiceWorkerReady();
+    
     // Get the service worker registration - use global registration if available
     const registration = window.swRegistration || await navigator.serviceWorker.ready;
     console.log('Service worker ready with scope:', registration.scope);
+    
+    if (!registration || !registration.active) {
+      console.error('No active service worker found, cannot subscribe to push');
+      return false;
+    }
     
     // Get the VAPID public key from the server
     const vapidPublicKey = await getVapidPublicKey();
