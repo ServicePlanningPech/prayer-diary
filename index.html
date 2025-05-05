@@ -2005,24 +2005,9 @@
 	  }
 
 	  if (isStandalone()) {
-		// Build a stack of fake states to trap back
-		let backTrapDepth = 2;
-
-		for (let i = 0; i < backTrapDepth; i++) {
-		  history.pushState({ level: i }, '');
-		}
-
-		window.addEventListener('popstate', (event) => {
-		  const exit = confirm("Do you want to exit the app?");
-		  if (exit) {
-			// Navigate all the way back (may exit app)
-			history.go(-backTrapDepth);
-		  } else {
-			// Rebuild trap stack
-			for (let i = 0; i < backTrapDepth; i++) {
-			  history.pushState({ level: i }, '');
-			}
-		  }
+		window.history.pushState(null, null, document.URL);
+		window.addEventListener('popstate', function () {
+			window.history.pushState(null, null, document.URL);
 		});
 	  }
 	</script>
