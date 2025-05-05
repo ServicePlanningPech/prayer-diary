@@ -2006,9 +2006,16 @@
 
 	  if (isStandalone()) {
 		window.history.pushState(null, null, document.URL);
-		window.addEventListener('popstate', function () {
+		
+		window.addEventListener("popstate", function () {
 			window.history.pushState(null, null, document.URL);
 		});
+
+		window.addEventListener("beforeunload", function (event) {
+			event.preventDefault();
+			event.returnValue = '';
+		});
+
 	  }
 	</script>
     <!-- Square Camera Module for profile photo capture -->
