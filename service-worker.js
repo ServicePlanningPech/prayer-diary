@@ -212,6 +212,8 @@ self.addEventListener('push', event => {
   if (event.data) {
     try {
       const data = event.data.json();
+      console.log('[Service Worker] Push notification payload:', data);
+      
       // Merge with defaults, preserving required fields
       notificationData = {
         ...notificationData,
@@ -231,6 +233,7 @@ self.addEventListener('push', event => {
     body: notificationData.body,
     icon: notificationData.icon,
     badge: notificationData.badge,
+    image: notificationData.image,  // Optional larger image
     data: notificationData.data || { url: '/' },
     tag: notificationData.tag || 'prayer-diary-notification',
     renotify: notificationData.renotify || false,
@@ -243,8 +246,13 @@ self.addEventListener('push', event => {
       }
     ],
     // Ensure it's not silent
-    silent: false
+    silent: false,
+    // These options help with visuals on mobile
+    timestamp: notificationData.timestamp || Date.now(),
+    dir: 'auto'
   };
+  
+  console.log('[Service Worker] Showing notification with options:', options);
   
   // CRITICAL: Use waitUntil to keep service worker alive until notification is shown
   event.waitUntil(
@@ -262,10 +270,13 @@ self.addEventListener('push', event => {
 
 // Notification click event
 self.addEventListener('notificationclick', event => {
-  console.log('Notification clicked:', event);
+  console.log('[Service Worker] Notification clicked:', event);
   
   // Close the notification
   event.notification.close();
+  
+  // Get the action (if any)
+  const action = event.action;
   
   // Extract the URL to navigate to
   let url = '/';
@@ -280,27 +291,47 @@ self.addEventListener('notificationclick', event => {
     url = `${BASE_PATH}${url}`;
   }
   
+  console.log(`[Service Worker] Opening URL: ${url}`);
+  
   // Handle the click event by opening or focusing on the relevant page
-  event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true
-    }).then(windowClients => {
-      // Check if there is already a window/tab open with the target URL
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        // If so, just focus it
-        if (client.url.includes(url) && 'focus' in client) {
-          return client.focus();
-        }
+  const notificationPromise = clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true
+  })
+  .then(windowClients => {
+    // Check if there is already a window/tab open with the target URL
+    let matchingClient = null;
+    
+    for (let i = 0; i < windowClients.length; i++) {
+      const client = windowClients[i];
+      console.log(`[Service Worker] Checking client: ${client.url} (vs ${url})`);
+      
+      // If so, just focus it
+      if (client.url.includes(url) && 'focus' in client) {
+        return client.focus();
       }
       
-      // If not, open a new window/tab
-      if (clients.openWindow) {
-        return clients.openWindow(url);
+      // If we didn't find an exact match, save the first client we find
+      if (!matchingClient && 'navigate' in client) {
+        matchingClient = client;
       }
-    })
-  );
+    }
+    
+    // If we found a client but not an exact URL match, navigate that client
+    if (matchingClient) {
+      console.log(`[Service Worker] Navigating existing client to: ${url}`);
+      return matchingClient.navigate(url).then(navigatedClient => navigatedClient.focus());
+    }
+    
+    // If not, open a new window/tab
+    console.log(`[Service Worker] Opening new window for: ${url}`);
+    return clients.openWindow(url);
+  })
+  .catch(err => {
+    console.error('[Service Worker] Error handling notification click:', err);
+  });
+  
+  event.waitUntil(notificationPromise);
 });
 
 // Handle messages from the client

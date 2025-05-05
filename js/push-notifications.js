@@ -590,16 +590,27 @@ function urlBase64ToUint8Array(base64String) {
 // Test push notifications (for debugging)
 async function testPushNotification() {
   try {
+    console.log('Sending test push notification...');
+    
+    // Make sure we have an active service worker
+    await ensureServiceWorkerReady();
+    
     const { data, error } = await supabase.functions.invoke('send-push-notifications', {
       body: {
         userIds: [getUserId()],
-        title: 'Test Notification',
-        message: 'This is a test push notification',
+        title: 'Prayer Diary Test',
+        message: 'This is a test notification from Prayer Diary. It should appear as a popup notification.',
         contentType: 'test',
         contentId: '00000000-0000-0000-0000-000000000000',
         data: {
-          url: '/calendar-view'
-        }
+          url: '/calendar-view',
+          timestamp: Date.now()
+        },
+        // Visual properties to ensure proper display
+        requireInteraction: true,
+        renotify: true,
+        vibrate: [100, 50, 100, 50, 100, 50, 100],
+        tag: 'prayer-diary-test-' + Date.now()
       }
     });
     

@@ -153,6 +153,43 @@ function setupImmediatePreferenceChanges() {
             applyPreferences();
         });
     });
+    
+    // Add test notification button click handler if it exists
+    const testNotificationBtn = document.getElementById('test-notification-btn');
+    if (testNotificationBtn) {
+        testNotificationBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            // Prevent multiple clicks
+            this.disabled = true;
+            const originalText = this.textContent;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+            
+            try {
+                if (typeof window.testPushNotification === 'function') {
+                    const result = await window.testPushNotification();
+                    if (result) {
+                        this.innerHTML = '<i class="bi bi-check-circle me-1"></i> Sent!';
+                        showNotification('Success', 'Test notification sent! Check your notification area.');
+                    } else {
+                        throw new Error('Failed to send test notification');
+                    }
+                } else {
+                    throw new Error('Test function not available');
+                }
+            } catch (error) {
+                console.error('Error sending test notification:', error);
+                this.innerHTML = '<i class="bi bi-x-circle me-1"></i> Failed';
+                showNotification('Error', `Failed to send test notification: ${error.message}`);
+            } finally {
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    this.disabled = false;
+                    this.textContent = originalText;
+                }, 2000);
+            }
+        });
+    }
 }
 
 // Make key functions globally accessible

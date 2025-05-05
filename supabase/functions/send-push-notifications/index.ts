@@ -98,15 +98,25 @@ serve(async (req) => {
     const notificationPayload = JSON.stringify({
       title: title,
       body: message,
-      icon: `${BASE_URL}/img/icons/android/android-launchericon-96-96.png`,
+      icon: `${BASE_URL}/img/icons/android/android-launchericon-192-192.png`,
       badge: `${BASE_URL}/img/icons/android/android-launchericon-72-72.png`,
+      image: data?.image || null,  // Optional larger image to show in notification
       data: {
         dateOfArrival: Date.now(),
         primaryKey: 1,
         url: data?.url || '/',
         contentType,
         contentId
-      }
+      },
+      // Visual options to improve notification appearance
+      vibrate: [100, 50, 100],
+      requireInteraction: true,  // Keep notification visible until dismissed
+      actions: [
+        {
+          action: 'view',
+          title: 'View'
+        }
+      ]
     })
 
     // Send push notifications and track results
