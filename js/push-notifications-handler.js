@@ -58,7 +58,7 @@ function setupPushPermissionPrompt() {
             
             try {
                 // Request permission and subscribe
-                const result = await requestPushNotificationPermission();
+                const result = await requestNotificationPermission();
                 
                 if (result.success) {
                     // Select the push notification radio button

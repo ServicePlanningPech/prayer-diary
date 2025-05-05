@@ -1,18 +1,15 @@
 // Supabase Edge Function: get-vapid-key
-// Returns the VAPID public key needed for Web Push Notifications
+// Returns the VAPID public key for push notifications
 
 import { serve } from 'https://deno.land/std@0.170.0/http/server.ts'
+
 // CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
   'Access-Control-Max-Age': '86400'
 };
-
-// IMPORTANT: In production, store these in secure environment variables
-// You'll need to set this in your Supabase project dashboard
-const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY') || 'YOUR_VAPID_PUBLIC_KEY_HERE';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -26,28 +23,19 @@ serve(async (req) => {
       throw new Error('Method not allowed')
     }
 
-    // Verify authentication
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({
-          error: 'Unauthorized',
-          message: 'Missing Authorization header'
-        }),
-        {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders
-          }
-        }
-      )
+    // Get the VAPID public key from environment variable
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+
+    // Check if the key exists
+    if (!vapidPublicKey) {
+      throw new Error('VAPID public key not configured')
     }
 
-    // Return the VAPID public key
+    // Return the public key
     return new Response(
       JSON.stringify({
-        vapidPublicKey: VAPID_PUBLIC_KEY
+        success: true,
+        vapidPublicKey: vapidPublicKey
       }),
       {
         status: 200,
@@ -58,12 +46,16 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    // Handle and return any errors
+    console.error('Error retrieving VAPID key:', error)
+    
     return new Response(
       JSON.stringify({
+        success: false,
         error: error.message
       }),
       {
-        status: 400,
+        status: error.message === 'VAPID public key not configured' ? 500 : 400,
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders

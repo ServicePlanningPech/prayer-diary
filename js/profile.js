@@ -497,7 +497,7 @@ function setupNotificationMethodHandlers() {
                 const isAndroid = /Android/.test(navigator.userAgent);
                 if (isAndroid) {
                     // On Android, request push permissions
-                    requestPushNotificationPermission().then(result => {
+                    requestNotificationPermission().then(result => {
                         if (!result.success) {
                             // If permission failed, revert to 'none'
                             document.getElementById('notification-none').checked = true;
